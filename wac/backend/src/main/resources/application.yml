@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/whatsapp_clone
-    username: username
-    password: password
+    username: wac
+    password: wac
   jpa:
     hibernate:
       ddl-auto: update
