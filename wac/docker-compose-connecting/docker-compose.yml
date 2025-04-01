@@ -12,8 +12,6 @@ services:
     networks:
       - connecting
     restart: unless-stopped
-    volumes:
-      - postgres:/var/lib/postgresql/data  # Mantiene i dati anche dopo il riavvio
 
   keycloak:
     container_name: keycloak-connecting
@@ -23,10 +21,6 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_DB: connecting_db
-      KC_DB_URL: jdbc:postgresql://connecting-db:5432/connecting_db
-      KC_DB_USERNAME: admin
-      KC_DB_PASSWORD: admin
     networks:
       - connecting
     volumes:
@@ -39,6 +33,6 @@ networks:
   connecting:
     driver: bridge
 
-volumes:
-  postgres:
-    driver: local
+#volumes:
+  #postgres:
+    #driver: local
