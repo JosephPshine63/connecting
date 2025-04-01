@@ -18,8 +18,8 @@ export class KeycloakService {
     if (!this._keycloak) {
       this._keycloak = new Keycloak({
         url: 'http://localhost:9090',
-        realm: 'whatsapp-clone',
-        clientId: 'whatsapp-clone-app'
+        realm: 'connecting',
+        clientId: 'connecting-app'
       });
     }
     return this._keycloak;

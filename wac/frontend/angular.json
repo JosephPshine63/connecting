@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "whatsapp-clone-ui": {
+    "connecting-ui": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,7 +17,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/whatsapp-clone-ui",
+            "outputPath": "dist/connecting-ui",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -65,10 +65,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "whatsapp-clone-ui:build:production"
+              "buildTarget": "connecting-ui:build:production"
             },
             "development": {
-              "buildTarget": "whatsapp-clone-ui:build:development"
+              "buildTarget": "connecting-ui:build:development"
             }
           },
           "defaultConfiguration": "development"
