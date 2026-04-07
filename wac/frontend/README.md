@@ -1,59 +1,168 @@
-# WhatsappCloneUi
+# 💻 Frontend - Angular 19 Application
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.0.6.
+Applicazione **Angular 19** moderna e responsiva che fornisce l'interfaccia utente per la messaggistica in tempo reale, la gestione contatti e i profili utente.
 
-## Development server
+---
 
-To start a local development server, run:
+## 📦 Tecnologie
+
+- **Angular 19** - Framework frontend
+- **TypeScript** - Linguaggio di programmazione
+- **Bootstrap 5** - Framework CSS per responsive design
+- **FontAwesome** - Icone
+- **Keycloak-js** - OAuth2/OpenID Connect client
+- **SockJS** - WebSocket fallback library
+- **STOMP** - Messaging protocol su WebSocket
+- **ng-openapi-gen** - Auto-generazione API client da OpenAPI spec
+- **RxJS** - Reactive programming library
+- **Angular Forms** - Reactive forms e template-driven forms
+
+---
+
+## 📁 Struttura
+
+```
+src/
+├── app/
+│   ├── app.component.ts              [Componente root]
+│   ├── app.component.html
+│   ├── app.component.scss
+│   ├── app.config.ts                 [Configurazione globale]
+│   ├── app.routes.ts                 [Routing]
+│   ├── components/                   [Componenti riutilizzabili]
+│   ├── pages/                        [Pagine principali]
+│   ├── services/                     [Servizi]
+│   ├── utils/                        [Utility functions e helper]
+│   ├── guards/                       [Route guards]
+│   ├── interceptors/                 [HTTP interceptors]
+│   └── openapi/                      [Generated API client da OpenAPI]
+├── environments/
+│   ├── environment.ts                [Config sviluppo]
+│   └── environment.prod.ts           [Config produzione]
+├── index.html                        [HTML principale]
+├── main.ts                           [Bootstrap applicazione]
+└── styles.scss                       [Stili globali]
+```
+
+---
+
+## 🚀 Avvio
+
+### Prerequisiti
+- Node.js 20+
+- npm o yarn
+- Angular CLI 19+
+
+### Installazione
+
+```bash
+npm install
+```
+
+### Configurazione
+
+Modifica `src/environments/environment.ts`:
+
+```typescript
+export const environment = {
+  production: false,
+  apiUrl: 'http://localhost:8080/api',
+  keycloakUrl: 'http://localhost:9090',
+  keycloakRealm: 'connecting',
+  keycloakClientId: 'connecting-frontend',
+  wsUrl: 'ws://localhost:8080/ws'
+};
+```
+
+### Sviluppo
 
 ```bash
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Applicazione disponibile su `http://localhost:4200`
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+### Build Produzione
 
 ```bash
-ng generate component component-name
+ng build --configuration production
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+---
+
+## 🔌 Servizi Principali
+
+- **AuthService** - Autenticazione OAuth2 con Keycloak
+- **WebSocketService** - Gestione WebSocket STOMP
+- **ChatService** - Gestione chat (HTTP)
+- **MessageService** - Gestione messaggi (HTTP + WebSocket)
+- **NotificationService** - Notifiche in tempo reale
+- **UserService** - Gestione utenti
+- **FileService** - Upload/download file
+
+---
+
+## 🔐 Autenticazione
+
+Usa OAuth2 con Keycloak. Token JWT incluso automaticamente in ogni request tramite HTTP interceptor.
+
+---
+
+## 🔄 WebSocket Real-Time
+
+Connessione STOMP per messaggi in tempo reale:
+- Topic: `/topic/messages/{chatId}` - Messaggi chat
+- Topic: `/user/{userId}/queue/notifications` - Notifiche personali
+
+---
+
+## 🎨 Stili
+
+- Bootstrap 5 per layout responsivo
+- SCSS con variabili personalizzate
+- FontAwesome 6 per icone
+
+---
+
+## 🧪 Test
 
 ```bash
-ng generate --help
+ng test          # Test unitari
+ng e2e          # Test E2E
 ```
 
-## Building
+---
 
-To build the project run:
+## 🚀 Deployment
 
+### Static Hosting
 ```bash
-ng build
+ng build --configuration production
+# Carica dist/ verso provider (Netlify, Vercel, GitHub Pages)
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+### Docker
+```dockerfile
+FROM node:20-alpine as build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
-## Running end-to-end tests
+---
 
-For end-to-end (e2e) testing, run:
+## 📦 Dipendenze Principali
 
-```bash
-ng e2e
-```
+- @angular/common, @angular/core, @angular/forms, @angular/router
+- keycloak-js, sockjs-client, stompjs
+- bootstrap, @fortawesome/fontawesome-free
+- rxjs
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Vedi `package.json` per elenco completo.
