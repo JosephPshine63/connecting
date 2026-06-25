@@ -337,27 +337,22 @@ Quando sviluppi una nuova feature:
 ## 📚 Correlazione File/Cartelle
 
 ```
-├── README.md                    [Sintesi globale - START HERE]
 ├── wac/
+│   ├── README.md               [Sintesi globale - START HERE]
 │   ├── backend/
-│   │   ├── README.md           [Guide backend spring boot]
 │   │   ├── src/main/java/      [Sorgenti Java]
-│   │   ├── src/main/resources/ [applicazione.yml, migrations]
+│   │   ├── src/main/resources/ [application.yml]
 │   │   └── pom.xml             [Maven dependencies]
 │   ├── frontend/
-│   │   ├── README.md           [Guide Angular19]
 │   │   ├── src/
 │   │   ├── package.json        [npm dependencies]
 │   │   └── angular.json        [ng config]
 │   ├── database/
-│   │   ├── README.md           [Guide PostgreSQL]
-│   │   └── schema.sql          [Initial schema]
+│   │   └── schema.sql          [DDL: users, chat, messages]
 │   ├── keycloak/
-│   │   ├── README.md           [Guide OAuth2/Keycloak]
 │   │   └── realms/connecting.json
-│   ├── docker-compose/
-│   │   ├── README.md           [Guide orchestrazione]
-│   │   └── docker-compose.yml
+│   ├── docker-compose-connecting/
+│   │   └── docker-compose.yml  [Postgres + Keycloak con volumi]
 │   └── documentation/
 │       ├── README.md           [You are here]
 │       ├── whatsapp_clone.drawio [Architecture diagram]
