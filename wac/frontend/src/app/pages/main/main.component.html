@@ -1,4 +1,13 @@
 <div class="main">
+  @if (showDemoBanner) {
+    <div class="demo-banner">
+      <span>
+        <strong>App demo</strong> — Non inserire dati personali reali.
+        Gli account inattivi per più di 3 settimane vengono eliminati automaticamente.
+      </span>
+      <button class="demo-banner-close" (click)="dismissBanner()" aria-label="Chiudi">✕</button>
+    </div>
+  }
   <div class="background-skyblue"></div>
 
   <div class="main-container d-flex">

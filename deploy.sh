@@ -207,6 +207,10 @@ docker run -d \
   -e SPRING_DATASOURCE_USERNAME="${POSTGRES_USER:-admin}" \
   -e SPRING_DATASOURCE_PASSWORD="${POSTGRES_PASSWORD:-admin}" \
   -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="https://auth.wacchat.win/realms/connecting" \
+  -e KEYCLOAK_ADMIN_URL="http://keycloak-connecting:8080" \
+  -e KEYCLOAK_ADMIN_USERNAME="${KEYCLOAK_ADMIN_USERNAME:-admin}" \
+  -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
+  -e ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
   -v "$SCRIPT_DIR/wac/backend/uploads:/app/uploads" \
   --restart unless-stopped \
   "$FULL_BACKEND"

@@ -33,6 +33,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   socketClient: any = null;
   messageContent: string = '';
   showEmojis = false;
+  showDemoBanner = !sessionStorage.getItem('demoBannerDismissed');
   @ViewChild('scrollableDiv') scrollableDiv!: ElementRef<HTMLDivElement>;
   private notificationSubscription: any;
 
@@ -146,6 +147,11 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       }
       reader.readAsDataURL(file);
     }
+  }
+
+  dismissBanner() {
+    sessionStorage.setItem('demoBannerDismissed', '1');
+    this.showDemoBanner = false;
   }
 
   logout() {

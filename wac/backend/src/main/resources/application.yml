@@ -34,3 +34,11 @@ application:
   file:
     uploads:
       media-output-path: ./uploads
+  keycloak:
+    admin-url: ${KEYCLOAK_ADMIN_URL:http://keycloak-connecting:8080}
+    realm: connecting
+    admin-username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    admin-password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+  cleanup:
+    inactivity-days: 21
+    protected-email: ${ADMIN_EMAIL:}
