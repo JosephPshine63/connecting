@@ -235,13 +235,9 @@ RETRY_INTERVAL=3
 healthy=false
 for i in $(seq 1 $MAX_RETRIES); do
   http_code=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" 2>/dev/null || echo "000")
-  if [[ "$http_code" == "200" ]]; then
+  if [[ "$http_code" == "200" ]] || [[ "$http_code" == "302" ]]; then
     healthy=true
     break
-  fi
-  # Fallback: if actuator is not enabled, check the base API
-  if [[ "$i" -eq 5 ]]; then
-    HEALTH_URL="http://localhost:$PORT_BACKEND/swagger-ui.html"
   fi
   echo "  Attempt $i/$MAX_RETRIES — HTTP $http_code (retrying in ${RETRY_INTERVAL}s...)"
   sleep $RETRY_INTERVAL
