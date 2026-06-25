@@ -94,15 +94,25 @@ if $NO_CACHE; then
   log "Cache disabled (--no-cache)"
 fi
 
-# ─── 1. Infrastructure (Postgres + Keycloak) ─────────────────────────────────
-log "Starting infrastructure (PostgreSQL + Keycloak)..."
+# ─── 1. Git pull ─────────────────────────────────────────────────────────────
+log "Pulling latest changes from origin..."
+command -v git >/dev/null 2>&1 || err "git is not installed or not in PATH"
+git -C "$SCRIPT_DIR" pull --ff-only origin main
+ok "Repository is up to date"
+
+# ─── 2. Infrastructure (Postgres + Keycloak) ─────────────────────────────────
+log "Stopping infrastructure containers for rebuild..."
 COMPOSE_CMD="docker compose"
 command -v docker compose >/dev/null 2>&1 || COMPOSE_CMD="docker-compose"
 
+(cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD down)
+ok "Infrastructure stopped"
+
+log "Starting infrastructure (PostgreSQL + Keycloak)..."
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD up -d)
 ok "Infrastructure is up"
 
-# ─── 2. Build backend image ──────────────────────────────────────────────────
+# ─── 4. Build backend image ──────────────────────────────────────────────────
 log "Building backend image: $FULL_BACKEND ..."
 docker build $BUILD_FLAGS \
   -t "$FULL_BACKEND" \
