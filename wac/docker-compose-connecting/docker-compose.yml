@@ -3,14 +3,16 @@ services:
     container_name: connecting-db
     image: postgres
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
       PGDATA: /var/lib/postgresql/data
-      POSTGRES_DB: connecting_db
+      POSTGRES_DB: ${POSTGRES_DB:-connecting_db}
     ports:
-      - 5432:5432
+      - 5433:5432
     networks:
       - connecting
+    volumes:
+      - postgres:/var/lib/postgresql/data
     restart: unless-stopped
 
   keycloak:
@@ -19,8 +21,8 @@ services:
     ports:
       - 9090:8080
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     networks:
       - connecting
     volumes:
@@ -33,6 +35,6 @@ networks:
   connecting:
     driver: bridge
 
-#volumes:
-  #postgres:
-    #driver: local
+volumes:
+  postgres:
+    driver: local

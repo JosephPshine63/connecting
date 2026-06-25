@@ -17,6 +17,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/wac/backend"
 FRONTEND_DIR="$SCRIPT_DIR/wac/frontend"
 
+# Load .env if present (overrides defaults for credentials, etc.)
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  set -a; source "$SCRIPT_DIR/.env"; set +a
+fi
+
 NO_CACHE=false
 PUSH=false
 ENV="development"
@@ -109,11 +114,21 @@ command -v docker compose >/dev/null 2>&1 || COMPOSE_CMD="docker-compose"
 ok "Infrastructure stopped"
 
 # Release any containers still holding the required ports
-for port in 5432 9090; do
+for port in 5433 9090; do
   conflicting=$(docker ps --format '{{.ID}} {{.Ports}}' | grep ":${port}->" | awk '{print $1}')
   if [[ -n "$conflicting" ]]; then
     log "Port $port still held by container $conflicting — stopping it..."
     docker stop "$conflicting"
+  fi
+done
+
+# Force-remove named infra containers so docker compose always recreates them
+# with the correct port mappings from docker-compose.yml (avoids stale containers
+# created outside compose that end up without port bindings)
+for name in connecting-db keycloak-connecting; do
+  if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
+    log "Removing stale container: $name"
+    docker rm -f "$name" 2>/dev/null || true
   fi
 done
 
@@ -162,9 +177,9 @@ docker run -d \
   --name "$CONTAINER_BACKEND" \
   --network "${COMPOSE_DIR##*/}_connecting" \
   -p "$PORT_BACKEND:8080" \
-  -e SPRING_DATASOURCE_URL="jdbc:postgresql://connecting-db:5432/connecting_db" \
-  -e SPRING_DATASOURCE_USERNAME="admin" \
-  -e SPRING_DATASOURCE_PASSWORD="admin" \
+  -e SPRING_DATASOURCE_URL="jdbc:postgresql://connecting-db:5432/${POSTGRES_DB:-connecting_db}" \
+  -e SPRING_DATASOURCE_USERNAME="${POSTGRES_USER:-admin}" \
+  -e SPRING_DATASOURCE_PASSWORD="${POSTGRES_PASSWORD:-admin}" \
   -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="https://auth.wacchat.win/realms/connecting" \
   -v "$SCRIPT_DIR/wac/backend/uploads:/app/uploads" \
   --restart unless-stopped \
