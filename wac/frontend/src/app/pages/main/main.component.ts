@@ -74,9 +74,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   sendMessage() {
     if (this.messageContent) {
       const messageRequest: MessageRequest = {
-        chatId: this.selectedChat.id,
-        senderId: this.getSenderId(),
-        receiverId: this.getReceiverId(),
+        chatId: this.selectedChat.id as string,
         content: this.messageContent,
         type: 'TEXT',
       };

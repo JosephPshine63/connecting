@@ -2,6 +2,7 @@ package dev.pioruocco.connecting.message;
 
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,8 +31,8 @@ public class MessageController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public void saveMessage(@RequestBody MessageRequest message) {
-        messageService.saveMessage(message);
+    public void saveMessage(@Valid @RequestBody MessageRequest message, Authentication authentication) {
+        messageService.saveMessage(message, authentication);
     }
 
     @PostMapping(value = "/upload-media", consumes = "multipart/form-data")
@@ -53,9 +54,9 @@ public class MessageController {
 
     @GetMapping("/chat/{chat-id}")
     public ResponseEntity<List<MessageResponse>> getAllMessages(
-            @PathVariable("chat-id") String chatId
+            @PathVariable("chat-id") String chatId,
+            Authentication authentication
     ) {
-
-        return ResponseEntity.ok(messageService.findChatMessages(chatId));
+        return ResponseEntity.ok(messageService.findChatMessages(chatId, authentication));
     }
 }

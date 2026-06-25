@@ -23,10 +23,10 @@ public class ChatController {
 
     @PostMapping
     public ResponseEntity<StringResponse> createChat(
-            @RequestParam(name = "sender-id") String senderId,
-            @RequestParam(name = "receiver-id") String receiverId
+            @RequestParam(name = "receiver-id") String receiverId,
+            Authentication authentication
     ) {
-        final String chatId = chatService.createChat(senderId, receiverId);
+        final String chatId = chatService.createChat(authentication.getName(), receiverId);
         StringResponse response = StringResponse.builder()
                 .response(chatId)
                 .build();

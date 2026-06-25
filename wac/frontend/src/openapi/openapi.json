@@ -125,14 +125,6 @@
         "operationId": "createChat",
         "parameters": [
           {
-            "name": "sender-id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "receiver-id",
             "in": "query",
             "required": true,
@@ -216,15 +208,11 @@
     "schemas": {
       "MessageRequest": {
         "type": "object",
+        "required": ["content", "type", "chatId"],
         "properties": {
           "content": {
-            "type": "string"
-          },
-          "senderId": {
-            "type": "string"
-          },
-          "receiverId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 4096
           },
           "type": {
             "type": "string",

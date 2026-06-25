@@ -1,162 +1,202 @@
-# 🚀 Connecting - WhatsApp Clone
+# Connecting
 
-Un'applicazione **full-stack di messaggistica social** moderna e scalabile, che implementa chat in tempo reale, autenticazione OAuth2 centralizzata, e persistenza dati relazionale. Sviluppata con **Spring Boot 3.4.1** (backend), **Angular 19** (frontend), **PostgreSQL** (database) e **Keycloak 26.0.0** (autenticazione).
-
----
-
-## 📋 Panoramica Architettura
-
-```
-┌─────────────────────────────────┐
-│   FRONTEND (Angular 19)         │
-│   • Chat in tempo reale         │
-│   • WebSocket (SockJS/STOMP)    │
-│   • OAuth2 via Keycloak         │
-└────────────┬────────────────────┘
-             │ REST API + WebSocket
-┌────────────▼────────────────────┐
-│   BACKEND (Spring Boot 3.4.1)   │
-│   • REST API                    │
-│   • WebSocket handlers          │
-│   • OAuth2 Resource Server      │
-└────────────┬────────────────────┘
-             │ JDBC/SQL
-┌────────────▼────────────────────┐
-│  DATABASE (PostgreSQL)          │
-│  • Utenti, Chat, Messaggi       │
-│  • Flyway migrations            │
-└─────────────────────────────────┘
-```
+**Full-stack real-time chat application** built with Spring Boot, Angular, PostgreSQL, and Keycloak. Users authenticate via OAuth2 (Keycloak), exchange messages over WebSocket (STOMP/SockJS), and upload media files through a REST API.
 
 ---
 
-## 🛠️ Tecnologie Principali
+## Features
 
-### Backend
-- **Java 17** + **Spring Boot 3.4.1**
-- Spring Data JPA, Spring Web, Spring WebSocket
-- Spring Security (OAuth2 Resource Server)
-- PostgreSQL + Flyway (migrazioni)
-- SpringDoc OpenAPI (Swagger)
-
-### Frontend
-- **Angular 19** + **TypeScript**
-- Keycloak-js (OAuth2)
-- SockJS + STOMP (WebSocket)
-- Bootstrap 5 + FontAwesome
-- ng-openapi-gen (auto-generazione API client)
-
-### Infrastruttura
-- **PostgreSQL**: database relazionale
-- **Keycloak 26.0.0**: Identity Provider OAuth2/OpenID Connect
-- **Docker & Docker Compose**: containerizzazione
+- Real-time messaging via STOMP/SockJS WebSocket
+- OAuth2/OpenID Connect authentication delegated entirely to Keycloak
+- Automatic user provisioning: first authenticated request upserts Keycloak JWT claims into local DB
+- Per-conversation chat threads with message state tracking (SENT → SEEN)
+- Media file upload/download (text, image, audio — up to 50 MB per file)
+- REST API documented with OpenAPI/Swagger at `/swagger-ui.html`
+- Angular client fully generated from the OpenAPI spec (`ng-openapi-gen`)
 
 ---
 
-## 📁 Struttura del Progetto
+## Tech stack
 
-| Cartella | Descrizione |
-|----------|-------------|
-| **backend/** | Spring Boot API, WebSocket handlers, logica aziendale |
-| **frontend/** | Applicazione Angular, UI e client WebSocket |
-| **database/** | Schema SQL e configurazione PostgreSQL |
-| **keycloak/** | Configurazione realm Keycloak per OAuth2 |
-| **docker-compose/** | Orchestrazione servizi (PostgreSQL, Keycloak) |
-| **documentation/** | Diagrammi architettura, ERD, specifiche |
-
-📖 Vedi il README in ogni cartella per dettagli specifici.
+| Layer | Technology |
+|-------|-----------|
+| Backend | Java 17, Spring Boot 3.4.1, Spring Data JPA, Spring WebSocket, Spring Security OAuth2 Resource Server |
+| Frontend | Angular 19, TypeScript 5.6, Keycloak-js 26, SockJS + STOMP, Bootstrap 5 |
+| Database | PostgreSQL (latest), managed schema via `database/schema.sql` |
+| Auth | Keycloak 26.0.0 (realm `connecting`, client `connecting-app`) |
+| Build | Maven 3 (backend), Angular CLI 19 / npm (frontend) |
+| Dev infra | Docker Compose |
 
 ---
 
-## 🚀 Quick Start
+## Prerequisites
 
-### Prerequisiti
-- **Java 17+**
-- **Node.js 20+**
-- **Docker & Docker Compose**
-- **Maven 3.8+**
+- Java 17+
+- Node.js 20+ and npm
+- Docker and Docker Compose
+- Maven 3.8+ (or use the included `mvnw` wrapper)
 
-### Avvio con Docker Compose
+---
+
+## Installation
+
+### 1. Start infrastructure
 
 ```bash
-cd docker-compose
+cd wac/docker-compose-connecting
 docker-compose up -d
 ```
 
-Questo avvia:
-- 🗄️ PostgreSQL (port 5432)
-- 🔐 Keycloak (port 9090)
+This brings up:
+- PostgreSQL on port `5432` (`POSTGRES_USER=admin`, `POSTGRES_PASSWORD=admin`, `POSTGRES_DB=connecting_db`)
+- Keycloak on port `9090` (admin: `admin` / `admin`), with the `connecting` realm auto-imported from `keycloak/realms/connecting.json`
 
-### Avvio Backend
+### 2. Apply database schema
 
 ```bash
-cd backend
-mvn clean install
-mvn spring-boot:run
+psql -h localhost -U admin -d connecting_db -f wac/database/schema.sql
 ```
 
-API disponibile: `http://localhost:8080`
-Swagger/OpenAPI: `http://localhost:8080/swagger-ui.html`
+> Flyway is present as a dependency but disabled. JPA `ddl-auto: update` handles schema drift in dev; apply `schema.sql` on a fresh database.
 
-### Avvio Frontend
+### 3. Start the backend
 
 ```bash
-cd frontend
+cd wac/backend
+./mvnw spring-boot:run
+```
+
+API available at `http://localhost:8080`. Swagger UI at `http://localhost:8080/swagger-ui.html`.
+
+### 4. Start the frontend
+
+```bash
+cd wac/frontend
 npm install
-ng serve
+npm start
 ```
 
-App disponibile: `http://localhost:4200`
+App available at `http://localhost:4200`.
 
 ---
 
-## ⚙️ Configurazione
+## Configuration
 
-### Backend (application.yml)
+### Backend — `wac/backend/src/main/resources/application.yml`
+
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/connecting
-    username: postgres
-    password: your_password
-  jpa:
-    hibernate:
-      ddl-auto: validate
+    url: jdbc:postgresql://localhost:5432/postgres   # change DB name if needed
+    username: admin
+    password: admin
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/connecting
+  servlet:
+    multipart:
+      max-file-size: 50MB
+
+application:
+  file:
+    uploads:
+      media-output-path: ./uploads   # local path where media files are stored
 ```
 
-### Frontend (environment.ts)
+> The Docker Compose default database is `connecting_db`, but `application.yml` points to `postgres`. Either update the datasource URL or adjust `POSTGRES_DB` in the compose file to match.
+
+### Frontend — `wac/frontend/src/app/utils/keycloak/keycloak.service.ts`
+
+Keycloak config is hardcoded in the service:
+
 ```typescript
-export const environment = {
-  apiUrl: 'http://localhost:8080/api',
-  keycloakUrl: 'http://localhost:9090',
-  wsUrl: 'ws://localhost:8080/ws'
-};
+new Keycloak({
+  url: 'http://localhost:9090',
+  realm: 'connecting',
+  clientId: 'connecting-app'
+});
+```
+
+Change these values if you rename the realm or client in Keycloak.
+
+---
+
+## Usage
+
+### Regenerate the Angular API client
+
+After any backend API change, regenerate the Angular services from the updated OpenAPI spec:
+
+```bash
+# Export the spec (backend must be running)
+curl http://localhost:8080/v3/api-docs -o wac/frontend/src/openapi/openapi.json
+
+cd wac/frontend
+npm run api-gen
+```
+
+### WebSocket destinations
+
+| Direction | Destination pattern |
+|-----------|-------------------|
+| Send message | `/app/chat` |
+| Receive notifications | `/user/{userId}/chat` |
+
+---
+
+## Project structure
+
+```
+wac/
+├── backend/
+│   └── src/main/java/dev/pioruocco/connecting/
+│       ├── chat/           # Chat entity, CRUD, REST controller
+│       ├── message/        # Message entity, state machine (SENT/SEEN), media upload
+│       ├── user/           # User entity + UserSynchronizer (Keycloak → local DB)
+│       ├── notification/   # WebSocket push notifications
+│       ├── file/           # File storage service and utilities
+│       ├── security/       # SecurityConfig, KeycloakJwtAuthenticationConverter
+│       ├── ws/             # WebSocketConfig (STOMP broker)
+│       ├── interceptor/    # UserSynchronizerFilter (runs per-request)
+│       └── common/         # BaseAuditingEntity, shared DTOs
+├── frontend/
+│   └── src/app/
+│       ├── pages/main/     # Main chat page, WebSocket client
+│       ├── components/     # chat-list component
+│       ├── services/       # Auto-generated API client (do not edit manually)
+│       └── utils/          # KeycloakService, HTTP interceptor
+├── database/
+│   └── schema.sql          # Reference DDL for users, chat, messages tables
+├── keycloak/
+│   └── realms/
+│       └── connecting.json # Full realm export — imported automatically on Keycloak startup
+└── docker-compose-connecting/
+    └── docker-compose.yml  # Postgres + Keycloak with persistent volumes
 ```
 
 ---
 
-## ✨ Funzionalità Principali
+## Testing
 
-✅ **Chat in tempo reale** via WebSocket  
-✅ **Autenticazione OAuth2** centralizzata (Keycloak)  
-✅ **Gestione contatti** e profili utente  
-✅ **Notifiche** in tempo reale  
-✅ **Upload/Download file** via REST API  
-✅ **API RESTful** ben documentata (OpenAPI/Swagger)  
-✅ **Persistenza relazionale** con PostgreSQL + JPA  
+### Backend
 
----
+```bash
+cd wac/backend
+./mvnw test                        # all tests
+./mvnw test -Dtest=ClassName       # single test class
+```
 
-## 📚 Documentazione Aggiuntiva
+### Frontend
 
-- **Backend API**: `backend/README.md`
-- **Frontend**: `frontend/README.md`
-- **Database**: `database/README.md`
-- **Autenticazione**: `keycloak/README.md`
-- **Docker**: `docker-compose/README.md`
+```bash
+cd wac/frontend
+npm test                           # Karma + Jasmine, runs in Chrome
+```
 
 ---
 
-## 📄 Licenza
+## License
 
-Vedi `LICENSE` per dettagli.
+[Apache License 2.0](LICENSE)

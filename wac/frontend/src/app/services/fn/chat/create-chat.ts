@@ -11,14 +11,12 @@ import { RequestBuilder } from '../../request-builder';
 import { StringResponse } from '../../models/string-response';
 
 export interface CreateChat$Params {
-  'sender-id': string;
   'receiver-id': string;
 }
 
 export function createChat(http: HttpClient, rootUrl: string, params: CreateChat$Params, context?: HttpContext): Observable<StrictHttpResponse<StringResponse>> {
   const rb = new RequestBuilder(rootUrl, createChat.PATH, 'post');
   if (params) {
-    rb.query('sender-id', params['sender-id'], {});
     rb.query('receiver-id', params['receiver-id'], {});
   }
 

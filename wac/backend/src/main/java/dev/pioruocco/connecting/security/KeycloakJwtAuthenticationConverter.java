@@ -8,16 +8,16 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-
+import org.springframework.stereotype.Component;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 
+@Component
 public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
     @Override
     public AbstractAuthenticationToken convert(@NonNull Jwt source) {
@@ -30,12 +30,12 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
     }
 
     private Collection<? extends GrantedAuthority> extractResourceRoles(Jwt jwt) {
-        var resourceAccess = new HashMap<>(jwt.getClaim("resource_access"));
-
-        var eternal = (Map<String, List<String>>) resourceAccess.get("account");
-
-        var roles = eternal.get("roles");
-
+        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+        if (realmAccess == null || !realmAccess.containsKey("roles")) {
+            return List.of();
+        }
+        @SuppressWarnings("unchecked")
+        List<String> roles = (List<String>) realmAccess.get("roles");
         return roles.stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.replace("-", "_")))
                 .collect(toSet());

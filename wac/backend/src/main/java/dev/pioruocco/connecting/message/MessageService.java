@@ -9,6 +9,7 @@ import dev.pioruocco.connecting.notification.NotificationService;
 import dev.pioruocco.connecting.notification.NotificationType;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,15 +27,19 @@ public class MessageService {
     private final NotificationService notificationService;
     private final FileService fileService;
 
-    public void saveMessage(MessageRequest messageRequest) {
+    public void saveMessage(MessageRequest messageRequest, Authentication authentication) {
         Chat chat = chatRepository.findById(messageRequest.getChatId())
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
+
+        final String senderId = authentication.getName();
+        assertParticipant(chat, senderId);
+        final String receiverId = resolveReceiverId(chat, senderId);
 
         Message message = new Message();
         message.setContent(messageRequest.getContent());
         message.setChat(chat);
-        message.setSenderId(messageRequest.getSenderId());
-        message.setReceiverId(messageRequest.getReceiverId());
+        message.setSenderId(senderId);
+        message.setReceiverId(receiverId);
         message.setType(messageRequest.getType());
         message.setState(MessageState.SENT);
 
@@ -44,16 +49,19 @@ public class MessageService {
                 .chatId(chat.getId())
                 .messageType(messageRequest.getType())
                 .content(messageRequest.getContent())
-                .senderId(messageRequest.getSenderId())
-                .receiverId(messageRequest.getReceiverId())
+                .senderId(senderId)
+                .receiverId(receiverId)
                 .type(NotificationType.MESSAGE)
-                .chatName(chat.getTargetChatName(message.getSenderId()))
+                .chatName(chat.getTargetChatName(senderId))
                 .build();
 
-        notificationService.sendNotification(messageRequest.getReceiverId(), notification);
+        notificationService.sendNotification(receiverId, notification);
     }
 
-    public List<MessageResponse> findChatMessages(String chatId) {
+    public List<MessageResponse> findChatMessages(String chatId, Authentication authentication) {
+        Chat chat = chatRepository.findById(chatId)
+                .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
+        assertParticipant(chat, authentication.getName());
         return messageRepository.findMessagesByChatId(chatId)
                 .stream()
                 .map(mapper::toMessageResponse)
@@ -63,9 +71,10 @@ public class MessageService {
     @Transactional
     public void setMessagesToSeen(String chatId, Authentication authentication) {
         Chat chat = chatRepository.findById(chatId)
-                .orElseThrow(() -> new RuntimeException("Chat not found"));
-        final String recipientId = getRecipientId(chat, authentication);
+                .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
+        assertParticipant(chat, authentication.getName());
 
+        final String recipientId = getRecipientId(chat, authentication);
         messageRepository.setMessagesToSeenByChatId(chatId, MessageState.SEEN);
 
         Notification notification = Notification.builder()
@@ -80,7 +89,8 @@ public class MessageService {
 
     public void uploadMediaMessage(String chatId, MultipartFile file, Authentication authentication) {
         Chat chat = chatRepository.findById(chatId)
-                .orElseThrow(() -> new RuntimeException("Chat not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
+        assertParticipant(chat, authentication.getName());
 
         final String senderId = getSenderId(chat, authentication);
         final String receiverId = getRecipientId(chat, authentication);
@@ -105,6 +115,18 @@ public class MessageService {
                 .build();
 
         notificationService.sendNotification(receiverId, notification);
+    }
+
+    private void assertParticipant(Chat chat, String userId) {
+        if (!chat.getSender().getId().equals(userId) && !chat.getRecipient().getId().equals(userId)) {
+            throw new AccessDeniedException("You are not a participant in this chat");
+        }
+    }
+
+    private String resolveReceiverId(Chat chat, String senderId) {
+        return chat.getSender().getId().equals(senderId)
+                ? chat.getRecipient().getId()
+                : chat.getSender().getId();
     }
 
     private String getSenderId(Chat chat, Authentication authentication) {

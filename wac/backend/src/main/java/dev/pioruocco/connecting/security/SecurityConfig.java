@@ -1,5 +1,6 @@
 package dev.pioruocco.connecting.security;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -18,7 +19,10 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final KeycloakJwtAuthenticationConverter keycloakJwtAuthenticationConverter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -44,7 +48,7 @@ public class SecurityConfig {
                         )
                 .oauth2ResourceServer(auth ->
                         auth.jwt(token ->
-                                token.jwtAuthenticationConverter(new KeycloakJwtAuthenticationConverter())));
+                                token.jwtAuthenticationConverter(keycloakJwtAuthenticationConverter)));
         return http.build();
     }
 
@@ -66,10 +70,9 @@ public class SecurityConfig {
                 "DELETE",
                 "PUT",
                 "PATCH",
-                "OPTION"
+                "OPTIONS"
         ));
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
-
     }
 }

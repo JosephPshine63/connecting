@@ -40,7 +40,6 @@ export class ChatListComponent {
 
   selectContact(contact: UserResponse) {
     this.chatService.createChat({
-      'sender-id': this.keycloakService.userId as string,
       'receiver-id': contact.id as string
     }).subscribe({
       next: (res) => {
