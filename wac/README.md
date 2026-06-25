@@ -178,7 +178,7 @@ Self-registration is **disabled** in the `connecting` realm (`registrationAllowe
 
 ### Resetting a forgotten password
 
-Since there is no SMTP server configured, the "Forgot password" flow is disabled. To reset a user's password:
+With SMTP configured, users can use the "Forgot password" link on the login page — Keycloak sends them a reset link automatically. Without SMTP, reset manually:
 
 1. Open the Keycloak admin console → **Users** → select the user.
 2. **Credentials** tab → **Set password** (Temporary: ON).
