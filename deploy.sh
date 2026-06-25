@@ -108,6 +108,15 @@ command -v docker compose >/dev/null 2>&1 || COMPOSE_CMD="docker-compose"
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD down)
 ok "Infrastructure stopped"
 
+# Release any containers still holding the required ports
+for port in 5432 9090; do
+  conflicting=$(docker ps --format '{{.ID}} {{.Ports}}' | grep ":${port}->" | awk '{print $1}')
+  if [[ -n "$conflicting" ]]; then
+    log "Port $port still held by container $conflicting — stopping it..."
+    docker stop "$conflicting"
+  fi
+done
+
 log "Starting infrastructure (PostgreSQL + Keycloak)..."
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD up -d)
 ok "Infrastructure is up"
