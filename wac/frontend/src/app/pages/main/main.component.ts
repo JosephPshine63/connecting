@@ -5,7 +5,7 @@ import {ChatResponse} from '../../services/models/chat-response';
 import {DatePipe} from '@angular/common';
 import {MessageService} from '../../services/services/message.service';
 import {MessageResponse} from '../../services/models/message-response';
-import * as Stomp from 'stompjs';
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import {FormsModule} from '@angular/forms';
 import {MessageRequest} from '../../services/models/message-request';
@@ -30,12 +30,12 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   selectedChat: ChatResponse = {};
   chats: Array<ChatResponse> = [];
   chatMessages: Array<MessageResponse> = [];
-  socketClient: any = null;
+  socketClient: Client | null = null;
   messageContent: string = '';
   showEmojis = false;
   showDemoBanner = !sessionStorage.getItem('demoBannerDismissed');
   @ViewChild('scrollableDiv') scrollableDiv!: ElementRef<HTMLDivElement>;
-  private notificationSubscription: any;
+  private notificationSubscription: StompSubscription | null = null;
 
   constructor(
     private chatService: ChatService,
@@ -49,9 +49,9 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   ngOnDestroy(): void {
+    this.notificationSubscription?.unsubscribe();
     if (this.socketClient !== null) {
-      this.socketClient.disconnect();
-      this.notificationSubscription.unsubscribe();
+      this.socketClient.deactivate();
       this.socketClient = null;
     }
   }
@@ -191,23 +191,25 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private initWebSocket() {
-    if (this.keycloakService.keycloak.tokenParsed?.sub) {
-      let ws = new SockJS('http://localhost:8080/ws');
-      this.socketClient = Stomp.over(ws);
-      const subUrl = `/user/${this.keycloakService.keycloak.tokenParsed?.sub}/chat`;
-      this.socketClient.connect({'Authorization': 'Bearer ' + this.keycloakService.keycloak.token},
-        () => {
-          this.notificationSubscription = this.socketClient.subscribe(subUrl,
-            (message: any) => {
-              const notification: Notification = JSON.parse(message.body);
-              this.handleNotification(notification);
-
-            },
-            () => console.error('Error while connecting to webSocket')
-            );
-        }
-      );
-    }
+    if (!this.keycloakService.keycloak.tokenParsed?.sub) return;
+    const subUrl = `/user/${this.keycloakService.keycloak.tokenParsed.sub}/chat`;
+    this.socketClient = new Client({
+      webSocketFactory: () => new SockJS('http://localhost:8080/ws') as any,
+      connectHeaders: {
+        'Authorization': 'Bearer ' + this.keycloakService.keycloak.token
+      },
+      onConnect: () => {
+        this.notificationSubscription = this.socketClient!.subscribe(
+          subUrl,
+          (message: IMessage) => {
+            const notification: Notification = JSON.parse(message.body);
+            this.handleNotification(notification);
+          }
+        );
+      },
+      onStompError: (frame) => console.error('WebSocket error:', frame)
+    });
+    this.socketClient.activate();
   }
 
   private handleNotification(notification: Notification) {
