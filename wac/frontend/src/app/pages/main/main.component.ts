@@ -34,6 +34,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   messageContent: string = '';
   showEmojis = false;
   showDemoBanner = !sessionStorage.getItem('demoBannerDismissed');
+  ageVerified = !!localStorage.getItem('ageVerified');
+  ageDenied = false;
   @ViewChild('scrollableDiv') scrollableDiv!: ElementRef<HTMLDivElement>;
   private notificationSubscription: StompSubscription | null = null;
 
@@ -147,6 +149,15 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       }
       reader.readAsDataURL(file);
     }
+  }
+
+  confirmAge() {
+    localStorage.setItem('ageVerified', '1');
+    this.ageVerified = true;
+  }
+
+  denyAge() {
+    this.ageDenied = true;
   }
 
   dismissBanner() {

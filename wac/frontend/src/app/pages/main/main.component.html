@@ -1,3 +1,24 @@
+@if (ageDenied) {
+  <div class="age-denied-page">
+    <div class="age-denied-box">
+      <i class="fa-solid fa-ban age-denied-icon"></i>
+      <h2>Accesso non consentito</h2>
+      <p>Spiacenti, questa applicazione è riservata agli utenti maggiorenni (18+).</p>
+    </div>
+  </div>
+} @else if (!ageVerified) {
+  <div class="age-gate-overlay">
+    <div class="age-gate-box">
+      <h2>Verifica dell'età</h2>
+      <p>Per accedere a questa applicazione devi avere almeno <strong>18 anni</strong>.</p>
+      <p class="age-gate-question">Sei maggiorenne?</p>
+      <div class="age-gate-buttons">
+        <button class="age-btn age-btn-yes" (click)="confirmAge()">Sì, ho 18 anni o più</button>
+        <button class="age-btn age-btn-no" (click)="denyAge()">No, sono minorenne</button>
+      </div>
+    </div>
+  </div>
+} @else {
 <div class="main">
   @if (showDemoBanner) {
     <div class="demo-banner">
@@ -148,3 +169,4 @@
     </div>
   </div>
 </div>
+} <!-- end @else ageVerified -->
