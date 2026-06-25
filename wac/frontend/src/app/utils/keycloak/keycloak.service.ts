@@ -17,7 +17,7 @@ export class KeycloakService {
   get keycloak() {
     if (!this._keycloak) {
       this._keycloak = new Keycloak({
-        url: 'http://localhost:9090',
+        url: 'https://auth.wacchat.win',
         realm: 'connecting',
         clientId: 'connecting-app'
       });
@@ -50,7 +50,7 @@ export class KeycloakService {
   }
 
   logout() {
-    return this.keycloak.logout({redirectUri: 'http://localhost:4200'});
+    return this.keycloak.logout({redirectUri: 'https://wacchat.win'});
   }
 
   accountManagement() {

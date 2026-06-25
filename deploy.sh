@@ -165,7 +165,7 @@ docker run -d \
   -e SPRING_DATASOURCE_URL="jdbc:postgresql://connecting-db:5432/connecting_db" \
   -e SPRING_DATASOURCE_USERNAME="admin" \
   -e SPRING_DATASOURCE_PASSWORD="admin" \
-  -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="http://keycloak-connecting:8080/realms/connecting" \
+  -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI="https://auth.wacchat.win/realms/connecting" \
   -v "$SCRIPT_DIR/wac/backend/uploads:/app/uploads" \
   --restart unless-stopped \
   "$FULL_BACKEND"

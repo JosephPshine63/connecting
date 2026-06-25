@@ -19,7 +19,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:9090/realms/connecting
+          issuer-uri: https://auth.wacchat.win/realms/connecting
           audiences:
             - connecting-app
   servlet:
