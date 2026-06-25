@@ -123,14 +123,14 @@ command -v docker compose >/dev/null 2>&1 || COMPOSE_CMD="docker-compose"
 ok "Infrastructure stopped"
 
 # Release any containers or processes still holding the required ports
-for port in 5433 9090; do
+for port in 5433 8180; do
   # Stop Docker containers holding the port
   conflicting=$(docker ps --format '{{.ID}} {{.Ports}}' | grep ":${port}->" | awk '{print $1}' || true)
   if [[ -n "$conflicting" ]]; then
     log "Port $port held by Docker container $conflicting — stopping it..."
     docker stop "$conflicting"
   fi
-  # Kill non-Docker processes holding the port
+  # Detect non-Docker processes holding the port and fail clearly
   pid=""
   if command -v fuser >/dev/null 2>&1; then
     pid=$(fuser "${port}/tcp" 2>/dev/null | tr -d ' ' || true)
@@ -139,9 +139,7 @@ for port in 5433 9090; do
   fi
   if [[ -n "$pid" ]]; then
     proc=$(ps -p "$pid" -o comm= 2>/dev/null || echo "unknown")
-    log "Port $port held by system process '$proc' (PID $pid) — killing it..."
-    kill -9 "$pid" 2>/dev/null || true
-    sleep 1
+    err "Port $port is held by system process '$proc' (PID $pid). Free it first and re-run deploy.sh."
   fi
 done
 
@@ -261,7 +259,7 @@ echo ""
 echo " Backend  : http://localhost:$PORT_BACKEND"
 echo " Frontend : http://localhost:$PORT_FRONTEND"
 echo " Swagger  : http://localhost:$PORT_BACKEND/swagger-ui.html"
-echo " Keycloak : http://localhost:9090"
+echo " Keycloak : http://localhost:8180"
 echo ""
 echo " Logs:"
 echo "   docker logs -f $CONTAINER_BACKEND"
