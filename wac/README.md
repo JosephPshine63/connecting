@@ -48,8 +48,8 @@ docker-compose up -d
 ```
 
 This brings up:
-- PostgreSQL on port `5432` (`POSTGRES_USER=admin`, `POSTGRES_PASSWORD=admin`, `POSTGRES_DB=connecting_db`)
-- Keycloak on port `9090` (admin: `admin` / `admin`), with the `connecting` realm auto-imported from `keycloak/realms/connecting.json`
+- PostgreSQL on port `5433` (mapped from container `5432`)
+- Keycloak on port `8180` (admin console at `http://localhost:8180/admin`), with the `connecting` realm auto-imported from `keycloak/realms/connecting.json`
 
 ### 2. Apply database schema
 
@@ -94,7 +94,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:9090/realms/connecting
+          issuer-uri: http://localhost:8180/realms/connecting
   servlet:
     multipart:
       max-file-size: 50MB
@@ -113,7 +113,7 @@ Keycloak config is hardcoded in the service:
 
 ```typescript
 new Keycloak({
-  url: 'http://localhost:9090',
+  url: 'http://localhost:8180',
   realm: 'connecting',
   clientId: 'connecting-app'
 });
@@ -143,6 +143,56 @@ npm run api-gen
 |-----------|-------------------|
 | Send message | `/app/chat` |
 | Receive notifications | `/user/{userId}/chat` |
+
+---
+
+## User management — invite-only access
+
+Self-registration is **disabled** in the `connecting` realm (`registrationAllowed: false`). Only the admin can create accounts.
+
+### Inviting a new user
+
+1. Open the Keycloak admin console:
+   - **Production:** `https://auth.wacchat.win/admin`
+   - **Dev:** `http://localhost:8180/admin`
+
+2. Log in and select the **connecting** realm from the top-left dropdown.
+
+3. Go to **Users → Add user**.
+   - Set **Email** (this is also the username, since `registrationEmailAsUsername` is enabled).
+   - Set **First name** and **Last name**.
+   - Leave **Email verified** unchecked unless you want to skip verification.
+   - Click **Create**.
+
+4. Go to the **Credentials** tab of the new user.
+   - Click **Set password**.
+   - Enter a temporary password, keep **Temporary** toggled ON.
+   - Click **Save**.
+
+5. Send the user:
+   - The app URL: `https://wacchat.win`
+   - Their email address (= login username)
+   - The temporary password
+
+   On first login Keycloak will force them to choose their own permanent password.
+
+### Resetting a forgotten password
+
+Since there is no SMTP server configured, the "Forgot password" flow is disabled. To reset a user's password:
+
+1. Open the Keycloak admin console → **Users** → select the user.
+2. **Credentials** tab → **Set password** (Temporary: ON).
+3. Send them the new temporary password privately.
+
+### Revoking access
+
+To block a user without deleting their chat history:
+
+1. **Users** → select the user → toggle **Enabled** to OFF → **Save**.
+
+To remove them entirely:
+
+1. **Users** → select the user → **Delete**.
 
 ---
 
