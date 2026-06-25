@@ -158,9 +158,9 @@ log "Starting infrastructure (PostgreSQL + Keycloak)..."
 ok "Infrastructure is up"
 
 # ─── 4. Docker cleanup ───────────────────────────────────────────────────────
-log "Cleaning Docker build cache and unused images..."
-docker system prune -af
-ok "Docker cache cleared"
+log "Cleaning Docker build cache..."
+docker builder prune -af
+ok "Docker build cache cleared"
 
 # ─── 5. Build backend image ──────────────────────────────────────────────────
 log "Building backend image: $FULL_BACKEND ..."

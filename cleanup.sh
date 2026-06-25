@@ -13,7 +13,7 @@ docker rm -f $(docker ps -aq) 2>/dev/null || echo "[cleanup] No containers to re
 echo "[cleanup] Removing project networks..."
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && docker compose down --remove-orphans 2>/dev/null) || true
 
-echo "[cleanup] Pruning unused images, networks, and build cache..."
+echo "[cleanup] Pruning ALL stopped containers, unused images, networks, and build cache (system-wide)..."
 docker system prune -af
 
 echo "[cleanup] Done. Docker is clean."
