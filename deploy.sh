@@ -17,6 +17,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/wac/backend"
 FRONTEND_DIR="$SCRIPT_DIR/wac/frontend"
 
+# ─── 0. Git pull (always first) ──────────────────────────────────────────────
+echo "[$(date '+%H:%M:%S')] Pulling latest changes from origin..."
+command -v git >/dev/null 2>&1 || { echo "[ERROR] git not found in PATH"; exit 1; }
+git -C "$SCRIPT_DIR" pull --ff-only origin main
+echo "[$(date '+%H:%M:%S')] ✓ Repository is up to date"
+
 # ─── Auto-generate .env with strong passwords if missing ─────────────────────
 if [[ ! -f "$SCRIPT_DIR/.env" ]]; then
   echo "[deploy] .env not found — generating strong passwords..."
@@ -108,13 +114,7 @@ fi
 
 BUILD_FLAGS="--no-cache"
 
-# ─── 1. Git pull ─────────────────────────────────────────────────────────────
-log "Pulling latest changes from origin..."
-command -v git >/dev/null 2>&1 || err "git is not installed or not in PATH"
-git -C "$SCRIPT_DIR" pull --ff-only origin main
-ok "Repository is up to date"
-
-# ─── 2. Infrastructure (Postgres + Keycloak) ─────────────────────────────────
+# ─── 1. Infrastructure (Postgres + Keycloak) ─────────────────────────────────
 log "Stopping infrastructure containers for rebuild..."
 COMPOSE_CMD="docker compose"
 command -v docker compose >/dev/null 2>&1 || COMPOSE_CMD="docker-compose"
