@@ -124,7 +124,7 @@ ok "Infrastructure stopped"
 
 # Release any containers still holding the required ports
 for port in 5433 9090; do
-  conflicting=$(docker ps --format '{{.ID}} {{.Ports}}' | grep ":${port}->" | awk '{print $1}')
+  conflicting=$(docker ps --format '{{.ID}} {{.Ports}}' | grep ":${port}->" | awk '{print $1}' || true)
   if [[ -n "$conflicting" ]]; then
     log "Port $port still held by container $conflicting — stopping it..."
     docker stop "$conflicting"
