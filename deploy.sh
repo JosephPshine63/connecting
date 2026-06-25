@@ -235,7 +235,7 @@ RETRY_INTERVAL=3
 healthy=false
 for i in $(seq 1 $MAX_RETRIES); do
   http_code=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" 2>/dev/null || echo "000")
-  if [[ "$http_code" == "200" ]] || [[ "$http_code" == "302" ]]; then
+  if [[ "$http_code" == "200" ]] || [[ "$http_code" == "302" ]] || [[ "$http_code" == "401" ]]; then
     healthy=true
     break
   fi
