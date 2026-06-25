@@ -122,12 +122,26 @@ command -v docker compose >/dev/null 2>&1 || COMPOSE_CMD="docker-compose"
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD down)
 ok "Infrastructure stopped"
 
-# Release any containers still holding the required ports
+# Release any containers or processes still holding the required ports
 for port in 5433 9090; do
+  # Stop Docker containers holding the port
   conflicting=$(docker ps --format '{{.ID}} {{.Ports}}' | grep ":${port}->" | awk '{print $1}' || true)
   if [[ -n "$conflicting" ]]; then
-    log "Port $port still held by container $conflicting — stopping it..."
+    log "Port $port held by Docker container $conflicting — stopping it..."
     docker stop "$conflicting"
+  fi
+  # Kill non-Docker processes holding the port
+  pid=""
+  if command -v fuser >/dev/null 2>&1; then
+    pid=$(fuser "${port}/tcp" 2>/dev/null | tr -d ' ' || true)
+  elif command -v ss >/dev/null 2>&1; then
+    pid=$(ss -tlnp "sport = :${port}" 2>/dev/null | grep -oP 'pid=\K[0-9]+' | head -1 || true)
+  fi
+  if [[ -n "$pid" ]]; then
+    proc=$(ps -p "$pid" -o comm= 2>/dev/null || echo "unknown")
+    log "Port $port held by system process '$proc' (PID $pid) — killing it..."
+    kill -9 "$pid" 2>/dev/null || true
+    sleep 1
   fi
 done
 
