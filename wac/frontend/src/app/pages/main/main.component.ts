@@ -205,7 +205,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (!this.keycloakService.keycloak.tokenParsed?.sub) return;
     const subUrl = `/user/${this.keycloakService.keycloak.tokenParsed.sub}/chat`;
     this.socketClient = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws') as any,
+      webSocketFactory: () => new SockJS(`${window.location.origin}/ws`) as any,
       connectHeaders: {
         'Authorization': 'Bearer ' + this.keycloakService.keycloak.token
       },

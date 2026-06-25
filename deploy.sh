@@ -8,7 +8,7 @@ IMAGE_FRONTEND="connecting-frontend"
 TAG="latest"
 CONTAINER_BACKEND="connecting-backend"
 CONTAINER_FRONTEND="connecting-frontend"
-PORT_BACKEND=8080
+PORT_BACKEND=8082
 PORT_FRONTEND=4200
 COMPOSE_DIR="wac/docker-compose-connecting"
 # ─────────────────────────────────────────────────────────────────────────────
