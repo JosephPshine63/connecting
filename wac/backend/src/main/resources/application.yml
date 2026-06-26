@@ -34,6 +34,11 @@ spring:
     multipart:
       max-file-size: 50MB
 
+management:
+  health:
+    mail:
+      enabled: false
+
 springdoc:
   default-produces-media-type: application/json
 
