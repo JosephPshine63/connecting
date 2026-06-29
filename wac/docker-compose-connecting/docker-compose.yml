@@ -2,6 +2,8 @@ services:
   postgres:
     container_name: connecting-db
     image: postgres
+    env_file:
+      - ../../.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
@@ -18,6 +20,8 @@ services:
   keycloak:
     container_name: keycloak-connecting
     image: quay.io/keycloak/keycloak:26.0.0
+    env_file:
+      - ../../.env
     ports:
       - 8180:8080
     environment:
@@ -27,8 +31,6 @@ services:
       KC_HOSTNAME_STRICT: false
       KC_PROXY_HEADERS: xforwarded
       KC_HTTP_ENABLED: true
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     networks:
       - connecting
     volumes:
