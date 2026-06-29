@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import Keycloak from 'keycloak-js';
 import {Router} from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -17,7 +18,7 @@ export class KeycloakService {
   get keycloak() {
     if (!this._keycloak) {
       this._keycloak = new Keycloak({
-        url: 'https://auth.wacchat.win',
+        url: environment.keycloakUrl,
         realm: 'connecting',
         clientId: 'connecting-app'
       });
@@ -50,7 +51,7 @@ export class KeycloakService {
   }
 
   logout() {
-    return this.keycloak.logout({redirectUri: 'https://wacchat.win'});
+    return this.keycloak.logout({redirectUri: environment.appUrl});
   }
 
   accountManagement() {

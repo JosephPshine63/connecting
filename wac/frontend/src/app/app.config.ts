@@ -10,6 +10,8 @@ import { routes } from './app.routes';
 import {provideHttpClient, withInterceptors} from '@angular/common/http';
 import {keycloakHttpInterceptor} from './utils/http/keycloak-http.interceptor';
 import {KeycloakService} from './utils/keycloak/keycloak.service';
+import { environment } from '../environments/environment';
+import { ApiConfiguration } from './services/api-configuration';
 
 export function kcFactory(kcService: KeycloakService) {
   return () => kcService.init();
@@ -22,6 +24,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withInterceptors([keycloakHttpInterceptor])
     ),
+    { provide: ApiConfiguration, useValue: { rootUrl: environment.apiRootUrl } },
     provideAppInitializer(() => {
       const initFn = ((key: KeycloakService) => {
         return () => key.init()

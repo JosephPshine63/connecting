@@ -1,0 +1,7 @@
+services:
+  keycloak:
+    environment:
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: ""

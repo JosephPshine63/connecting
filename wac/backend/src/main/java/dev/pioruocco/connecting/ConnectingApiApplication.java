@@ -21,8 +21,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 		in = SecuritySchemeIn.HEADER,
 		flows = @OAuthFlows(
 				password = @OAuthFlow(
-						authorizationUrl = "http://localhost:9090/realms/connecting/protocol/openid-connect/auth",
-						tokenUrl = "http://localhost:9090/realms/connecting/protocol/openid-connect/token"
+						authorizationUrl = "http://localhost:8180/realms/connecting/protocol/openid-connect/auth",
+						tokenUrl = "http://localhost:8180/realms/connecting/protocol/openid-connect/token"
 				)
 		)
 )
