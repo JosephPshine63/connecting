@@ -10,7 +10,7 @@ CONTAINER_BACKEND="connecting-backend"
 CONTAINER_FRONTEND="connecting-frontend"
 PORT_BACKEND=8082
 PORT_FRONTEND=4200
-COMPOSE_DIR="wac/docker-compose-connecting"
+COMPOSE_DIR="."
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -201,7 +201,7 @@ ok "Old containers removed"
 log "Starting backend container on port $PORT_BACKEND ..."
 docker run -d \
   --name "$CONTAINER_BACKEND" \
-  --network "${COMPOSE_DIR##*/}_connecting" \
+  --network "connecting_connecting" \
   -p "$PORT_BACKEND:8080" \
   -e SPRING_DATASOURCE_URL="jdbc:postgresql://connecting-db:5432/${POSTGRES_DB:-connecting_db}" \
   -e SPRING_DATASOURCE_USERNAME="${POSTGRES_USER:-admin}" \
@@ -220,7 +220,7 @@ ok "Backend container started"
 log "Starting frontend container on port $PORT_FRONTEND ..."
 docker run -d \
   --name "$CONTAINER_FRONTEND" \
-  --network "${COMPOSE_DIR##*/}_connecting" \
+  --network "connecting_connecting" \
   -p "$PORT_FRONTEND:80" \
   --restart unless-stopped \
   "$FULL_FRONTEND"
