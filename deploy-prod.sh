@@ -77,7 +77,7 @@ err()  { echo "[$(date '+%H:%M:%S')] ✗ $*" >&2; exit 1; }
 # ─── Preflight checks ────────────────────────────────────────────────────────
 log "=== Connecting deploy — env=$ENV ==="
 
-[[ -f "$SCRIPT_DIR/deploy.sh" ]] || err "Must be run from the repo root (deploy.sh not found at $SCRIPT_DIR)"
+[[ -f "$SCRIPT_DIR/docker-compose.yml" ]] || err "Must be run from the repo root (docker-compose.yml not found at $SCRIPT_DIR)"
 
 command -v docker  >/dev/null 2>&1 || err "Docker is not installed or not in PATH"
 docker info        >/dev/null 2>&1 || err "Docker daemon is not running"
