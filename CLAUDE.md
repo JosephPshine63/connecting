@@ -48,13 +48,13 @@ psql -h localhost -p 5433 -U wacchat -d wacchat_db -f wac/database/schema.sql
 
 ```bash
 cd wac/backend
-./mvnw spring-boot:run          # dev server at http://localhost:8080 (direnv auto-loads .env)
+./mvnw spring-boot:run          # dev server at http://localhost:8082 (direnv auto-loads .env)
 ./mvnw clean package            # build fat JAR
 ./mvnw test                     # run all tests
 ./mvnw test -Dtest=ClassName    # run a single test class
 ```
 
-Swagger UI: `http://localhost:8080/swagger-ui.html`
+Swagger UI: `http://localhost:8082/swagger-ui.html`
 
 ### Frontend
 
@@ -69,7 +69,7 @@ npm test                        # Karma/Jasmine unit tests
 To regenerate the Angular API client after a backend API change (backend must be running):
 
 ```bash
-curl http://localhost:8080/v3/api-docs -o wac/frontend/src/openapi/openapi.json
+curl http://localhost:8082/v3/api-docs -o wac/frontend/src/openapi/openapi.json
 cd wac/frontend && npm run api-gen
 ```
 
@@ -110,8 +110,9 @@ All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `creat
 
 ### Frontend
 
-- **Single-route SPA** — `app.routes.ts` defines one route (`''` → `MainComponent`). `pages/main` owns the STOMP connection and top-level layout; `components/chat-list` is the only sub-component. There is no router navigation to manage.
-- Services under `src/app/services/` are **fully auto-generated** from `src/openapi/openapi.json` via `ng-openapi-gen`. Never hand-edit; run `npm run api-gen` after any backend API change.
+- **Single-route SPA** — `app.routes.ts` defines one route (`''` → `MainComponent`). `pages/main` owns the STOMP connection and top-level layout; sub-components are `components/chat-list` and `components/username-setup`.
+- Services under `src/app/services/` are **fully auto-generated** from `src/openapi/openapi.json` via `ng-openapi-gen`. Never hand-edit; run `npm run api-gen` after any backend API change. Exception: `utils/username/username.service.ts` is hand-written and calls `/api/v1/users/me`, `/api/v1/users/username`, and `/api/v1/users/check-username` directly — it is not generated.
+- `components/username-setup` is a modal shown on first login when the user has no username. It calls `UsernameService` to validate uniqueness in real time and to set the username before granting access to the main chat UI.
 - `KeycloakService` (`src/app/utils/keycloak/keycloak.service.ts`) wraps `keycloak-js`; Keycloak URL is read from `environment.keycloakUrl` (set per environment file — not hardcoded in the service). Realm and client ID (`wacchat` / `wacchat-app`) are set there.
 - `KeycloakHttpInterceptor` (`src/app/utils/http/`) attaches the Bearer token to every outgoing HTTP request.
 - Real-time messaging via SockJS + STOMP; connection established in `MainComponent`. Incoming WebSocket frames are typed as `Notification` objects (backend `notification/Notification.java`) with a `NotificationType` discriminator.
@@ -120,7 +121,7 @@ All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `creat
 
 ### Data model
 
-Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT/SEEN; `type`: TEXT/IMAGE/AUDIO). User IDs are Keycloak `sub` UUIDs (strings), not auto-generated PKs.
+Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT/SEEN; `type`: TEXT/IMAGE/AUDIO). User IDs are Keycloak `sub` UUIDs (strings), not auto-generated PKs. `users` also stores `username` (unique, 3–20 chars, pattern `^[a-z0-9_-]+$`) and `last_seen` (timestamp); both are nullable for users who haven't completed onboarding.
 
 ## Configuration
 
