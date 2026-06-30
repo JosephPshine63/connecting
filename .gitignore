@@ -1,3 +1,6 @@
 .env
 wac/keycloak/realms/wacchat.json
 wac/keycloak/realms/connecting.json
+.idea/
+wac/.idea/
+wac/backend/uploads/
