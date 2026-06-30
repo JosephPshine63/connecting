@@ -1,5 +1,6 @@
 package dev.pioruocco.wacchat.interceptor;
 
+import dev.pioruocco.wacchat.user.SessionConflictException;
 import dev.pioruocco.wacchat.user.UserSynchronizer;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -29,7 +30,14 @@ public class UserSynchronizerFilter extends OncePerRequestFilter {
         if (!(SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken)) {
             JwtAuthenticationToken token = ((JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication());
 
-            userSynchronizer.synchronizeWithIdp(token.getToken());
+            try {
+                userSynchronizer.synchronizeWithIdp(token.getToken());
+            } catch (SessionConflictException e) {
+                response.setStatus(HttpServletResponse.SC_CONFLICT);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"code\":\"SESSION_CONFLICT\"}");
+                return;
+            }
         }
 
         filterChain.doFilter(request, response);

@@ -1,6 +1,8 @@
 package dev.pioruocco.wacchat.ws;
 
 import dev.pioruocco.wacchat.security.KeycloakJwtAuthenticationConverter;
+import dev.pioruocco.wacchat.user.SessionGuard;
+import dev.pioruocco.wacchat.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -25,6 +27,8 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
 
     private final JwtDecoder jwtDecoder;
     private final KeycloakJwtAuthenticationConverter jwtConverter;
+    private final UserRepository userRepository;
+    private final SessionGuard sessionGuard;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -42,6 +46,14 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
             try {
                 Jwt jwt = jwtDecoder.decode(tokenValue);
                 AbstractAuthenticationToken auth = jwtConverter.convert(jwt);
+                String sid = jwt.getClaimAsString("sid");
+                if (sid != null && auth != null) {
+                    userRepository.findByPublicId(auth.getName())
+                            .filter(user -> sessionGuard.isConflicting(user, sid))
+                            .ifPresent(user -> {
+                                throw new MessageDeliveryException("Blocked: another session is already active for user " + user.getId());
+                            });
+                }
                 accessor.setUser(auth);
                 log.debug("WebSocket authenticated for user {}", auth != null ? auth.getName() : "unknown");
             } catch (JwtException e) {

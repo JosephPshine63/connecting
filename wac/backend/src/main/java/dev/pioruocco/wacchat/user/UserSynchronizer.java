@@ -16,6 +16,7 @@ public class UserSynchronizer {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final MailService mailService;
+    private final SessionGuard sessionGuard;
 
     public void synchronizeWithIdp(Jwt token) {
         log.info("Synchronizing user with idp");
@@ -23,8 +24,17 @@ public class UserSynchronizer {
             log.info("Synchronizing user having email {}", userEmail);
             Optional<User> optUser = userRepository.findByEmail(userEmail);
             boolean isNew = optUser.isEmpty();
-            User user = userMapper.fromTokenAttributes(token.getClaims());
-            optUser.ifPresent(value -> user.setId(value.getId()));
+            User user = optUser.orElseGet(User::new);
+
+            String sid = token.getClaimAsString("sid");
+            if (sid != null) {
+                if (sessionGuard.isConflicting(user, sid)) {
+                    throw new SessionConflictException(user.getId());
+                }
+                user.setActiveSessionId(sid);
+            }
+
+            userMapper.updateFromTokenAttributes(user, token.getClaims());
             userRepository.save(user);
             if (isNew) {
                 mailService.sendWelcome(user);
