@@ -1486,7 +1486,17 @@
     "xXSSProtection": "1; mode=block",
     "strictTransportSecurity": "max-age=31536000; includeSubDomains"
   },
-  "smtpServer": {},
+  "smtpServer": {
+    "host": "smtp.gmail.com",
+    "port": "587",
+    "from": "${MAIL_USERNAME}",
+    "fromDisplayName": "Connecting",
+    "ssl": "false",
+    "starttls": "true",
+    "auth": "true",
+    "user": "${MAIL_USERNAME}",
+    "password": "${MAIL_PASSWORD}"
+  },
   "eventsEnabled": false,
   "eventsListeners": [
     "jboss-logging"

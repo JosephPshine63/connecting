@@ -43,11 +43,11 @@ fi
 # Load .env
 set -a; source "$SCRIPT_DIR/.env"; set +a
 
-# Generate Keycloak realm JSON from template (substitutes GOOGLE_CLIENT_ID/SECRET)
+# Generate Keycloak realm JSON from template
 REALM_TEMPLATE="$SCRIPT_DIR/wac/keycloak/realms/connecting.json.template"
 REALM_OUTPUT="$SCRIPT_DIR/wac/keycloak/realms/connecting.json"
 [[ -f "$REALM_TEMPLATE" ]] || err "Realm template not found: $REALM_TEMPLATE"
-envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
+envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET} ${MAIL_USERNAME} ${MAIL_PASSWORD}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
 
 PUSH=false
 ENV="development"

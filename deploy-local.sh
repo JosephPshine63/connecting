@@ -20,8 +20,9 @@ set -a; source "$SCRIPT_DIR/.env"; set +a
 REALM_TEMPLATE="$SCRIPT_DIR/wac/keycloak/realms/connecting.json.template"
 REALM_OUTPUT="$SCRIPT_DIR/wac/keycloak/realms/connecting.json"
 [[ -f "$REALM_TEMPLATE" ]] || err "Realm template not found: $REALM_TEMPLATE"
-GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}" GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
-envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
+GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}" GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}" \
+  MAIL_USERNAME="${MAIL_USERNAME:-}" MAIL_PASSWORD="${MAIL_PASSWORD:-}"
+envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET} ${MAIL_USERNAME} ${MAIL_PASSWORD}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
 
 # Stop existing infra containers
 log "Stopping existing infrastructure..."
