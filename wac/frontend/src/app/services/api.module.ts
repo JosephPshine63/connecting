@@ -6,9 +6,9 @@ import { NgModule, ModuleWithProviders, SkipSelf, Optional } from '@angular/core
 import { HttpClient } from '@angular/common/http';
 import { ApiConfiguration, ApiConfigurationParams } from './api-configuration';
 
+import { UserService } from './services/user.service';
 import { MessageService } from './services/message.service';
 import { ChatService } from './services/chat.service';
-import { UserService } from './services/user.service';
 
 /**
  * Module that provides all services and configuration.
@@ -18,9 +18,9 @@ import { UserService } from './services/user.service';
   exports: [],
   declarations: [],
   providers: [
+    UserService,
     MessageService,
     ChatService,
-    UserService,
     ApiConfiguration
   ],
 })

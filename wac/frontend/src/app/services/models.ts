@@ -6,4 +6,5 @@ export { ChatResponse } from './models/chat-response';
 export { MessageRequest } from './models/message-request';
 export { MessageResponse } from './models/message-response';
 export { StringResponse } from './models/string-response';
+export { UserRequest } from './models/user-request';
 export { UserResponse } from './models/user-response';

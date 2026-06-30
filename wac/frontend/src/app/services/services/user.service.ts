@@ -11,14 +11,101 @@ import { BaseService } from '../base-service';
 import { ApiConfiguration } from '../api-configuration';
 import { StrictHttpResponse } from '../strict-http-response';
 
+import { checkUsername } from '../fn/user/check-username';
+import { CheckUsername$Params } from '../fn/user/check-username';
+import { deleteAvatar } from '../fn/user/delete-avatar';
+import { DeleteAvatar$Params } from '../fn/user/delete-avatar';
 import { getAllUsers } from '../fn/user/get-all-users';
 import { GetAllUsers$Params } from '../fn/user/get-all-users';
+import { getMe } from '../fn/user/get-me';
+import { GetMe$Params } from '../fn/user/get-me';
+import { getUserById } from '../fn/user/get-user-by-id';
+import { GetUserById$Params } from '../fn/user/get-user-by-id';
+import { updateUsername } from '../fn/user/update-username';
+import { UpdateUsername$Params } from '../fn/user/update-username';
+import { uploadAvatar } from '../fn/user/upload-avatar';
+import { UploadAvatar$Params } from '../fn/user/upload-avatar';
 import { UserResponse } from '../models/user-response';
 
 @Injectable({ providedIn: 'root' })
 export class UserService extends BaseService {
   constructor(config: ApiConfiguration, http: HttpClient) {
     super(config, http);
+  }
+
+  /** Path part for operation `updateUsername()` */
+  static readonly UpdateUsernamePath = '/api/v1/users/username';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `updateUsername()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  updateUsername$Response(params: UpdateUsername$Params, context?: HttpContext): Observable<StrictHttpResponse<UserResponse>> {
+    return updateUsername(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `updateUsername$Response()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  updateUsername(params: UpdateUsername$Params, context?: HttpContext): Observable<UserResponse> {
+    return this.updateUsername$Response(params, context).pipe(
+      map((r: StrictHttpResponse<UserResponse>): UserResponse => r.body)
+    );
+  }
+
+  /** Path part for operation `uploadAvatar()` */
+  static readonly UploadAvatarPath = '/api/v1/users/me/avatar';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `uploadAvatar()` instead.
+   *
+   * This method sends `multipart/form-data` and handles request body of type `multipart/form-data`.
+   */
+  uploadAvatar$Response(params?: UploadAvatar$Params, context?: HttpContext): Observable<StrictHttpResponse<UserResponse>> {
+    return uploadAvatar(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `uploadAvatar$Response()` instead.
+   *
+   * This method sends `multipart/form-data` and handles request body of type `multipart/form-data`.
+   */
+  uploadAvatar(params?: UploadAvatar$Params, context?: HttpContext): Observable<UserResponse> {
+    return this.uploadAvatar$Response(params, context).pipe(
+      map((r: StrictHttpResponse<UserResponse>): UserResponse => r.body)
+    );
+  }
+
+  /** Path part for operation `deleteAvatar()` */
+  static readonly DeleteAvatarPath = '/api/v1/users/me/avatar';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `deleteAvatar()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  deleteAvatar$Response(params?: DeleteAvatar$Params, context?: HttpContext): Observable<StrictHttpResponse<UserResponse>> {
+    return deleteAvatar(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `deleteAvatar$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  deleteAvatar(params?: DeleteAvatar$Params, context?: HttpContext): Observable<UserResponse> {
+    return this.deleteAvatar$Response(params, context).pipe(
+      map((r: StrictHttpResponse<UserResponse>): UserResponse => r.body)
+    );
   }
 
   /** Path part for operation `getAllUsers()` */
@@ -43,6 +130,89 @@ export class UserService extends BaseService {
   getAllUsers(params?: GetAllUsers$Params, context?: HttpContext): Observable<Array<UserResponse>> {
     return this.getAllUsers$Response(params, context).pipe(
       map((r: StrictHttpResponse<Array<UserResponse>>): Array<UserResponse> => r.body)
+    );
+  }
+
+  /** Path part for operation `getUserById()` */
+  static readonly GetUserByIdPath = '/api/v1/users/{id}';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `getUserById()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  getUserById$Response(params: GetUserById$Params, context?: HttpContext): Observable<StrictHttpResponse<UserResponse>> {
+    return getUserById(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `getUserById$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  getUserById(params: GetUserById$Params, context?: HttpContext): Observable<UserResponse> {
+    return this.getUserById$Response(params, context).pipe(
+      map((r: StrictHttpResponse<UserResponse>): UserResponse => r.body)
+    );
+  }
+
+  /** Path part for operation `getMe()` */
+  static readonly GetMePath = '/api/v1/users/me';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `getMe()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  getMe$Response(params?: GetMe$Params, context?: HttpContext): Observable<StrictHttpResponse<UserResponse>> {
+    return getMe(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `getMe$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  getMe(params?: GetMe$Params, context?: HttpContext): Observable<UserResponse> {
+    return this.getMe$Response(params, context).pipe(
+      map((r: StrictHttpResponse<UserResponse>): UserResponse => r.body)
+    );
+  }
+
+  /** Path part for operation `checkUsername()` */
+  static readonly CheckUsernamePath = '/api/v1/users/check-username';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `checkUsername()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  checkUsername$Response(params: CheckUsername$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+[key: string]: boolean;
+}>> {
+    return checkUsername(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `checkUsername$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  checkUsername(params: CheckUsername$Params, context?: HttpContext): Observable<{
+[key: string]: boolean;
+}> {
+    return this.checkUsername$Response(params, context).pipe(
+      map((r: StrictHttpResponse<{
+[key: string]: boolean;
+}>): {
+[key: string]: boolean;
+} => r.body)
     );
   }
 
