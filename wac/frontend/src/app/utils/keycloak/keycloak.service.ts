@@ -19,8 +19,8 @@ export class KeycloakService {
     if (!this._keycloak) {
       this._keycloak = new Keycloak({
         url: environment.keycloakUrl,
-        realm: 'connecting',
-        clientId: 'connecting-app'
+        realm: 'wacchat',
+        clientId: 'wacchat-app'
       });
     }
     return this._keycloak;

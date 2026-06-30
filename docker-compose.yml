@@ -1,24 +1,24 @@
-name: connecting
+name: wacchat
 
 services:
   postgres:
-    container_name: connecting-db
+    container_name: wacchat-db
     image: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
       PGDATA: /var/lib/postgresql/data
-      POSTGRES_DB: ${POSTGRES_DB:-connecting_db}
+      POSTGRES_DB: ${POSTGRES_DB:-wacchat_db}
     ports:
       - 5433:5432
     networks:
-      - connecting
+      - wacchat
     volumes:
       - postgres:/var/lib/postgresql/data
     restart: unless-stopped
 
   keycloak:
-    container_name: keycloak-connecting
+    container_name: keycloak-wacchat
     image: quay.io/keycloak/keycloak:26.0.0
     ports:
       - 8180:8080
@@ -32,7 +32,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     networks:
-      - connecting
+      - wacchat
     volumes:
       - ./wac/keycloak/realms:/opt/keycloak/data/import
     command:
@@ -40,7 +40,7 @@ services:
       - "--import-realm"
 
 networks:
-  connecting:
+  wacchat:
     driver: bridge
 
 volumes:

@@ -11,7 +11,7 @@
 	<groupId>dev.pioruocco</groupId>
 	<artifactId>whatsappclone</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>Connecting</name>
+	<name>WacChat</name>
 	<description>Social media chat application</description>
 	<url/>
 	<licenses>

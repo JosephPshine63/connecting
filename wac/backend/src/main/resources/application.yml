@@ -2,7 +2,7 @@ spring:
   banner:
     location: classpath:banner/banner.txt
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/connecting_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/wacchat_db}
     username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:admin}}
     password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:admin}}
   jpa:
@@ -28,9 +28,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/connecting}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/wacchat}
           audiences:
-            - connecting-app
+            - wacchat-app
   servlet:
     multipart:
       max-file-size: 50MB
@@ -49,8 +49,8 @@ application:
     uploads:
       media-output-path: ./uploads
   keycloak:
-    admin-url: ${KEYCLOAK_ADMIN_URL:http://keycloak-connecting:8080}
-    realm: connecting
+    admin-url: ${KEYCLOAK_ADMIN_URL:http://keycloak-wacchat:8080}
+    realm: wacchat
     admin-username: ${KEYCLOAK_ADMIN_USERNAME:admin}
     admin-password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
   cleanup:

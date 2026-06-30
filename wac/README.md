@@ -1,4 +1,4 @@
-# Connecting
+# WacChat
 
 **Full-stack real-time chat application** built with Spring Boot, Angular, PostgreSQL, and Keycloak. Users authenticate via OAuth2 (Keycloak), exchange messages over WebSocket (STOMP/SockJS), and upload media files through a REST API. Welcome emails are sent via Gmail SMTP on first login.
 
@@ -24,7 +24,7 @@
 | Backend | Java 17, Spring Boot 3.4.1, Spring Data JPA, Spring WebSocket, Spring Security OAuth2 Resource Server |
 | Frontend | Angular 19, TypeScript 5.6, Keycloak-js 26, SockJS + STOMP, Bootstrap 5 |
 | Database | PostgreSQL (latest), managed schema via `database/schema.sql` |
-| Auth | Keycloak 26.0.0 (realm `connecting`, client `connecting-app`) |
+| Auth | Keycloak 26.0.0 (realm `wacchat`, client `wacchat-app`) |
 | Build | Maven 3 (backend), Angular CLI 19 / npm (frontend) |
 | Dev infra | Docker Compose |
 
@@ -46,9 +46,9 @@
 Copy and fill in your secrets at the repo root (never commit this file):
 
 ```bash
-POSTGRES_USER=connecting
+POSTGRES_USER=wacchat
 POSTGRES_PASSWORD=<strong_password>
-POSTGRES_DB=connecting_db
+POSTGRES_DB=wacchat_db
 
 KEYCLOAK_ADMIN_USERNAME=admin
 KEYCLOAK_ADMIN_PASSWORD=<strong_password>
@@ -58,9 +58,11 @@ GOOGLE_CLIENT_SECRET=<your_google_oauth_client_secret>
 
 MAIL_USERNAME=<your_gmail_address>
 MAIL_PASSWORD=<gmail_app_password_16_chars>
+
+ADMIN_EMAIL=<your_admin_email>
 ```
 
-`MAIL_USERNAME` and `MAIL_PASSWORD` are required for welcome emails. Generate a Gmail App Password at **myaccount.google.com → Security → App Passwords**.
+`MAIL_USERNAME` and `MAIL_PASSWORD` are required for welcome emails and Keycloak verification emails. `ADMIN_EMAIL` is set on the Keycloak admin user automatically at deploy time (needed for the SMTP test button in the Keycloak admin console). Generate a Gmail App Password at **myaccount.google.com → Security → App Passwords**.
 
 ### 2. Start infrastructure
 
@@ -70,7 +72,7 @@ MAIL_PASSWORD=<gmail_app_password_16_chars>
 
 This script:
 - Loads `.env`
-- Generates `wac/keycloak/realms/connecting.json` from the template
+- Generates `wac/keycloak/realms/wacchat.json` from the template
 - Starts PostgreSQL on port `5433` and Keycloak on port `8180` via Docker Compose
 
 ### 3. Start the backend
@@ -98,7 +100,7 @@ API available at `http://localhost:8080`. Swagger UI at `http://localhost:8080/s
 ### 4. Apply database schema (first run only)
 
 ```bash
-psql -h localhost -p 5433 -U connecting -d connecting_db -f wac/database/schema.sql
+psql -h localhost -p 5433 -U wacchat -d wacchat_db -f wac/database/schema.sql
 ```
 
 > Flyway is present as a dependency but disabled. JPA `ddl-auto: update` handles schema drift in dev; apply `schema.sql` on a fresh database.
@@ -125,9 +127,9 @@ Key values are driven by environment variables with sensible defaults:
 |---------|---------|-------|
 | `SPRING_DATASOURCE_USERNAME` / `POSTGRES_USER` | `admin` | Either name is accepted |
 | `SPRING_DATASOURCE_PASSWORD` / `POSTGRES_PASSWORD` | `admin` | Either name is accepted |
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5433/connecting_db` | |
-| `KEYCLOAK_ISSUER_URI` | `http://localhost:8180/realms/connecting` | |
-| `KEYCLOAK_ADMIN_URL` | `http://keycloak-connecting:8080` | Override to `http://localhost:8180` for local dev |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5433/wacchat_db` | |
+| `KEYCLOAK_ISSUER_URI` | `http://localhost:8180/realms/wacchat` | |
+| `KEYCLOAK_ADMIN_URL` | `http://keycloak-wacchat:8080` | Override to `http://localhost:8180` for local dev |
 | `MAIL_USERNAME` | _(empty — disables email)_ | Gmail address |
 | `MAIL_PASSWORD` | _(empty — disables email)_ | Gmail App Password |
 
@@ -138,8 +140,8 @@ Keycloak config is hardcoded in the service:
 ```typescript
 new Keycloak({
   url: 'http://localhost:8180',
-  realm: 'connecting',
-  clientId: 'connecting-app'
+  realm: 'wacchat',
+  clientId: 'wacchat-app'
 });
 ```
 
@@ -180,7 +182,7 @@ Self-registration is handled through Keycloak. On first login, the backend autom
    - **Production:** `https://auth.wacchat.win/admin`
    - **Dev:** `http://localhost:8180/admin`
 
-2. Log in and select the **connecting** realm from the top-left dropdown.
+2. Log in and select the **wacchat** realm from the top-left dropdown.
 
 3. Go to **Users → Add user**.
    - Set **Email** (also used as username).
@@ -217,7 +219,7 @@ Builds Docker images for backend and frontend, starts PostgreSQL + Keycloak, and
 ```
 wac/
 ├── backend/
-│   └── src/main/java/dev/pioruocco/connecting/
+│   └── src/main/java/dev/pioruocco/wacchat/
 │       ├── chat/           # Chat entity, CRUD, REST controller
 │       ├── message/        # Message entity, state machine (SENT/SEEN), media upload
 │       ├── user/           # User entity, UserSynchronizer (Keycloak → local DB), MailService
@@ -237,7 +239,7 @@ wac/
 │   └── schema.sql          # Reference DDL for users, chat, messages tables
 └── keycloak/
     └── realms/
-        └── connecting.json.template  # Realm template (envsubst fills Google OAuth credentials)
+        └── wacchat.json.template  # Realm template (envsubst fills Google OAuth credentials)
 ```
 
 Root-level files:
