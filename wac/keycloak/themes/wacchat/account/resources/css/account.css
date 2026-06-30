@@ -1,0 +1,387 @@
+/* =====================================================================
+   WacChat Account Console Theme
+   Overrides PatternFly 5 CSS variables + hides unwanted nav sections
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* --- PF5 dark theme CSS variables --- */
+:root {
+  /* Backgrounds */
+  --pf-v5-global--BackgroundColor--100:       #0d0f14;
+  --pf-v5-global--BackgroundColor--200:       #13151c;
+  --pf-v5-global--BackgroundColor--light-100: #1a1c26;
+  --pf-v5-global--BackgroundColor--light-200: #1e2030;
+  --pf-v5-global--BackgroundColor--dark-100:  #090b10;
+  --pf-v5-global--BackgroundColor--dark-200:  #07090e;
+  --pf-v5-global--BackgroundColor--dark-300:  #050709;
+  --pf-v5-global--BackgroundColor--dark-400:  #030406;
+
+  /* Text */
+  --pf-v5-global--Color--100:                 #e8eaed;
+  --pf-v5-global--Color--200:                 #b0b3bb;
+  --pf-v5-global--Color--300:                 #8b8d93;
+  --pf-v5-global--Color--400:                 #555862;
+  --pf-v5-global--Color--light-100:           #ffffff;
+  --pf-v5-global--Color--dark-100:            #e8eaed;
+  --pf-v5-global--Color--dark-200:            #b0b3bb;
+
+  /* Primary / accent */
+  --pf-v5-global--primary-color--100:         #A060FF;
+  --pf-v5-global--primary-color--200:         #c090ff;
+  --pf-v5-global--primary-color--light:       rgba(160, 96, 255, 0.12);
+  --pf-v5-global--active-color--100:          #A060FF;
+  --pf-v5-global--active-color--300:          rgba(160, 96, 255, 0.2);
+  --pf-v5-global--active-color--400:          rgba(160, 96, 255, 0.08);
+
+  /* Links */
+  --pf-v5-global--link--Color:                #A060FF;
+  --pf-v5-global--link--Color--hover:         #c090ff;
+  --pf-v5-global--link--Color--visited:       #A060FF;
+  --pf-v5-global--link--Color--dark:          #c090ff;
+
+  /* Borders */
+  --pf-v5-global--BorderColor--100:           rgba(255, 255, 255, 0.08);
+  --pf-v5-global--BorderColor--200:           rgba(255, 255, 255, 0.05);
+  --pf-v5-global--BorderColor--300:           rgba(255, 255, 255, 0.12);
+  --pf-v5-global--BorderColor--dark-100:      rgba(255, 255, 255, 0.04);
+  --pf-v5-global--BorderWidth--sm:            1px;
+
+  /* Box shadows */
+  --pf-v5-global--BoxShadow--sm:              0 2px 8px rgba(0, 0, 0, 0.4);
+  --pf-v5-global--BoxShadow--md:              0 8px 24px rgba(0, 0, 0, 0.5);
+  --pf-v5-global--BoxShadow--lg:              0 20px 60px rgba(0, 0, 0, 0.6);
+
+  /* Font */
+  --pf-v5-global--FontFamily--text:           'Inter', sans-serif;
+  --pf-v5-global--FontFamily--heading:        'Inter', sans-serif;
+  --pf-v5-global--FontFamily--monospace:      monospace;
+
+  /* Nav sidebar */
+  --pf-v5-c-nav--BackgroundColor:             #0d0f14;
+  --pf-v5-c-nav__link--Color:                 #8b8d93;
+  --pf-v5-c-nav__link--hover--Color:          #e8eaed;
+  --pf-v5-c-nav__link--BackgroundColor:       transparent;
+  --pf-v5-c-nav__link--hover--BackgroundColor: rgba(255, 255, 255, 0.04);
+  --pf-v5-c-nav__link--m-current--Color:      #A060FF;
+  --pf-v5-c-nav__link--m-current--BackgroundColor: rgba(160, 96, 255, 0.08);
+  --pf-v5-c-nav__item--m-current--BorderColor: #A060FF;
+  --pf-v5-c-nav__section__title--Color:       #555862;
+
+  /* Page / masthead */
+  --pf-v5-c-page__header--BackgroundColor:    #090b10;
+  --pf-v5-c-page__sidebar--BackgroundColor:   #0d0f14;
+  --pf-v5-c-page__sidebar--BorderColor:       rgba(255, 255, 255, 0.06);
+  --pf-v5-c-page__main-section--BackgroundColor: #0d0f14;
+
+  /* Cards / panels */
+  --pf-v5-c-card--BackgroundColor:            rgba(30, 30, 46, 0.95);
+  --pf-v5-c-card--m-hoverable-raised--hover--BoxShadow: 0 8px 24px rgba(0,0,0,0.5);
+
+  /* Form inputs */
+  --pf-v5-c-form-control--BackgroundColor:    rgba(255, 255, 255, 0.04);
+  --pf-v5-c-form-control--BorderBottomColor:  rgba(255, 255, 255, 0.08);
+  --pf-v5-c-form-control--BorderTopColor:     rgba(255, 255, 255, 0.08);
+  --pf-v5-c-form-control--BorderLeftColor:    rgba(255, 255, 255, 0.08);
+  --pf-v5-c-form-control--BorderRightColor:   rgba(255, 255, 255, 0.08);
+  --pf-v5-c-form-control--Color:              #e8eaed;
+  --pf-v5-c-form-control--focus--BorderBottomColor: #A060FF;
+
+  /* Buttons */
+  --pf-v5-c-button--m-primary--BackgroundColor:       #A060FF;
+  --pf-v5-c-button--m-primary--hover--BackgroundColor: #c090ff;
+  --pf-v5-c-button--m-primary--Color:                 #ffffff;
+  --pf-v5-c-button--m-secondary--Color:               #A060FF;
+  --pf-v5-c-button--m-secondary--BorderColor:         #A060FF;
+  --pf-v5-c-button--m-secondary--hover--BackgroundColor: rgba(160, 96, 255, 0.08);
+  --pf-v5-c-button--m-link--Color:                    #A060FF;
+  --pf-v5-c-button--m-danger--BackgroundColor:         #dc3545;
+
+  /* Alerts */
+  --pf-v5-c-alert--m-danger--BackgroundColor:  rgba(220, 53, 69, 0.1);
+  --pf-v5-c-alert--m-success--BackgroundColor: rgba(0, 228, 227, 0.08);
+  --pf-v5-c-alert--m-info--BackgroundColor:    rgba(160, 96, 255, 0.08);
+  --pf-v5-c-alert--m-warning--BackgroundColor: rgba(255, 193, 7, 0.08);
+}
+
+/* --- Global font --- */
+body, * {
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* --- Page background --- */
+body,
+.pf-v5-c-page,
+.pf-v5-c-page__main,
+.pf-v5-c-page__main-section {
+  background-color: #0d0f14 !important;
+  color: #e8eaed;
+}
+
+/* --- Masthead (top bar) --- */
+.pf-v5-c-masthead {
+  background-color: #090b10 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.pf-v5-c-masthead__brand,
+.pf-v5-c-masthead__content {
+  color: #e8eaed !important;
+}
+
+/* Hide Keycloak logo image/icon */
+.pf-v5-c-brand,
+.pf-v5-c-masthead__brand img,
+.pf-v5-c-masthead__brand svg,
+.pf-v5-c-masthead__brand picture {
+  display: none !important;
+}
+
+/* Replace with WacChat gradient text */
+.pf-v5-c-masthead__brand::before {
+  content: 'WacChat';
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 1.2rem;
+  background: linear-gradient(135deg, #A060FF, #00E4E3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.pf-v5-c-masthead__brand a {
+  text-decoration: none !important;
+  background: linear-gradient(135deg, #A060FF, #00E4E3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* --- Sidebar nav --- */
+.pf-v5-c-page__sidebar,
+.pf-v5-c-nav {
+  background-color: #0d0f14 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.pf-v5-c-nav__link {
+  color: #8b8d93 !important;
+  border-radius: 8px !important;
+}
+.pf-v5-c-nav__link:hover {
+  color: #e8eaed !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.pf-v5-c-nav__link.pf-m-current,
+.pf-v5-c-nav__link[aria-current] {
+  color: #A060FF !important;
+  background-color: rgba(160, 96, 255, 0.08) !important;
+}
+.pf-v5-c-nav__section-title {
+  color: #555862 !important;
+  font-size: 0.72rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.pf-v5-c-nav__list {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* --- Cards --- */
+.pf-v5-c-card {
+  background-color: rgba(30, 30, 46, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  color: #e8eaed !important;
+}
+.pf-v5-c-card__title,
+.pf-v5-c-card__title-text {
+  color: #e8eaed !important;
+}
+.pf-v5-c-card__body { color: #b0b3bb !important; }
+.pf-v5-c-card__footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* --- Form controls --- */
+.pf-v5-c-form__label-text { color: #8b8d93 !important; }
+.pf-v5-c-form__helper-text { color: #555862 !important; }
+.pf-v5-c-form-control {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  color: #e8eaed !important;
+}
+.pf-v5-c-form-control:focus-within {
+  border-bottom-color: #A060FF !important;
+  box-shadow: 0 0 0 1px #A060FF !important;
+}
+.pf-v5-c-form-control__utilities { background-color: rgba(255, 255, 255, 0.04) !important; }
+
+/* --- Buttons --- */
+.pf-v5-c-button.pf-m-primary {
+  background-color: #A060FF !important;
+  border-color: #A060FF !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+}
+.pf-v5-c-button.pf-m-primary:hover {
+  background-color: #c090ff !important;
+  border-color: #c090ff !important;
+}
+.pf-v5-c-button.pf-m-secondary {
+  border-color: rgba(160, 96, 255, 0.5) !important;
+  color: #A060FF !important;
+  border-radius: 10px !important;
+}
+.pf-v5-c-button.pf-m-secondary:hover {
+  background-color: rgba(160, 96, 255, 0.08) !important;
+}
+.pf-v5-c-button.pf-m-link { color: #A060FF !important; }
+.pf-v5-c-button.pf-m-link:hover { color: #c090ff !important; }
+.pf-v5-c-button.pf-m-danger {
+  background-color: rgba(220, 53, 69, 0.85) !important;
+  border-radius: 10px !important;
+}
+
+/* --- Text / headings --- */
+h1, h2, h3, h4, h5, h6,
+.pf-v5-c-title {
+  color: #e8eaed !important;
+}
+p, span, div { color: inherit; }
+a { color: #A060FF !important; }
+a:hover { color: #c090ff !important; }
+
+/* --- Alerts --- */
+.pf-v5-c-alert {
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.pf-v5-c-alert.pf-m-danger {
+  background-color: rgba(220, 53, 69, 0.1) !important;
+  border-color: rgba(220, 53, 69, 0.3) !important;
+}
+.pf-v5-c-alert.pf-m-success {
+  background-color: rgba(0, 228, 227, 0.07) !important;
+  border-color: rgba(0, 228, 227, 0.2) !important;
+}
+.pf-v5-c-alert.pf-m-info {
+  background-color: rgba(160, 96, 255, 0.07) !important;
+  border-color: rgba(160, 96, 255, 0.2) !important;
+}
+.pf-v5-c-alert.pf-m-warning {
+  background-color: rgba(255, 193, 7, 0.07) !important;
+  border-color: rgba(255, 193, 7, 0.2) !important;
+}
+
+/* --- Dividers / separators --- */
+.pf-v5-c-divider,
+hr { border-color: rgba(255, 255, 255, 0.07) !important; }
+
+/* --- Dropdown menus --- */
+.pf-v5-c-menu,
+.pf-v5-c-dropdown__menu {
+  background-color: #1a1c26 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+.pf-v5-c-menu__item,
+.pf-v5-c-dropdown__menu-item {
+  color: #e8eaed !important;
+  border-radius: 6px !important;
+}
+.pf-v5-c-menu__item:hover,
+.pf-v5-c-dropdown__menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+.pf-v5-c-menu__item-main,
+.pf-v5-c-menu__item-text {
+  color: #e8eaed !important;
+}
+
+/* --- Tabs --- */
+.pf-v5-c-tabs__link {
+  color: #8b8d93 !important;
+}
+.pf-v5-c-tabs__link.pf-m-current,
+.pf-v5-c-tabs__link[aria-selected="true"] {
+  color: #A060FF !important;
+  border-bottom-color: #A060FF !important;
+}
+.pf-v5-c-tabs__link:hover { color: #e8eaed !important; }
+
+/* --- Data list / table --- */
+.pf-v5-c-data-list__item {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  color: #e8eaed !important;
+}
+.pf-v5-c-data-list__item:hover {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+.pf-v5-c-table th,
+.pf-v5-c-table td {
+  background-color: transparent !important;
+  color: #e8eaed !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* --- Label / badge --- */
+.pf-v5-c-label {
+  background-color: rgba(160, 96, 255, 0.1) !important;
+  border-color: rgba(160, 96, 255, 0.2) !important;
+  color: #A060FF !important;
+  border-radius: 20px !important;
+}
+
+/* --- Spinner / loading --- */
+.pf-v5-c-spinner {
+  --pf-v5-c-spinner--Color: #A060FF;
+}
+
+/* --- Modal / dialog --- */
+.pf-v5-c-modal-box {
+  background-color: #1a1c26 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+}
+.pf-v5-c-modal-box__header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.pf-v5-c-modal-box__footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.pf-v5-c-backdrop { background-color: rgba(0, 0, 0, 0.7) !important; }
+
+/* --- Popover --- */
+.pf-v5-c-popover {
+  background-color: #1a1c26 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+}
+
+/* =====================================================================
+   HIDE unwanted nav sections (Applications, Organizations)
+   ===================================================================== */
+
+/* Hide by nav link href */
+a[href*="/applications"],
+li:has(> a[href*="/applications"]) {
+  display: none !important;
+}
+a[href*="/organizations"],
+li:has(> a[href*="/organizations"]) {
+  display: none !important;
+}
+a[href*="/groups"],
+li:has(> a[href*="/groups"]) {
+  display: none !important;
+}
+
+/* Fallback: hide by text content where :has isn't available */
+.pf-v5-c-nav__item:has(a[href*="applications"]) { display: none !important; }
+.pf-v5-c-nav__item:has(a[href*="organizations"]) { display: none !important; }
+.pf-v5-c-nav__item:has(a[href*="groups"]) { display: none !important; }
