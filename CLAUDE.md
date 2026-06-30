@@ -64,6 +64,7 @@ npm install
 npm start                       # ng serve — dev server at http://localhost:4200
 npm run build                   # production build
 npm test                        # Karma/Jasmine unit tests
+npm test -- --include='**/foo.component.spec.ts'   # run a single test file
 ```
 
 To regenerate the Angular API client after a backend API change (backend must be running):
@@ -103,7 +104,7 @@ All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `creat
   |-----------|-------------|
   | Send message | `/app/chat` |
   | Receive notifications | `/user/{userId}/chat` |
-- **File uploads** — stored at `./uploads` (env: `application.file.uploads.media-output-path`); max multipart size 50 MB.
+- **File uploads** — message media stored at `./uploads` (env: `application.file.uploads.media-output-path`); max multipart size 50 MB. User avatars are stored separately in a public-read Cloudflare R2 bucket via `R2StorageService` (AWS SDK v2 S3-compatible client, `file` domain) — see `R2_*` env vars.
 - **Flyway** — present in deps but `flyway.enabled: false`; schema is applied manually from `database/schema.sql`. JPA `ddl-auto: update` handles incremental DDL in dev.
 - **Scheduled cleanup** — `UserCleanupService` runs every Monday at 03:00 AM; deletes inactive users (>21 days, configurable) from both Keycloak and the local DB. The `ADMIN_EMAIL` / `application.cleanup.protected-email` account is never deleted.
 - **Mail** — Resend SMTP (`smtp.resend.com:465`). Credentials via `MAIL_USERNAME` / `MAIL_PASSWORD` env vars.
@@ -121,7 +122,7 @@ All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `creat
 
 ### Data model
 
-Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT/SEEN; `type`: TEXT/IMAGE/AUDIO). User IDs are Keycloak `sub` UUIDs (strings), not auto-generated PKs. `users` also stores `username` (unique, 3–20 chars, pattern `^[a-z0-9_-]+$`) and `last_seen` (timestamp); both are nullable for users who haven't completed onboarding.
+Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT/SEEN; `type`: TEXT/IMAGE/AUDIO). User IDs are Keycloak `sub` UUIDs (strings), not auto-generated PKs. `users` also stores `username` (unique, 3–20 chars, pattern `^[a-z0-9_-]+$`), `last_seen` (timestamp), and `avatar_url` (public R2 object URL); all three are nullable for users who haven't completed onboarding / set a photo.
 
 ## Configuration
 
@@ -137,6 +138,7 @@ Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT
 | `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `admin` |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | (empty — mail disabled) |
 | `ADMIN_EMAIL` | (empty — cleanup protects no account) |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` / `R2_PUBLIC_BASE_URL` | (empty — avatar upload disabled) |
 
 `wac/keycloak/realms/wacchat.json` is **generated** from `wacchat.json.template` by `deploy-local.sh` and `deploy-prod.sh` via `envsubst`. Never commit the rendered `.json` file; edit the `.json.template` instead.
 

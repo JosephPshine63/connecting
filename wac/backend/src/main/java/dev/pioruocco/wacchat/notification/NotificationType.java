@@ -7,5 +7,6 @@ public enum NotificationType {
     IMAGE,
     AUDIO,
     VIDEO,
+    AVATAR_UPDATED,
 
 }

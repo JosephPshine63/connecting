@@ -257,6 +257,11 @@ docker run -d \
   -e MAIL_USERNAME="${MAIL_USERNAME:-}" \
   -e MAIL_PASSWORD="${MAIL_PASSWORD:-}" \
   -e MAIL_FROM="${MAIL_FROM:-}" \
+  -e R2_ACCOUNT_ID="${R2_ACCOUNT_ID:-}" \
+  -e R2_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID:-}" \
+  -e R2_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY:-}" \
+  -e R2_BUCKET_NAME="${R2_BUCKET_NAME:-}" \
+  -e R2_PUBLIC_BASE_URL="${R2_PUBLIC_BASE_URL:-}" \
   -v "$SCRIPT_DIR/wac/backend/uploads:/app/uploads" \
   --restart unless-stopped \
   "$FULL_BACKEND"

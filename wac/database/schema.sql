@@ -35,12 +35,16 @@ CREATE TABLE users
     email              VARCHAR(255),
     username           VARCHAR(255) UNIQUE,
     last_seen          TIMESTAMP WITHOUT TIME ZONE,
+    avatar_url         VARCHAR(500),
+    active_session_id  VARCHAR(255),
     CONSTRAINT pk_users PRIMARY KEY (id)
 );
 
 -- Migration for existing databases:
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(255);
 -- ALTER TABLE users ADD CONSTRAINT users_username_key UNIQUE (username);
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500);
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_id VARCHAR(255);
 
 ALTER TABLE chat
     ADD CONSTRAINT FK_CHAT_ON_RECIPIENT FOREIGN KEY (recipient_id) REFERENCES users (id);

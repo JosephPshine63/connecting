@@ -14,6 +14,7 @@ public class ChatMapper {
                 .isRecipientOnline(chat.getRecipient().isUserOnline())
                 .senderId(chat.getSender().getId())
                 .receiverId(chat.getRecipient().getId())
+                .avatarUrl(chat.getChatAvatarUrl(senderId))
                 .build();
     }
 }

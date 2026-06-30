@@ -44,6 +44,10 @@ public class User extends BaseAuditingEntity {
     @Column(unique = true)
     private String username;
     private LocalDateTime lastSeen;
+    @Column(length = 500)
+    private String avatarUrl;
+    @Column(name = "active_session_id", length = 255)
+    private String activeSessionId;
 
     @OneToMany(mappedBy = "sender")
     private List<Chat> chatsAsSender;

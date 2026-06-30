@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -21,5 +23,6 @@ public class Notification {
     private String chatName;
     private MessageType messageType;
     private NotificationType type;
-    private byte[] media;
+    private List<String> media;
+    private String avatarUrl;
 }

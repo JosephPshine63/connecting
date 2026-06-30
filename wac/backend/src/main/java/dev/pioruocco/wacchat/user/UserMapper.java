@@ -8,9 +8,7 @@ import java.util.Map;
 @Service
 public class UserMapper {
 
-    public User fromTokenAttributes(Map<String, Object> attributes) {
-        User user = new User();
-
+    public void updateFromTokenAttributes(User user, Map<String, Object> attributes) {
         if (attributes.containsKey("sub")) {
             user.setId(attributes.get("sub").toString());
         }
@@ -29,7 +27,6 @@ public class UserMapper {
             user.setEmail(attributes.get("email").toString());
         }
         user.setLastSeen(LocalDateTime.now());
-        return user;
     }
 
     public UserResponse toUserResponse(User user) {
@@ -41,6 +38,7 @@ public class UserMapper {
                 .username(user.getUsername())
                 .lastSeen(user.getLastSeen())
                 .isOnline(user.isUserOnline())
+                .avatarUrl(user.getAvatarUrl())
                 .build();
     }
 }
