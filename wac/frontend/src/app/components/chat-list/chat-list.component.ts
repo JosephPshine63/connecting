@@ -20,6 +20,7 @@ export class ChatListComponent {
   searchNewContact = false;
   contacts: Array<UserResponse> = [];
   chatSelected = output<ChatResponse>();
+  avatarClicked = output<string>();
 
   constructor(
     private chatService: ChatService,
@@ -49,7 +50,8 @@ export class ChatListComponent {
           recipientOnline: contact.online,
           lastMessageTime: contact.lastSeen,
           senderId: this.keycloakService.userId,
-          receiverId: contact.id
+          receiverId: contact.id,
+          avatarUrl: contact.avatarUrl
         };
         this.searchNewContact = false;
         this.chatSelected.emit(chat);
@@ -60,6 +62,17 @@ export class ChatListComponent {
 
   chatClicked(chat: ChatResponse) {
     this.chatSelected.emit(chat);
+  }
+
+  otherUserId(chat: ChatResponse): string | undefined {
+    return chat.senderId === this.keycloakService.userId ? chat.receiverId : chat.senderId;
+  }
+
+  onAvatarClick(event: Event, userId: string | undefined): void {
+    event.stopPropagation();
+    if (userId) {
+      this.avatarClicked.emit(userId);
+    }
   }
 
   wrapMessage(lastMessage: string | undefined): string {

@@ -26,7 +26,13 @@
   @if (chats().length && !searchNewContact) {
     @for (chat of chats(); track chat) {
       <div class="chat-item" (click)="chatClicked(chat)">
-        <div class="item-avatar">{{ chat.name?.charAt(0)?.toUpperCase() }}</div>
+        <div class="item-avatar" (click)="onAvatarClick($event, otherUserId(chat))">
+          @if (chat.avatarUrl) {
+            <img [src]="chat.avatarUrl" alt="">
+          } @else {
+            {{ chat.name?.charAt(0)?.toUpperCase() }}
+          }
+        </div>
         <div class="item-body">
           <div class="item-top">
             <span class="item-name">{{ chat.name }}</span>
@@ -51,7 +57,13 @@
   } @else if (searchNewContact) {
     @for (contact of contacts; track contact) {
       <div class="chat-item" (click)="selectContact(contact)">
-        <div class="item-avatar">{{ (contact.username || contact.firstName || '?').charAt(0).toUpperCase() }}</div>
+        <div class="item-avatar" (click)="onAvatarClick($event, contact.id)">
+          @if (contact.avatarUrl) {
+            <img [src]="contact.avatarUrl" alt="">
+          } @else {
+            {{ (contact.username || contact.firstName || '?').charAt(0).toUpperCase() }}
+          }
+        </div>
         <div class="item-body">
           <div class="item-top">
             <span class="item-name">{{ contact.username ? '@' + contact.username : contact.firstName + ' ' + contact.lastName }}</span>

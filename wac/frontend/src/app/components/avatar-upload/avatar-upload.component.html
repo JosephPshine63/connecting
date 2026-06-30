@@ -1,0 +1,45 @@
+<div class="avatar-upload-overlay" (click)="close()">
+  <div class="avatar-upload-box" (click)="$event.stopPropagation()">
+    <button class="avatar-upload-close" (click)="close()" aria-label="Chiudi">
+      <i class="fas fa-xmark"></i>
+    </button>
+
+    <h2 class="avatar-upload-title">Foto profilo</h2>
+
+    <div class="avatar-upload-preview">
+      @if (currentAvatarUrl) {
+        <img [src]="currentAvatarUrl" alt="">
+      } @else {
+        <i class="fa-solid fa-user"></i>
+      }
+      @if (uploading) {
+        <div class="avatar-upload-spinner">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+        </div>
+      }
+    </div>
+
+    @if (errorMessage) {
+      <p class="avatar-upload-error">{{ errorMessage }}</p>
+    }
+
+    <div class="avatar-upload-actions">
+      <button class="avatar-upload-btn primary" (click)="fileInput.click()" [disabled]="uploading">
+        Carica foto
+      </button>
+      @if (currentAvatarUrl) {
+        <button class="avatar-upload-btn danger" (click)="removeAvatar()" [disabled]="uploading">
+          Rimuovi foto
+        </button>
+      }
+    </div>
+
+    <input
+      #fileInput
+      type="file"
+      [hidden]="true"
+      accept=".jpg,.jpeg,.png,.webp"
+      (change)="onFileSelected($event)"
+    >
+  </div>
+</div>

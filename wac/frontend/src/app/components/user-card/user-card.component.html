@@ -1,0 +1,37 @@
+<div class="user-card-overlay" (click)="close()">
+  <div class="user-card-box" (click)="$event.stopPropagation()">
+    <button class="user-card-close" (click)="close()" aria-label="Chiudi">
+      <i class="fas fa-xmark"></i>
+    </button>
+
+    @if (loading) {
+      <div class="user-card-loading">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+      </div>
+    } @else if (user) {
+      <div class="user-card-avatar">
+        @if (user.avatarUrl) {
+          <img [src]="user.avatarUrl" alt="">
+        } @else {
+          <span>{{ initial() }}</span>
+        }
+      </div>
+      <h2 class="user-card-name">{{ displayName() }}</h2>
+      @if (user.username) {
+        <span class="user-card-username">&#64;{{ user.username }}</span>
+      }
+      <div class="user-card-status">
+        @if (user.online) {
+          <span class="status-dot online"></span>
+          <span>Online</span>
+        } @else if (user.lastSeen) {
+          <span class="status-dot offline"></span>
+          <span>Ultimo accesso {{ user.lastSeen | date:'dd.MM.yy HH:mm' }}</span>
+        } @else {
+          <span class="status-dot offline"></span>
+          <span>Mai connesso</span>
+        }
+      </div>
+    }
+  </div>
+</div>
