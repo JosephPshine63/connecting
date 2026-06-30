@@ -1,4 +1,6 @@
-@if (ageDenied) {
+@if (sessionGuard.blocked()) {
+  <app-session-blocked></app-session-blocked>
+} @else if (ageDenied) {
   <div class="age-denied-page">
     <div class="age-denied-box">
       <i class="fa-solid fa-ban age-denied-icon"></i>
@@ -31,6 +33,16 @@
   @if (showUsernameModal) {
     <app-username-setup (usernameSet)="onUsernameSet($event)"></app-username-setup>
   }
+  @if (selectedCardUserId) {
+    <app-user-card [userId]="selectedCardUserId" (closed)="closeUserCard()"></app-user-card>
+  }
+  @if (showAvatarUpload) {
+    <app-avatar-upload
+      [currentAvatarUrl]="currentUser?.avatarUrl"
+      (avatarChanged)="onAvatarChanged($event)"
+      (closed)="showAvatarUpload = false"
+    ></app-avatar-upload>
+  }
 
   <div class="app-shell" [class.has-banner]="showDemoBanner">
     <nav class="nav-rail">
@@ -41,6 +53,13 @@
         @if (currentUser?.username) {
           <span class="nav-username" title="Il tuo username">&#64;{{ currentUser!.username }}</span>
         }
+        <div class="nav-avatar" (click)="showAvatarUpload = true" title="Cambia foto profilo">
+          @if (currentUser?.avatarUrl) {
+            <img [src]="currentUser!.avatarUrl" alt="">
+          } @else {
+            <span>{{ (currentUser?.username || currentUser?.firstName || '?')!.charAt(0).toUpperCase() }}</span>
+          }
+        </div>
         <button class="nav-icon-btn" (click)="userProfile()" title="Profilo">
           <i class="fa-solid fa-user"></i>
         </button>
@@ -54,14 +73,19 @@
       <app-chat-list
         [chats]="chats"
         (chatSelected)="chatSelected($event)"
+        (avatarClicked)="openUserCard($event)"
       ></app-chat-list>
     </div>
 
     <main class="chat-area">
       @if (selectedChat.id) {
         <header class="chat-header">
-          <div class="chat-header-avatar">
-            {{ selectedChat.name?.charAt(0)?.toUpperCase() }}
+          <div class="chat-header-avatar" (click)="openUserCard(getReceiverId())">
+            @if (selectedChat.avatarUrl) {
+              <img [src]="selectedChat.avatarUrl" alt="">
+            } @else {
+              {{ selectedChat.name?.charAt(0)?.toUpperCase() }}
+            }
           </div>
           <div class="chat-header-info">
             <span class="chat-header-name">{{ selectedChat.name }}</span>

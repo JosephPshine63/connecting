@@ -16,6 +16,13 @@ import {PickerComponent} from '@ctrl/ngx-emoji-mart';
 import {EmojiData} from '@ctrl/ngx-emoji-mart/ngx-emoji';
 import {UsernameSetupComponent} from '../../components/username-setup/username-setup.component';
 import {UsernameService} from '../../utils/username/username.service';
+import {UserCardComponent} from '../../components/user-card/user-card.component';
+import {AvatarUploadComponent} from '../../components/avatar-upload/avatar-upload.component';
+import {SessionBlockedComponent} from '../../components/session-blocked/session-blocked.component';
+import {SessionGuardService} from '../../utils/session/session-guard.service';
+import {BrowserNotificationService} from '../../utils/notifications/browser-notification.service';
+
+const HEARTBEAT_INTERVAL_MS = 60000;
 
 @Component({
   selector: 'app-main',
@@ -24,7 +31,10 @@ import {UsernameService} from '../../utils/username/username.service';
     DatePipe,
     FormsModule,
     PickerComponent,
-    UsernameSetupComponent
+    UsernameSetupComponent,
+    UserCardComponent,
+    AvatarUploadComponent,
+    SessionBlockedComponent
   ],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
@@ -42,8 +52,11 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   ageDenied = false;
   currentUser: UserResponse | null = null;
   showUsernameModal = false;
+  selectedCardUserId: string | null = null;
+  showAvatarUpload = false;
   @ViewChild('scrollableDiv') scrollableDiv!: ElementRef<HTMLDivElement>;
   private notificationSubscription: StompSubscription | null = null;
+  private heartbeatHandle: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private chatService: ChatService,
@@ -51,6 +64,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     private keycloakService: KeycloakService,
     private usernameService: UsernameService,
     private ngZone: NgZone,
+    protected sessionGuard: SessionGuardService,
+    private browserNotifications: BrowserNotificationService,
   ) {
   }
 
@@ -64,9 +79,13 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.socketClient.deactivate();
       this.socketClient = null;
     }
+    if (this.heartbeatHandle !== null) {
+      clearInterval(this.heartbeatHandle);
+    }
   }
 
   ngOnInit(): void {
+    this.browserNotifications.requestPermission();
     this.initWebSocket();
     this.getAllChats();
     this.usernameService.getMe().subscribe({
@@ -77,6 +96,9 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
       }
     });
+    this.heartbeatHandle = setInterval(() => {
+      this.usernameService.getMe().subscribe();
+    }, HEARTBEAT_INTERVAL_MS);
   }
 
   onUsernameSet(username: string): void {
@@ -84,6 +106,21 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (this.currentUser) {
       this.currentUser = { ...this.currentUser, username };
     }
+  }
+
+  openUserCard(userId: string): void {
+    this.selectedCardUserId = userId;
+  }
+
+  closeUserCard(): void {
+    this.selectedCardUserId = null;
+  }
+
+  onAvatarChanged(avatarUrl: string | undefined): void {
+    if (this.currentUser) {
+      this.currentUser = { ...this.currentUser, avatarUrl };
+    }
+    this.showAvatarUpload = false;
   }
 
   chatSelected(chatResponse: ChatResponse) {
@@ -253,6 +290,13 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   private handleNotification(notification: Notification) {
     if (!notification) return;
     this.ngZone.run(() => {
+      if (notification.type === 'AVATAR_UPDATED') {
+        this.applyAvatarUpdate(notification);
+        return;
+      }
+      if (notification.type === 'MESSAGE' || notification.type === 'IMAGE') {
+        this.maybeShowDesktopNotification(notification);
+      }
       if (this.selectedChat && this.selectedChat.id === notification.chatId) {
         switch (notification.type) {
           case 'MESSAGE':
@@ -302,6 +346,35 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
+  private maybeShowDesktopNotification(notification: Notification): void {
+    const chatIsOpenAndFocused = document.hasFocus() && this.selectedChat?.id === notification.chatId;
+    if (chatIsOpenAndFocused) return;
+
+    const title = notification.chatName || 'Nuovo messaggio';
+    const body = notification.type === 'IMAGE' ? 'Ti ha inviato un allegato' : (notification.content || '');
+    const chatId = notification.chatId;
+    this.browserNotifications.notify(title, body, () => {
+      this.ngZone.run(() => {
+        const chat = this.chats.find(c => c.id === chatId);
+        if (chat) {
+          this.chatSelected(chat);
+        }
+      });
+    });
+  }
+
+  private applyAvatarUpdate(notification: Notification): void {
+    const partnerId = notification.senderId;
+    if (!partnerId) return;
+    if (this.selectedChat && (this.selectedChat.senderId === partnerId || this.selectedChat.receiverId === partnerId)) {
+      this.selectedChat.avatarUrl = notification.avatarUrl;
+    }
+    const destChat = this.chats.find(c => c.senderId === partnerId || c.receiverId === partnerId);
+    if (destChat) {
+      destChat.avatarUrl = notification.avatarUrl;
+    }
+  }
+
   private getSenderId(): string {
     if (this.selectedChat.senderId === this.keycloakService.userId) {
       return this.selectedChat.senderId as string;
@@ -309,7 +382,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     return this.selectedChat.receiverId as string;
   }
 
-  private getReceiverId(): string {
+  getReceiverId(): string {
     if (this.selectedChat.senderId === this.keycloakService.userId) {
       return this.selectedChat.receiverId as string;
     }
