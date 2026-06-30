@@ -1,78 +1,74 @@
-<div class="sticky-top bg-white">
-  <div class="d-flex justify-content-between align-items-center gap-2 p-2">
-    <h4>Chat</h4>
+<div class="chat-list-header">
+  <div class="header-top">
+    <h3 class="header-title">Chat</h3>
     @if (!searchNewContact) {
-      <i class="fas fa-comment-medical cursor-pointer" (click)="searchContact()"></i>
+      <button class="header-action-btn" (click)="searchContact()" title="Nuova chat">
+        <i class="fas fa-comment-medical"></i>
+      </button>
     } @else {
-      <i class="fas fa-times-circle cursor-pointer" (click)="searchNewContact = false"></i>
+      <button class="header-action-btn" (click)="searchNewContact = false" title="Chiudi">
+        <i class="fas fa-xmark"></i>
+      </button>
     }
-
   </div>
-  <div class="d-flex flex-column gap-1 p-2">
-    <div class="input-group">
-          <span class="input-group-text">
-            <i class="fas fa-search"></i>
-          </span>
-      <input type="text" class="form-control-sm" placeholder="Search in the chat" aria-label="Search">
-    </div>
-    <div class="d-flex gap-2">
-      <span class="badge rounded-pill text-bg-light cursor-pointer">All</span>
-      <span class="badge rounded-pill text-bg-light cursor-pointer">Unread</span>
-      <span class="badge rounded-pill text-bg-light cursor-pointer">Favorites</span>
-    </div>
+  <div class="search-box">
+    <i class="fas fa-search search-icon"></i>
+    <input type="text" class="search-input" placeholder="Cerca…" aria-label="Cerca">
   </div>
-
+  <div class="filter-pills">
+    <span class="filter-pill active">All</span>
+    <span class="filter-pill">Non letti</span>
+    <span class="filter-pill">Preferiti</span>
+  </div>
 </div>
-<div class="chat-list mt-3">
+
+<div class="chat-items">
   @if (chats().length && !searchNewContact) {
     @for (chat of chats(); track chat) {
-      <div class="d-flex align-items-center justify-content-between border-bottom-gray p-2"
-      (click)="chatClicked(chat)"
-      >
-        <div class="d-flex gap-2">
-          <div class="user-img">
-            <img src="user.png" alt="">
+      <div class="chat-item" (click)="chatClicked(chat)">
+        <div class="item-avatar">{{ chat.name?.charAt(0)?.toUpperCase() }}</div>
+        <div class="item-body">
+          <div class="item-top">
+            <span class="item-name">{{ chat.name }}</span>
+            <span class="item-time" [class.unread]="chat.unreadCount && chat.unreadCount > 0">
+              {{ chat.lastMessageTime | date:'HH:mm' }}
+            </span>
           </div>
-          <div class="d-flex flex-column">
-            <span>{{ chat.name }}</span>
-            <small class="text-secondary">
+          <div class="item-bottom">
+            <span class="item-preview">
               @if (chat.lastMessage === 'Attachment') {
-                <i class="fas fa-image"></i>
+                <i class="fas fa-image"></i>&nbsp;
               }
               {{ wrapMessage(chat.lastMessage) }}
-            </small>
+            </span>
+            @if (chat.unreadCount && chat.unreadCount > 0) {
+              <span class="unread-badge">{{ chat.unreadCount }}</span>
+            }
           </div>
-        </div>
-        <div class="d-flex flex-column align-items-end">
-          <span class="msg-date" [class.unread]="chat.unreadCount && chat.unreadCount > 0">{{ chat.lastMessageTime | date:'dd.MM.yy HH:mm' }}</span>
-          @if (chat.unreadCount && chat.unreadCount > 0) {
-            <small class="unread-msg-badge">{{ chat.unreadCount }}</small>
-          }
         </div>
       </div>
     }
   } @else if (searchNewContact) {
     @for (contact of contacts; track contact) {
-      <div class="d-flex align-items-center justify-content-between border-bottom-gray p-2"
-           (click)="selectContact(contact)">
-        <div class="d-flex gap-2">
-          <div class="user-img">
-            <img src="user.png" alt="">
+      <div class="chat-item" (click)="selectContact(contact)">
+        <div class="item-avatar">{{ (contact.firstName + ' ' + contact.lastName).charAt(0).toUpperCase() }}</div>
+        <div class="item-body">
+          <div class="item-top">
+            <span class="item-name">{{ contact.firstName + ' ' + contact.lastName }}</span>
           </div>
-          <div class="d-flex flex-column">
-            <span>{{ contact.firstName + ' ' + contact.lastName }}</span>
+          <div class="item-bottom">
             @if (contact.online) {
-              <small class="text-secondary">Online</small>
+              <span class="item-preview online-label">Online</span>
             } @else {
-              <small class="text-secondary">Last seen&nbsp;{{ contact.lastSeen | date:'dd.mm.yyyy HH:mm' }}</small>
+              <span class="item-preview">Visto {{ contact.lastSeen | date:'dd.MM.yy HH:mm' }}</span>
             }
-
           </div>
         </div>
       </div>
     }
   } @else {
-    <span>Not chat yet..</span>
+    <div class="empty-list">
+      <p>Nessuna chat ancora…</p>
+    </div>
   }
-
 </div>
