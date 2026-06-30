@@ -1487,14 +1487,14 @@
     "strictTransportSecurity": "max-age=31536000; includeSubDomains"
   },
   "smtpServer": {
-    "host": "smtp.gmail.com",
-    "port": "587",
-    "from": "${MAIL_USERNAME}",
-    "fromDisplayName": "Connecting",
-    "ssl": "false",
-    "starttls": "true",
+    "host": "smtp.resend.com",
+    "port": "465",
+    "from": "${MAIL_FROM}",
+    "fromDisplayName": "WacChat",
+    "ssl": "true",
+    "starttls": "false",
     "auth": "true",
-    "user": "${MAIL_USERNAME}",
+    "user": "resend",
     "password": "${MAIL_PASSWORD}"
   },
   "eventsEnabled": false,

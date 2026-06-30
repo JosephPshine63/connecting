@@ -17,13 +17,13 @@ spring:
   flyway:
     enabled: false
   mail:
-    host: smtp.gmail.com
-    port: 587
+    host: smtp.resend.com
+    port: 465
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     properties:
       mail.smtp.auth: true
-      mail.smtp.starttls.enable: true
+      mail.smtp.ssl.enable: true
   security:
     oauth2:
       resourceserver:
@@ -53,6 +53,8 @@ application:
     realm: wacchat
     admin-username: ${KEYCLOAK_ADMIN_USERNAME:admin}
     admin-password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+  mail:
+    from: ${MAIL_FROM:}
   cleanup:
     inactivity-days: 21
     protected-email: ${ADMIN_EMAIL:}

@@ -14,12 +14,12 @@ public class MailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username:}")
+    @Value("${application.mail.from:}")
     private String fromAddress;
 
     public void sendWelcome(User user) {
         if (fromAddress.isBlank()) {
-            log.warn("MAIL_USERNAME not configured — skipping welcome email for {}", user.getEmail());
+            log.warn("MAIL_FROM not configured — skipping welcome email for {}", user.getEmail());
             return;
         }
         try {
