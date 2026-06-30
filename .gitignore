@@ -1,2 +1,3 @@
 .env
 wac/keycloak/realms/wacchat.json
+wac/keycloak/realms/connecting.json

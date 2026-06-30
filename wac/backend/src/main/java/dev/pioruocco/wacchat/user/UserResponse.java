@@ -19,6 +19,7 @@ public class UserResponse {
     private String firstName;
     private String lastName;
     private String email;
+    private String username;
     private LocalDateTime lastSeen;
     private boolean isOnline;
 }

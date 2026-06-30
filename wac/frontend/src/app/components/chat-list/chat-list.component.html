@@ -51,10 +51,10 @@
   } @else if (searchNewContact) {
     @for (contact of contacts; track contact) {
       <div class="chat-item" (click)="selectContact(contact)">
-        <div class="item-avatar">{{ (contact.firstName + ' ' + contact.lastName).charAt(0).toUpperCase() }}</div>
+        <div class="item-avatar">{{ (contact.username || contact.firstName || '?').charAt(0).toUpperCase() }}</div>
         <div class="item-body">
           <div class="item-top">
-            <span class="item-name">{{ contact.firstName + ' ' + contact.lastName }}</span>
+            <span class="item-name">{{ contact.username ? '@' + contact.username : contact.firstName + ' ' + contact.lastName }}</span>
           </div>
           <div class="item-bottom">
             @if (contact.online) {

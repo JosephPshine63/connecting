@@ -36,6 +36,14 @@ docker compose down             # stop containers
 
 Do **not** use `docker compose up` directly — `deploy-local.sh` renders `wacchat.json` from the template first and sets the correct `KC_HOSTNAME` override for local development.
 
+### First-run database schema
+
+After starting the infrastructure for the first time, apply the schema:
+
+```bash
+psql -h localhost -p 5433 -U wacchat -d wacchat_db -f wac/database/schema.sql
+```
+
 ### Backend
 
 ```bash
@@ -56,7 +64,13 @@ npm install
 npm start                       # ng serve — dev server at http://localhost:4200
 npm run build                   # production build
 npm test                        # Karma/Jasmine unit tests
-npm run api-gen                 # regenerate API client from src/openapi/openapi.json
+```
+
+To regenerate the Angular API client after a backend API change (backend must be running):
+
+```bash
+curl http://localhost:8080/v3/api-docs -o wac/frontend/src/openapi/openapi.json
+cd wac/frontend && npm run api-gen
 ```
 
 ## Architecture
@@ -77,11 +91,18 @@ Package root: `dev.pioruocco.wacchat`. Each domain follows:
 
 Domains: `chat`, `message`, `user`, `notification`, `file`, `security`, `ws`, `interceptor`, `common`.
 
+All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `createdDate` and `lastModifiedDate` via Spring Data JPA auditing. `chat` IDs are UUID strings; `messages` uses `msg_seq` (a PostgreSQL sequence starting at 1).
+
 ### Key cross-cutting concerns
 
 - **User synchronization** — `UserSynchronizerFilter` runs on every authenticated request and upserts Keycloak JWT claims (`sub`, `email`, `name`) into the local `users` table via `UserSynchronizer`. No separate registration flow.
 - **Auth** — Spring OAuth2 Resource Server validates JWTs from Keycloak. `KeycloakJwtAuthenticationConverter` extracts realm roles from `realm_access.roles`.
-- **WebSocket** — STOMP over SockJS. Endpoint `/ws`, app prefix `/app`, user-destination prefix `/user`. In-memory broker on `/user`. `@Order(HIGHEST_PRECEDENCE + 99)` on `WebSocketConfig` lets Spring Security handle the WS handshake before STOMP processing.
+- **WebSocket** — STOMP over SockJS. Endpoint `/ws`, app prefix `/app`, user-destination prefix `/user`. In-memory broker on `/user`. `@Order(HIGHEST_PRECEDENCE + 99)` on `WebSocketConfig` lets Spring Security handle the WS handshake before STOMP processing. `AuthChannelInterceptor` validates the Bearer JWT on every STOMP `CONNECT` frame and enforces that a user can only subscribe to their own `/user/{userId}/chat` destination.
+
+  | Direction | Destination |
+  |-----------|-------------|
+  | Send message | `/app/chat` |
+  | Receive notifications | `/user/{userId}/chat` |
 - **File uploads** — stored at `./uploads` (env: `application.file.uploads.media-output-path`); max multipart size 50 MB.
 - **Flyway** — present in deps but `flyway.enabled: false`; schema is applied manually from `database/schema.sql`. JPA `ddl-auto: update` handles incremental DDL in dev.
 - **Scheduled cleanup** — `UserCleanupService` runs every Monday at 03:00 AM; deletes inactive users (>21 days, configurable) from both Keycloak and the local DB. The `ADMIN_EMAIL` / `application.cleanup.protected-email` account is never deleted.
@@ -89,10 +110,12 @@ Domains: `chat`, `message`, `user`, `notification`, `file`, `security`, `ws`, `i
 
 ### Frontend
 
+- **Single-route SPA** — `app.routes.ts` defines one route (`''` → `MainComponent`). `pages/main` owns the STOMP connection and top-level layout; `components/chat-list` is the only sub-component. There is no router navigation to manage.
 - Services under `src/app/services/` are **fully auto-generated** from `src/openapi/openapi.json` via `ng-openapi-gen`. Never hand-edit; run `npm run api-gen` after any backend API change.
-- `KeycloakService` (`src/app/utils/keycloak/keycloak.service.ts`) wraps `keycloak-js`; reads `environment.keycloakUrl` (dev: `http://localhost:8180`).
-- `KeycloakHttpInterceptor` attaches Bearer token to every outgoing HTTP request.
-- Real-time messaging via SockJS + STOMP; connection established in `MainComponent`.
+- `KeycloakService` (`src/app/utils/keycloak/keycloak.service.ts`) wraps `keycloak-js`; Keycloak URL is read from `environment.keycloakUrl` (set per environment file — not hardcoded in the service). Realm and client ID (`wacchat` / `wacchat-app`) are set there.
+- `KeycloakHttpInterceptor` (`src/app/utils/http/`) attaches the Bearer token to every outgoing HTTP request.
+- Real-time messaging via SockJS + STOMP; connection established in `MainComponent`. Incoming WebSocket frames are typed as `Notification` objects (backend `notification/Notification.java`) with a `NotificationType` discriminator.
+- UI stack: Bootstrap 5, Font Awesome 6, Quill (rich-text editor), `@ctrl/ngx-emoji-mart`.
 - Environments: `src/environments/environment.ts` (dev) and `environment.prod.ts` (prod) set `keycloakUrl`, `appUrl`, and `apiRootUrl`.
 
 ### Data model
@@ -109,7 +132,8 @@ Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT
 | `SPRING_DATASOURCE_USERNAME` | `admin` |
 | `SPRING_DATASOURCE_PASSWORD` | `admin` |
 | `KEYCLOAK_ISSUER_URI` | `http://localhost:8180/realms/wacchat` |
-| `KEYCLOAK_ADMIN_URL` | `http://keycloak-wacchat:8080` |
+| `KEYCLOAK_ADMIN_URL` | `http://keycloak-wacchat:8080` (`.envrc` overrides to `http://localhost:8180` for local dev) |
+| `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `admin` |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | (empty — mail disabled) |
 | `ADMIN_EMAIL` | (empty — cleanup protects no account) |
 

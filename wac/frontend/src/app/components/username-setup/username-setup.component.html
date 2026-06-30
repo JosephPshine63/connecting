@@ -1,0 +1,58 @@
+<div class="username-overlay">
+  <div class="username-box">
+    <div class="username-icon">
+      <i class="fa-solid fa-at"></i>
+    </div>
+    <h2 class="username-title">Scegli il tuo username</h2>
+    <p class="username-sub">
+      Il tuo username è unico e verrà mostrato agli altri utenti al posto del nome.
+      Puoi usare lettere minuscole, numeri, underscore e trattini (3–20 caratteri).
+    </p>
+
+    <div class="username-input-wrap">
+      <span class="username-prefix">@</span>
+      <input
+        type="text"
+        class="username-input"
+        placeholder="il_tuo_username"
+        [(ngModel)]="username"
+        (ngModelChange)="onInput()"
+        maxlength="20"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      >
+      <span class="username-check-icon">
+        @if (checkState === 'checking') {
+          <i class="fa-solid fa-spinner fa-spin checking"></i>
+        } @else if (checkState === 'available') {
+          <i class="fa-solid fa-check available"></i>
+        } @else if (checkState === 'taken' || checkState === 'invalid') {
+          <i class="fa-solid fa-xmark unavailable"></i>
+        }
+      </span>
+    </div>
+
+    <div class="username-feedback">
+      @if (checkState === 'available') {
+        <span class="feedback available">Disponibile</span>
+      } @else if (checkState === 'taken') {
+        <span class="feedback unavailable">Username già in uso</span>
+      } @else if (checkState === 'invalid') {
+        <span class="feedback unavailable">Solo lettere minuscole, numeri, _ e - (min 3 caratteri)</span>
+      }
+    </div>
+
+    <button
+      class="username-submit-btn"
+      [disabled]="!canSubmit"
+      (click)="submit()"
+    >
+      @if (submitting) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Salvataggio…
+      } @else {
+        Continua
+      }
+    </button>
+  </div>
+</div>

@@ -2,6 +2,7 @@ package dev.pioruocco.wacchat.user;
 
 import dev.pioruocco.wacchat.chat.Chat;
 import dev.pioruocco.wacchat.common.BaseAuditingEntity;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.NamedQuery;
@@ -29,6 +30,8 @@ import java.util.List;
             query = "SELECT u FROM User u WHERE u.id != :publicId")
 @NamedQuery(name = UserConstants.FIND_USER_BY_PUBLIC_ID,
             query = "SELECT u FROM User u WHERE u.id = :publicId")
+@NamedQuery(name = UserConstants.FIND_USER_BY_USERNAME,
+            query = "SELECT u FROM User u WHERE u.username = :username")
 public class User extends BaseAuditingEntity {
 
     private static final int LAST_ACTIVATE_INTERVAL = 5;
@@ -38,6 +41,8 @@ public class User extends BaseAuditingEntity {
     private String firstName;
     private String lastName;
     private String email;
+    @Column(unique = true)
+    private String username;
     private LocalDateTime lastSeen;
 
     @OneToMany(mappedBy = "sender")

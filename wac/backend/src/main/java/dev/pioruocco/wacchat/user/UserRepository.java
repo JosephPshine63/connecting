@@ -21,4 +21,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE u.lastSeen < :cutoff OR (u.lastSeen IS NULL AND u.createdDate < :cutoff)")
     List<User> findInactiveUsersBefore(@Param("cutoff") LocalDateTime cutoff);
+
+    Optional<User> findByUsername(String username);
+
+    boolean existsByUsername(String username);
 }

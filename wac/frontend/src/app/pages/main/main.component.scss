@@ -178,6 +178,18 @@
   padding: 20px 0;
 }
 
+.nav-username {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  max-height: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .nav-icon-btn {
   background: none;
   border: none;

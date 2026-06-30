@@ -45,13 +45,12 @@ export class ChatListComponent {
       next: (res) => {
         const chat: ChatResponse = {
           id: res.response,
-          name: contact.firstName + ' ' + contact.lastName,
+          name: contact.username ? '@' + contact.username : contact.firstName + ' ' + contact.lastName,
           recipientOnline: contact.online,
           lastMessageTime: contact.lastSeen,
           senderId: this.keycloakService.userId,
           receiverId: contact.id
         };
-        this.chats().unshift(chat);
         this.searchNewContact = false;
         this.chatSelected.emit(chat);
       }

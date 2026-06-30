@@ -1,4 +1,4 @@
-import {HttpHeaders, HttpInterceptorFn} from '@angular/common/http';
+import {HttpInterceptorFn} from '@angular/common/http';
 import {inject} from '@angular/core';
 import {from} from 'rxjs';
 import {catchError, switchMap} from 'rxjs/operators';
@@ -13,9 +13,7 @@ export const keycloakHttpInterceptor: HttpInterceptorFn = (req, next) => {
       const token = keycloakService.keycloak.token;
       if (token) {
         const authReq = req.clone({
-          headers: new HttpHeaders({
-            Authorization: `Bearer ${token}`
-          })
+          headers: req.headers.set('Authorization', `Bearer ${token}`)
         });
         return next(authReq);
       }

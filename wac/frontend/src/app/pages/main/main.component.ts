@@ -5,6 +5,7 @@ import {ChatResponse} from '../../services/models/chat-response';
 import {DatePipe} from '@angular/common';
 import {MessageService} from '../../services/services/message.service';
 import {MessageResponse} from '../../services/models/message-response';
+import {UserResponse} from '../../services/models/user-response';
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import {FormsModule} from '@angular/forms';
@@ -13,6 +14,8 @@ import {Notification} from './models/notification';
 import {ChatService} from '../../services/services/chat.service';
 import {PickerComponent} from '@ctrl/ngx-emoji-mart';
 import {EmojiData} from '@ctrl/ngx-emoji-mart/ngx-emoji';
+import {UsernameSetupComponent} from '../../components/username-setup/username-setup.component';
+import {UsernameService} from '../../utils/username/username.service';
 
 @Component({
   selector: 'app-main',
@@ -20,7 +23,8 @@ import {EmojiData} from '@ctrl/ngx-emoji-mart/ngx-emoji';
     ChatListComponent,
     DatePipe,
     FormsModule,
-    PickerComponent
+    PickerComponent,
+    UsernameSetupComponent
   ],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
@@ -36,6 +40,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   showDemoBanner = !sessionStorage.getItem('demoBannerDismissed');
   ageVerified = !!localStorage.getItem('ageVerified');
   ageDenied = false;
+  currentUser: UserResponse | null = null;
+  showUsernameModal = false;
   @ViewChild('scrollableDiv') scrollableDiv!: ElementRef<HTMLDivElement>;
   private notificationSubscription: StompSubscription | null = null;
 
@@ -43,6 +49,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     private chatService: ChatService,
     private messageService: MessageService,
     private keycloakService: KeycloakService,
+    private usernameService: UsernameService,
   ) {
   }
 
@@ -61,9 +68,27 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   ngOnInit(): void {
     this.initWebSocket();
     this.getAllChats();
+    this.usernameService.getMe().subscribe({
+      next: user => {
+        this.currentUser = user;
+        if (!user.username) {
+          this.showUsernameModal = true;
+        }
+      }
+    });
+  }
+
+  onUsernameSet(username: string): void {
+    this.showUsernameModal = false;
+    if (this.currentUser) {
+      this.currentUser = { ...this.currentUser, username };
+    }
   }
 
   chatSelected(chatResponse: ChatResponse) {
+    if (!this.chats.find(c => c.id === chatResponse.id)) {
+      this.chats.unshift(chatResponse);
+    }
     this.selectedChat = chatResponse;
     this.getAllChatMessages(chatResponse.id as string);
     this.setMessagesToSeen();
@@ -174,6 +199,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private setMessagesToSeen() {
+    if (!this.selectedChat.id) return;
     this.messageService.setMessageToSeen({
       'chat-id': this.selectedChat.id as string
     }).subscribe({

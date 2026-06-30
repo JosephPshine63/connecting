@@ -1,3 +1,6 @@
+server:
+  port: 8082
+
 spring:
   banner:
     location: classpath:banner/banner.txt

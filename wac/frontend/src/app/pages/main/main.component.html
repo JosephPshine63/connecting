@@ -28,12 +28,19 @@
       <button class="demo-banner-close" (click)="dismissBanner()" aria-label="Chiudi">✕</button>
     </div>
   }
+  @if (showUsernameModal) {
+    <app-username-setup (usernameSet)="onUsernameSet($event)"></app-username-setup>
+  }
+
   <div class="app-shell" [class.has-banner]="showDemoBanner">
     <nav class="nav-rail">
       <div class="nav-logo">
         <i class="fa-solid fa-message"></i>
       </div>
       <div class="nav-bottom">
+        @if (currentUser?.username) {
+          <span class="nav-username" title="Il tuo username">@{{ currentUser!.username }}</span>
+        }
         <button class="nav-icon-btn" (click)="userProfile()" title="Profilo">
           <i class="fa-solid fa-user"></i>
         </button>
@@ -77,7 +84,7 @@
                 @if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
                 } @else if (message.media) {
-                  <img class="bubble-image cursor-pointer" [src]="'data:image/jpg;base64,' + message.media" alt="">
+                  <img class="bubble-image cursor-pointer" [src]="'data:image/jpg;base64,' + message.media![0]" alt="">
                 }
                 <span class="bubble-meta">
                   {{ message.createdAt | date:'HH:mm' }}&nbsp;
@@ -94,7 +101,7 @@
                 @if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
                 } @else if (message.media) {
-                  <img class="bubble-image cursor-pointer" [src]="'data:image/jpg;base64,' + message.media" alt="">
+                  <img class="bubble-image cursor-pointer" [src]="'data:image/jpg;base64,' + message.media![0]" alt="">
                 }
                 <span class="bubble-meta">{{ message.createdAt | date:'HH:mm' }}</span>
               </div>
