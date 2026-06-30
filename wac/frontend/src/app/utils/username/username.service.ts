@@ -20,4 +20,8 @@ export class UsernameService {
     const params = new HttpParams().set('value', value);
     return this.http.get<{ available: boolean }>('/api/v1/users/check-username', { params });
   }
+
+  clearSession(): Observable<void> {
+    return this.http.delete<void>('/api/v1/users/me/session');
+  }
 }

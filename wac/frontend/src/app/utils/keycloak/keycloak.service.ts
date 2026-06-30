@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import Keycloak from 'keycloak-js';
 import {Router} from '@angular/router';
+import {HttpClient} from '@angular/common/http';
+import {firstValueFrom} from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -11,7 +13,8 @@ export class KeycloakService {
   private _keycloak: Keycloak | undefined;
 
   constructor(
-    private router: Router
+    private router: Router,
+    private http: HttpClient
   ) {
   }
 
@@ -49,7 +52,12 @@ export class KeycloakService {
     return this.keycloak.tokenParsed?.['name'] as string;
   }
 
-  logout() {
+  async logout() {
+    try {
+      await firstValueFrom(this.http.delete<void>('/api/v1/users/me/session'));
+    } catch {
+      // best-effort: proceed with logout even if the backend call fails
+    }
     return this.keycloak.logout({redirectUri: environment.appUrl});
   }
 
