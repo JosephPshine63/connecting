@@ -39,7 +39,7 @@
       </div>
       <div class="nav-bottom">
         @if (currentUser?.username) {
-          <span class="nav-username" title="Il tuo username">@{{ currentUser!.username }}</span>
+          <span class="nav-username" title="Il tuo username">&#64;{{ currentUser!.username }}</span>
         }
         <button class="nav-icon-btn" (click)="userProfile()" title="Profilo">
           <i class="fa-solid fa-user"></i>

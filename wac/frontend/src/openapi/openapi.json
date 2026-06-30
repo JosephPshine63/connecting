@@ -251,6 +251,9 @@
           "email": {
             "type": "string"
           },
+          "username": {
+            "type": "string"
+          },
           "lastSeen": {
             "type": "string",
             "format": "date-time"
