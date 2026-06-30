@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -22,5 +23,5 @@ public class MessageResponse {
     private String senderId;
     private String receiverId;
     private LocalDateTime createdAt;
-    private byte[] media;
+    private List<String> media;
 }

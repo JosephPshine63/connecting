@@ -7,11 +7,21 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
+import java.util.List;
 
 @Slf4j
 public class FileUtils {
 
     private FileUtils() {}
+
+    public static List<String> readFileAsBase64(String fileUrl) {
+        byte[] bytes = readFileFromLocation(fileUrl);
+        if (bytes.length == 0) {
+            return List.of();
+        }
+        return List.of(Base64.getEncoder().encodeToString(bytes));
+    }
 
     public static byte[] readFileFromLocation(String fileUrl) {
         if (StringUtils.isBlank(fileUrl)) {

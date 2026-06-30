@@ -14,7 +14,7 @@ public class MessageMapper {
                 .type(message.getType())
                 .state(message.getState())
                 .createdAt(message.getCreatedDate())
-                .media(FileUtils.readFileFromLocation(message.getMediaFilePath()))
+                .media(FileUtils.readFileAsBase64(message.getMediaFilePath()))
                 .build();
     }
 }

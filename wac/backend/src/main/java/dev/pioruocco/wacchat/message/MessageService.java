@@ -111,7 +111,7 @@ public class MessageService {
                 .senderId(senderId)
                 .receiverId(receiverId)
                 .messageType(MessageType.IMAGE)
-                .media(FileUtils.readFileFromLocation(filePath))
+                .media(FileUtils.readFileAsBase64(filePath))
                 .build();
 
         notificationService.sendNotification(receiverId, notification);
