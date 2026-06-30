@@ -217,6 +217,8 @@ docker run -d \
   -e KEYCLOAK_ADMIN_USERNAME="${KEYCLOAK_ADMIN_USERNAME:-admin}" \
   -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
   -e ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
+  -e MAIL_USERNAME="${MAIL_USERNAME:-}" \
+  -e MAIL_PASSWORD="${MAIL_PASSWORD:-}" \
   -v "$SCRIPT_DIR/wac/backend/uploads:/app/uploads" \
   --restart unless-stopped \
   "$FULL_BACKEND"
