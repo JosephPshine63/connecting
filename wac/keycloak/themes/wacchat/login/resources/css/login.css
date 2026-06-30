@@ -1,0 +1,634 @@
+/* =====================================================================
+   WacChat Keycloak Login Theme
+   Standalone styles for login.ftl + PF5 overrides for inherited templates
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* --- Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* --- Base --- */
+html, body {
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background: #0d0f14;
+  color: #e8eaed;
+}
+
+/* =====================================================================
+   STANDALONE login.ftl classes
+   ===================================================================== */
+
+.wac-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.wac-card {
+  background: rgba(30, 30, 46, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.wac-logo {
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1.75rem;
+  background: linear-gradient(135deg, #A060FF, #00E4E3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Alerts */
+.wac-alert {
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.wac-alert-error {
+  background: rgba(220, 53, 69, 0.12);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  color: #ff6b6b;
+}
+.wac-alert-warning {
+  background: rgba(255, 193, 7, 0.08);
+  border: 1px solid rgba(255, 193, 7, 0.25);
+  color: #ffc107;
+}
+.wac-alert-info, .wac-alert-success {
+  background: rgba(160, 96, 255, 0.08);
+  border: 1px solid rgba(160, 96, 255, 0.2);
+  color: #c8a8ff;
+}
+
+/* Social providers */
+.wac-social {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.wac-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #e8eaed;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+}
+.wac-social-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.wac-social-btn svg { flex-shrink: 0; }
+
+/* Divider */
+.wac-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.25rem 0;
+  color: #555862;
+  font-size: 0.8rem;
+}
+.wac-divider::before, .wac-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Form fields */
+.wac-field {
+  margin-bottom: 1rem;
+}
+.wac-field label {
+  display: block;
+  color: #8b8d93;
+  font-size: 0.83rem;
+  font-weight: 500;
+  margin-bottom: 0.4rem;
+}
+.wac-field input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #e8eaed;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.wac-field input:focus {
+  outline: none;
+  border-color: rgba(160, 96, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(160, 96, 255, 0.08);
+}
+.wac-field input::placeholder { color: #555862; }
+.wac-field input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wac-field-error {
+  background: rgba(220, 53, 69, 0.12);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.82rem;
+  color: #ff6b6b;
+}
+
+/* Options row (remember me + forgot password) */
+.wac-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.75rem 0 1.25rem;
+  min-height: 1.5rem;
+}
+.wac-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #8b8d93;
+  font-size: 0.83rem;
+  cursor: pointer;
+}
+.wac-checkbox input[type="checkbox"] {
+  accent-color: #A060FF;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+.wac-options a {
+  color: #A060FF;
+  font-size: 0.83rem;
+  text-decoration: none;
+}
+.wac-options a:hover { text-decoration: underline; }
+
+/* Primary button */
+.wac-btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, #A060FF, #00E4E3);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  font-family: inherit;
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.2s;
+}
+.wac-btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.wac-btn-primary:active { transform: translateY(0); }
+
+/* Register link */
+.wac-register-link {
+  text-align: center;
+  margin-top: 1.25rem;
+  font-size: 0.83rem;
+  color: #8b8d93;
+}
+.wac-register-link a {
+  color: #A060FF;
+  text-decoration: none;
+  margin-left: 0.3rem;
+}
+.wac-register-link a:hover { text-decoration: underline; }
+
+/* =====================================================================
+   REGISTER page extras
+   ===================================================================== */
+
+/* Wider card for register form (more fields) */
+.wac-card--wide {
+  max-width: 480px;
+}
+
+/* Page subtitle below logo */
+.wac-page-subtitle {
+  text-align: center;
+  color: #8b8d93;
+  font-size: 0.9rem;
+  margin-top: -1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Required asterisk */
+.wac-required {
+  color: #A060FF;
+  margin-left: 2px;
+}
+
+/* Two-column grid for first/last name */
+.wac-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* Inline field error message (below a specific field) */
+.wac-field-msg {
+  display: block;
+  font-size: 0.78rem;
+  margin-top: 0.3rem;
+}
+.wac-field-msg--error { color: #ff6b6b; }
+
+/* Error border on input */
+.wac-field input.wac-input-error {
+  border-color: rgba(220, 53, 69, 0.5) !important;
+}
+.wac-field input.wac-input-error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.08) !important;
+}
+
+/* Password input + toggle button wrapper */
+.wac-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.wac-password-wrap input {
+  flex: 1;
+  padding-right: 2.75rem;
+}
+.wac-pwd-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #555862;
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+.wac-pwd-toggle:hover { color: #e8eaed; }
+
+/* =====================================================================
+   DISCLAIMER (shown on all login-flow pages)
+   ===================================================================== */
+
+.wac-disclaimer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(9, 11, 16, 0.92);
+  border-top: 1px solid rgba(255, 193, 7, 0.15);
+  color: #6b6d73;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.55rem 1rem;
+  line-height: 1.4;
+  z-index: 999;
+  backdrop-filter: blur(8px);
+}
+.wac-disclaimer span {
+  color: rgba(255, 193, 7, 0.6);
+  margin-right: 0.3rem;
+}
+
+/* =====================================================================
+   IDP LINK (first-broker-login) pages
+   ===================================================================== */
+
+.wac-idp-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: rgba(160, 96, 255, 0.07);
+  border: 1px solid rgba(160, 96, 255, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+.wac-idp-info-icon {
+  font-size: 1.2rem;
+  color: #A060FF;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+.wac-idp-info-box p {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8eaed;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.wac-idp-subtitle {
+  font-size: 0.85rem;
+  color: #8b8d93;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.wac-idp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Secondary button (outline style for less-primary actions) */
+.wac-btn-secondary {
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #8b8d93;
+  font-weight: 500;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.wac-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #e8eaed;
+}
+
+.wac-idp-already-verified {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #555862;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+}
+.wac-idp-already-verified p,
+.wac-idp-already-verified span { margin: 0; }
+
+/* =====================================================================
+   VERIFY EMAIL page
+   ===================================================================== */
+
+.wac-verify-icon {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #A060FF, #00E4E3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.wac-verify-title {
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #e8eaed;
+  margin-bottom: 1rem;
+}
+
+.wac-verify-body {
+  text-align: center;
+  font-size: 0.88rem;
+  color: #8b8d93;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.wac-verify-resend {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wac-verify-resend p {
+  font-size: 0.83rem;
+  color: #8b8d93;
+  margin: 0;
+}
+
+/* Outline variant of the primary button */
+.wac-btn-outline {
+  background: transparent !important;
+  border: 1px solid rgba(160, 96, 255, 0.5) !important;
+  color: #A060FF !important;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: 12px;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.2s, border-color 0.2s;
+  width: auto;
+}
+.wac-btn-outline:hover {
+  background: rgba(160, 96, 255, 0.08) !important;
+  border-color: rgba(160, 96, 255, 0.8) !important;
+  text-decoration: none;
+  filter: none;
+  transform: none;
+}
+
+/* =====================================================================
+   PF5 OVERRIDES for inherited templates
+   (register.ftl, logout-confirm.ftl, login-reset-password.ftl, etc.)
+   These templates use template.ftl which generates PF5 HTML structure.
+   ===================================================================== */
+
+/* Page background */
+body.login-pf,
+.login-pf-page,
+.pf-v5-l-bullseye {
+  background: #0d0f14 !important;
+  min-height: 100vh;
+}
+
+/* Hide KC default header/logo */
+#kc-header,
+.login-pf-header,
+.kc-logo,
+.pf-v5-c-login__main-header-desc {
+  display: none !important;
+}
+
+/* Center the content panel */
+.pf-v5-l-bullseye__item { width: 100%; }
+
+.pf-v5-c-login {
+  background: transparent;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+/* Card */
+.pf-v5-c-login__main,
+.card-pf,
+#kc-content {
+  background: rgba(30, 30, 46, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+  max-width: 420px;
+  width: 100%;
+}
+
+/* Card header title */
+.pf-v5-c-login__main-header h1,
+#kc-page-title {
+  background: linear-gradient(135deg, #A060FF, #00E4E3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Form labels */
+.pf-v5-c-form__label-text,
+label {
+  color: #8b8d93 !important;
+  font-size: 0.83rem;
+  font-weight: 500;
+}
+
+/* Inputs */
+.pf-v5-c-form-control,
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  color: #e8eaed !important;
+  font-family: 'Inter', sans-serif !important;
+}
+.pf-v5-c-form-control:focus-within,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+  border-color: rgba(160, 96, 255, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(160, 96, 255, 0.08) !important;
+  outline: none;
+}
+
+/* Primary button */
+.pf-v5-c-button.pf-m-primary,
+#kc-login,
+input[type="submit"] {
+  background: linear-gradient(135deg, #A060FF, #00E4E3) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: filter 0.2s, transform 0.2s;
+}
+.pf-v5-c-button.pf-m-primary:hover,
+input[type="submit"]:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* Secondary button (logout cancel, etc.) */
+.pf-v5-c-button.pf-m-secondary {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  color: #e8eaed !important;
+}
+.pf-v5-c-button.pf-m-secondary:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Links */
+a { color: #A060FF; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Alerts / feedback */
+.pf-v5-c-alert.pf-m-danger,
+#kc-error-message {
+  background: rgba(220, 53, 69, 0.12) !important;
+  border: 1px solid rgba(220, 53, 69, 0.3) !important;
+  border-radius: 10px !important;
+  color: #ff6b6b !important;
+}
+.pf-v5-c-alert.pf-m-warning {
+  background: rgba(255, 193, 7, 0.08) !important;
+  border: 1px solid rgba(255, 193, 7, 0.25) !important;
+  border-radius: 10px !important;
+  color: #ffc107 !important;
+}
+.pf-v5-c-alert.pf-m-info,
+.pf-v5-c-alert.pf-m-success {
+  background: rgba(160, 96, 255, 0.08) !important;
+  border: 1px solid rgba(160, 96, 255, 0.2) !important;
+  border-radius: 10px !important;
+  color: #c8a8ff !important;
+}
+
+/* Social providers in inherited templates */
+.kc-social-section .pf-v5-c-button,
+.kc-social-provider-link {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  color: #e8eaed !important;
+}
+.kc-social-section .pf-v5-c-button:hover,
+.kc-social-provider-link:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Checkbox */
+input[type="checkbox"] { accent-color: #A060FF; }
+
+/* Text colors */
+.pf-v5-c-login__main-body,
+.pf-v5-c-login__main-footer,
+.pf-v5-c-form,
+p, span {
+  color: #e8eaed;
+}
+.pf-v5-c-login__main-footer-band {
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}

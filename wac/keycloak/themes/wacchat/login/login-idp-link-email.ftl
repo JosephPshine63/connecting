@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="<#if locale??>${locale.currentLanguageTag}<#else>en</#if>">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>${msg("emailLinkIdpTitle", idpDisplayName)}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="${url.resourcesPath}/css/login.css">
+</head>
+<body>
+
+<div class="wac-wrap">
+  <div class="wac-card">
+
+    <div class="wac-logo">WacChat</div>
+
+    <div class="wac-verify-icon">&#9993;</div>
+
+    <h2 class="wac-verify-title">${msg("emailLinkIdpTitle", idpDisplayName)}</h2>
+
+    <p class="wac-verify-body">
+      ${msg("emailLinkIdp1", idpDisplayName, brokerContext.username, realm.displayName!'')}
+    </p>
+
+    <div class="wac-verify-resend">
+      <p>${msg("emailLinkIdp2")}</p>
+      <a href="${url.loginAction}" class="wac-btn-primary wac-btn-outline">
+        ${msg("doClickHere")}
+      </a>
+      <p>${msg("emailLinkIdp3")}</p>
+    </div>
+
+    <div class="wac-idp-already-verified">
+      <p>${msg("emailLinkIdp4")}</p>
+      <a href="${url.loginAction}">${msg("doClickHere")}</a>
+      <span>${msg("emailLinkIdp5")}</span>
+    </div>
+
+  </div>
+</div>
+
+<div class="wac-disclaimer">
+  <span>&#9888;</span>
+  App dimostrativa per uso personale &mdash; non inserire dati personali reali.
+  Gli account vengono eliminati automaticamente dopo 21&nbsp;giorni dalla creazione.
+</div>
+
+</body>
+</html>
