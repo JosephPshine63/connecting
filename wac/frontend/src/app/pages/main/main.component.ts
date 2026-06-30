@@ -1,4 +1,4 @@
-import {AfterViewChecked, Component, ElementRef, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewChecked, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {ChatListComponent} from '../../components/chat-list/chat-list.component';
 import {KeycloakService} from '../../utils/keycloak/keycloak.service';
 import {ChatResponse} from '../../services/models/chat-response';
@@ -50,6 +50,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     private messageService: MessageService,
     private keycloakService: KeycloakService,
     private usernameService: UsernameService,
+    private ngZone: NgZone,
   ) {
   }
 
@@ -251,52 +252,54 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private handleNotification(notification: Notification) {
     if (!notification) return;
-    if (this.selectedChat && this.selectedChat.id === notification.chatId) {
-      switch (notification.type) {
-        case 'MESSAGE':
-        case 'IMAGE':
-          const message: MessageResponse = {
+    this.ngZone.run(() => {
+      if (this.selectedChat && this.selectedChat.id === notification.chatId) {
+        switch (notification.type) {
+          case 'MESSAGE':
+          case 'IMAGE':
+            const message: MessageResponse = {
+              senderId: notification.senderId,
+              receiverId: notification.receiverId,
+              content: notification.content,
+              type: notification.messageType,
+              media: notification.media,
+              createdAt: new Date().toString()
+            };
+            if (notification.type === 'IMAGE') {
+              this.selectedChat.lastMessage = 'Attachment';
+            } else {
+              this.selectedChat.lastMessage = notification.content;
+            }
+            this.chatMessages.push(message);
+            break;
+          case 'SEEN':
+            this.chatMessages.forEach(m => m.state = 'SEEN');
+            break;
+        }
+      } else {
+        const destChat = this.chats.find(c => c.id === notification.chatId);
+        if (destChat && notification.type !== 'SEEN') {
+          if (notification.type === 'MESSAGE') {
+            destChat.lastMessage = notification.content;
+          } else if (notification.type === 'IMAGE') {
+            destChat.lastMessage = 'Attachment';
+          }
+          destChat.lastMessageTime = new Date().toString();
+          destChat.unreadCount! += 1;
+        } else if (notification.type === 'MESSAGE') {
+          const newChat: ChatResponse = {
+            id: notification.chatId,
             senderId: notification.senderId,
             receiverId: notification.receiverId,
-            content: notification.content,
-            type: notification.messageType,
-            media: notification.media,
-            createdAt: new Date().toString()
+            lastMessage: notification.content,
+            name: notification.chatName,
+            unreadCount: 1,
+            lastMessageTime: new Date().toString()
           };
-          if (notification.type === 'IMAGE') {
-            this.selectedChat.lastMessage = 'Attachment';
-          } else {
-            this.selectedChat.lastMessage = notification.content;
-          }
-          this.chatMessages.push(message);
-          break;
-        case 'SEEN':
-          this.chatMessages.forEach(m => m.state = 'SEEN');
-          break;
-      }
-    } else {
-      const destChat = this.chats.find(c => c.id === notification.chatId);
-      if (destChat && notification.type !== 'SEEN') {
-        if (notification.type === 'MESSAGE') {
-          destChat.lastMessage = notification.content;
-        } else if (notification.type === 'IMAGE') {
-          destChat.lastMessage = 'Attachment';
+          this.chats.unshift(newChat);
         }
-        destChat.lastMessageTime = new Date().toString();
-        destChat.unreadCount! += 1;
-      } else if (notification.type === 'MESSAGE') {
-        const newChat: ChatResponse = {
-          id: notification.chatId,
-          senderId: notification.senderId,
-          receiverId: notification.receiverId,
-          lastMessage: notification.content,
-          name: notification.chatName,
-          unreadCount: 1,
-          lastMessageTime: new Date().toString()
-        };
-        this.chats.unshift(newChat);
       }
-    }
+    });
   }
 
   private getSenderId(): string {
