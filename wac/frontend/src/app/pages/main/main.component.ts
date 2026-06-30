@@ -180,6 +180,10 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.setMessagesToSeen();
   }
 
+  mediaSrc(media: string): string {
+    return media.startsWith('http') ? media : 'data:image/jpg;base64,' + media;
+  }
+
   uploadMedia(target: EventTarget | null) {
     const file = this.extractFileFromTarget(target);
     if (file !== null) {

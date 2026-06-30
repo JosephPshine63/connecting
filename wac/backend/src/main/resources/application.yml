@@ -48,9 +48,6 @@ springdoc:
 
 
 application:
-  file:
-    uploads:
-      media-output-path: ./uploads
   keycloak:
     admin-url: ${KEYCLOAK_ADMIN_URL:http://keycloak-wacchat:8080}
     realm: wacchat

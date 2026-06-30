@@ -15,6 +15,17 @@ public class FileUtils {
 
     private FileUtils() {}
 
+    public static List<String> resolveMedia(String mediaFilePathOrUrl) {
+        if (StringUtils.isBlank(mediaFilePathOrUrl)) {
+            return List.of();
+        }
+        if (mediaFilePathOrUrl.startsWith("http://") || mediaFilePathOrUrl.startsWith("https://")) {
+            return List.of(mediaFilePathOrUrl);
+        }
+        // Legacy messages stored a local disk path before media moved to R2.
+        return readFileAsBase64(mediaFilePathOrUrl);
+    }
+
     public static List<String> readFileAsBase64(String fileUrl) {
         byte[] bytes = readFileFromLocation(fileUrl);
         if (bytes.length == 0) {

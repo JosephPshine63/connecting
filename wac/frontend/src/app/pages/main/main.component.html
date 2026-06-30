@@ -108,7 +108,7 @@
                 @if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
                 } @else if (message.media) {
-                  <img class="bubble-image cursor-pointer" [src]="'data:image/jpg;base64,' + message.media![0]" alt="">
+                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="">
                 }
                 <span class="bubble-meta">
                   {{ message.createdAt | date:'HH:mm' }}&nbsp;
@@ -125,7 +125,7 @@
                 @if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
                 } @else if (message.media) {
-                  <img class="bubble-image cursor-pointer" [src]="'data:image/jpg;base64,' + message.media![0]" alt="">
+                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="">
                 }
                 <span class="bubble-meta">{{ message.createdAt | date:'HH:mm' }}</span>
               </div>

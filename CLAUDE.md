@@ -104,7 +104,7 @@ All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `creat
   |-----------|-------------|
   | Send message | `/app/chat` |
   | Receive notifications | `/user/{userId}/chat` |
-- **File uploads** — message media stored at `./uploads` (env: `application.file.uploads.media-output-path`); max multipart size 50 MB. User avatars are stored separately in a public-read Cloudflare R2 bucket via `R2StorageService` (AWS SDK v2 S3-compatible client, `file` domain) — see `R2_*` env vars.
+- **File uploads** — both message media (images, under `messages/{userId}/...`) and user avatars (under `avatars/{userId}/...`) are stored in a public-read Cloudflare R2 bucket via `R2StorageService` (AWS SDK v2 S3-compatible client, `file` domain) — see `R2_*` env vars. Max multipart size 50 MB. `Message.mediaFilePath` holds a public R2 URL; `MessageMapper`/`Notification` resolve it via `FileUtils.resolveMedia`, which also still reads pre-migration messages whose `mediaFilePath` is a legacy local disk path (returned as base64) for backward compatibility.
 - **Flyway** — present in deps but `flyway.enabled: false`; schema is applied manually from `database/schema.sql`. JPA `ddl-auto: update` handles incremental DDL in dev.
 - **Scheduled cleanup** — `UserCleanupService` runs every Monday at 03:00 AM; deletes inactive users (>21 days, configurable) from both Keycloak and the local DB. The `ADMIN_EMAIL` / `application.cleanup.protected-email` account is never deleted.
 - **Mail** — Resend SMTP (`smtp.resend.com:465`). Credentials via `MAIL_USERNAME` / `MAIL_PASSWORD` env vars.

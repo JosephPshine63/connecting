@@ -2,8 +2,8 @@ package dev.pioruocco.wacchat.message;
 
 import dev.pioruocco.wacchat.chat.Chat;
 import dev.pioruocco.wacchat.chat.ChatRepository;
-import dev.pioruocco.wacchat.file.FileService;
 import dev.pioruocco.wacchat.file.FileUtils;
+import dev.pioruocco.wacchat.file.R2StorageService;
 import dev.pioruocco.wacchat.notification.Notification;
 import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.notification.NotificationType;
@@ -25,7 +25,7 @@ public class MessageService {
     private final ChatRepository chatRepository;
     private final MessageMapper mapper;
     private final NotificationService notificationService;
-    private final FileService fileService;
+    private final R2StorageService r2StorageService;
 
     public void saveMessage(MessageRequest messageRequest, Authentication authentication) {
         Chat chat = chatRepository.findById(messageRequest.getChatId())
@@ -95,13 +95,13 @@ public class MessageService {
         final String senderId = getSenderId(chat, authentication);
         final String receiverId = getRecipientId(chat, authentication);
 
-        final String filePath = fileService.saveFile(file, senderId);
+        final String mediaUrl = r2StorageService.uploadMessageMedia(file, senderId);
         Message message = new Message();
         message.setReceiverId(receiverId);
         message.setSenderId(senderId);
         message.setState(MessageState.SENT);
         message.setType(MessageType.IMAGE);
-        message.setMediaFilePath(filePath);
+        message.setMediaFilePath(mediaUrl);
         message.setChat(chat);
         messageRepository.save(message);
 
@@ -111,7 +111,7 @@ public class MessageService {
                 .senderId(senderId)
                 .receiverId(receiverId)
                 .messageType(MessageType.IMAGE)
-                .media(FileUtils.readFileAsBase64(filePath))
+                .media(FileUtils.resolveMedia(mediaUrl))
                 .build();
 
         notificationService.sendNotification(receiverId, notification);
