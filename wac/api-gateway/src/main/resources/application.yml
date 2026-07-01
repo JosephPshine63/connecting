@@ -1,0 +1,56 @@
+server:
+  port: 8081
+
+spring:
+  banner:
+    location: classpath:banner/banner.txt
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - http://localhost:4200
+              - https://wacchat.win
+            allowedHeaders:
+              - Origin
+              - Content-Type
+              - Accept
+              - Authorization
+            allowedMethods:
+              - GET
+              - POST
+              - DELETE
+              - PUT
+              - PATCH
+              - OPTIONS
+            allowCredentials: true
+      routes:
+        - id: file-service-files
+          uri: ${FILE_SERVICE_BASE_URL:http://localhost:8083}
+          predicates:
+            - Path=/files/**
+          filters:
+            - RewritePath=/files/(?<segment>.*), /api/v1/files/$\{segment}
+          order: -1
+        - id: backend-ws
+          uri: ${BACKEND_BASE_URL:http://localhost:8082}
+          predicates:
+            - Path=/ws/**
+          order: 0
+        - id: backend-api
+          uri: ${BACKEND_BASE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/**
+          order: 1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,gateway
+  endpoint:
+    health:
+      show-details: never

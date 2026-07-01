@@ -6,13 +6,16 @@ REGISTRY=""                          # e.g. "registry.example.com/myorg" (leave 
 IMAGE_BACKEND="wacchat-backend"
 IMAGE_FRONTEND="wacchat-frontend"
 IMAGE_FILE_SERVICE="wacchat-file-service"
+IMAGE_API_GATEWAY="wacchat-api-gateway"
 TAG="latest"
 CONTAINER_BACKEND="wacchat-backend"
 CONTAINER_FRONTEND="wacchat-frontend"
 CONTAINER_FILE_SERVICE="wacchat-file-service"
+CONTAINER_API_GATEWAY="wacchat-api-gateway"
 PORT_BACKEND=8082
 PORT_FRONTEND=4200
 PORT_FILE_SERVICE=8083
+PORT_API_GATEWAY=8081
 COMPOSE_DIR="."
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -20,6 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/wac/backend"
 FRONTEND_DIR="$SCRIPT_DIR/wac/frontend"
 FILE_SERVICE_DIR="$SCRIPT_DIR/wac/file-service"
+API_GATEWAY_DIR="$SCRIPT_DIR/wac/api-gateway"
 
 # ─── 0. Git pull (always first) ──────────────────────────────────────────────
 echo "[$(date '+%H:%M:%S')] Pulling latest changes from origin..."
@@ -130,6 +134,7 @@ command -v docker compose >/dev/null 2>&1 || \
 [[ -d "$BACKEND_DIR" ]]      || err "Backend directory not found: $BACKEND_DIR"
 [[ -d "$FRONTEND_DIR" ]]     || err "Frontend directory not found: $FRONTEND_DIR"
 [[ -d "$FILE_SERVICE_DIR" ]] || err "File-service directory not found: $FILE_SERVICE_DIR"
+[[ -d "$API_GATEWAY_DIR" ]]  || err "API gateway directory not found: $API_GATEWAY_DIR"
 
 ok "Preflight checks passed"
 
@@ -157,10 +162,12 @@ if [[ -n "$REGISTRY" ]]; then
   FULL_BACKEND="$REGISTRY/$IMAGE_BACKEND:$TAG"
   FULL_FRONTEND="$REGISTRY/$IMAGE_FRONTEND:$TAG"
   FULL_FILE_SERVICE="$REGISTRY/$IMAGE_FILE_SERVICE:$TAG"
+  FULL_API_GATEWAY="$REGISTRY/$IMAGE_API_GATEWAY:$TAG"
 else
   FULL_BACKEND="$IMAGE_BACKEND:$TAG"
   FULL_FRONTEND="$IMAGE_FRONTEND:$TAG"
   FULL_FILE_SERVICE="$IMAGE_FILE_SERVICE:$TAG"
+  FULL_API_GATEWAY="$IMAGE_API_GATEWAY:$TAG"
 fi
 
 BUILD_FLAGS="--no-cache"
@@ -230,6 +237,14 @@ docker build $BUILD_FLAGS \
   "$FILE_SERVICE_DIR"
 ok "File-service image built: $FULL_FILE_SERVICE"
 
+# ─── 5c. Build api-gateway image ─────────────────────────────────────────────
+log "Building api-gateway image: $FULL_API_GATEWAY ..."
+docker build $BUILD_FLAGS \
+  -t "$FULL_API_GATEWAY" \
+  -f "$API_GATEWAY_DIR/Dockerfile" \
+  "$API_GATEWAY_DIR"
+ok "API gateway image built: $FULL_API_GATEWAY"
+
 # ─── 3. Build frontend image ─────────────────────────────────────────────────
 log "Building frontend image: $FULL_FRONTEND ..."
 docker build $BUILD_FLAGS \
@@ -245,11 +260,12 @@ if $PUSH; then
   docker push "$FULL_BACKEND"
   docker push "$FULL_FRONTEND"
   docker push "$FULL_FILE_SERVICE"
+  docker push "$FULL_API_GATEWAY"
   ok "Images pushed to registry"
 fi
 
 # ─── 5. Stop and remove existing app containers ──────────────────────────────
-for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND" "$CONTAINER_FILE_SERVICE"; do
+for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND" "$CONTAINER_FILE_SERVICE" "$CONTAINER_API_GATEWAY"; do
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
     log "Stopping and removing container: $name"
     docker stop "$name" 2>/dev/null || true
@@ -298,6 +314,18 @@ docker run -d \
   "$FULL_BACKEND"
 ok "Backend container started"
 
+# ─── 6c. Run api-gateway container ───────────────────────────────────────────
+log "Starting api-gateway container on port $PORT_API_GATEWAY ..."
+docker run -d \
+  --name "$CONTAINER_API_GATEWAY" \
+  --network "wacchat_wacchat" \
+  -p "$PORT_API_GATEWAY:$PORT_API_GATEWAY" \
+  -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
+  -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:$PORT_FILE_SERVICE" \
+  --restart unless-stopped \
+  "$FULL_API_GATEWAY"
+ok "API gateway container started"
+
 # ─── 7. Run frontend container ───────────────────────────────────────────────
 log "Starting frontend container on port $PORT_FRONTEND ..."
 docker run -d \
@@ -333,11 +361,35 @@ else
   echo "  docker logs $CONTAINER_BACKEND"
 fi
 
+# ─── 8b. API gateway health check ────────────────────────────────────────────
+log "Waiting for API gateway to be ready..."
+GATEWAY_HEALTH_URL="http://localhost:$PORT_API_GATEWAY/actuator/health"
+
+gateway_healthy=false
+for i in $(seq 1 $MAX_RETRIES); do
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" "$GATEWAY_HEALTH_URL" 2>/dev/null || echo "000")
+  if [[ "$http_code" == "200" ]]; then
+    gateway_healthy=true
+    break
+  fi
+  echo "  Attempt $i/$MAX_RETRIES — HTTP $http_code (retrying in ${RETRY_INTERVAL}s...)"
+  sleep $RETRY_INTERVAL
+done
+
+if $gateway_healthy; then
+  ok "API gateway is healthy at $GATEWAY_HEALTH_URL"
+else
+  echo ""
+  log "API gateway health check timed out after $((MAX_RETRIES * RETRY_INTERVAL))s — check container logs:"
+  echo "  docker logs $CONTAINER_API_GATEWAY"
+fi
+
 # ─── Summary ─────────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " Deploy complete — env=$ENV"
 echo ""
+echo " API Gateway  : http://localhost:$PORT_API_GATEWAY"
 echo " Backend      : http://localhost:$PORT_BACKEND"
 echo " Frontend     : http://localhost:$PORT_FRONTEND"
 echo " File-service : http://localhost:$PORT_FILE_SERVICE"
@@ -345,6 +397,7 @@ echo " Swagger      : http://localhost:$PORT_BACKEND/swagger-ui.html"
 echo " Keycloak     : http://localhost:8180"
 echo ""
 echo " Logs:"
+echo "   docker logs -f $CONTAINER_API_GATEWAY"
 echo "   docker logs -f $CONTAINER_BACKEND"
 echo "   docker logs -f $CONTAINER_FRONTEND"
 echo "   docker logs -f $CONTAINER_FILE_SERVICE"

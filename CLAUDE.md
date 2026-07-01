@@ -13,10 +13,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ├── .env.example                # Copy to .env and fill in values
 └── wac/
     ├── backend/                # Spring Boot 3.4.1 API (Java 17, Maven)
-    ├── frontend/               # Angular 19 SPA (TypeScript, npm)
-    ├── database/               # Reference schema SQL (schema.sql)
-    ├── keycloak/realms/        # wacchat.json.template — rendered to wacchat.json at deploy time
-    └── documentation/          # Additional docs
+    ├── api-gateway/            # Spring Cloud Gateway — single edge entrypoint (Java 17, Maven)
+    ├── file-service/           # Standalone file storage microservice — Cloudflare R2 (Java 17, Maven)
+    ├── frontend/                # Angular 19 SPA (TypeScript, npm)
+    ├── database/                # Reference schema SQL (schema.sql)
+    ├── keycloak/realms/         # wacchat.json.template — rendered to wacchat.json at deploy time
+    └── documentation/           # Additional docs
 ```
 
 ## Commands
@@ -56,6 +58,22 @@ cd wac/backend
 
 Swagger UI: `http://localhost:8082/swagger-ui.html`
 
+### File service
+
+```bash
+cd wac/file-service
+./mvnw spring-boot:run          # dev server at http://localhost:8083
+```
+
+### API Gateway
+
+```bash
+cd wac/api-gateway
+./mvnw spring-boot:run          # dev server at http://localhost:8081 — routes to backend:8082 and file-service:8083
+```
+
+The frontend never calls backend or file-service directly — it always goes through the gateway (`proxy.conf.json` in dev, `nginx.conf` in prod).
+
 ### Frontend
 
 ```bash
@@ -75,6 +93,18 @@ cd wac/frontend && npm run api-gen
 ```
 
 ## Architecture
+
+### API Gateway
+
+`wac/api-gateway` (Spring Cloud Gateway, WebFlux/Netty — reactive, not the servlet stack backend/file-service use) is the single edge entrypoint the frontend talks to. Routes (YAML-driven, `wac/api-gateway/src/main/resources/application.yml`):
+
+| Predicate | Target |
+|-----------|--------|
+| `/api/**` | `wac/backend` |
+| `/ws/**` | `wac/backend` (WebSocket upgrade, proxied transparently) |
+| `/files/**` | `wac/file-service`, rewritten to `/api/v1/files/**` |
+
+CORS is centralized at the gateway via `spring.cloud.gateway.globalcors` (allowed origins `http://localhost:4200` and `https://wacchat.win`); the backend no longer sets `Access-Control-Allow-*` headers itself. The one exception is `WebSocketConfig`'s own SockJS origin allowlist (`registry.addEndpoint("/ws").setAllowedOrigins(...)`), which is a separate, independent handshake-level check kept as defense-in-depth — the gateway forwards the browser's `Origin` header unmodified on `/ws/**`. The gateway does not inject the file-service internal API key; `file-service`'s own `InternalAuthFilter` still gates every request regardless of path.
 
 ### Backend domain structure
 
@@ -104,7 +134,7 @@ All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `creat
   |-----------|-------------|
   | Send message | `/app/chat` |
   | Receive notifications | `/user/{userId}/chat` |
-- **File uploads** — both message media (images, under `messages/{userId}/...`) and user avatars (under `avatars/{userId}/...`) are stored in a public-read Cloudflare R2 bucket via `R2StorageService` (AWS SDK v2 S3-compatible client, `file` domain) — see `R2_*` env vars. Max multipart size 50 MB. `Message.mediaFilePath` holds a public R2 URL; `MessageMapper`/`Notification` resolve it via `FileUtils.resolveMedia`, which also still reads pre-migration messages whose `mediaFilePath` is a legacy local disk path (returned as base64) for backward compatibility.
+- **File uploads** — both message media (images, under `messages/{userId}/...`) and user avatars (under `avatars/{userId}/...`) are stored in a public-read Cloudflare R2 bucket by `wac/file-service` (standalone module, `R2StorageService`, AWS SDK v2 S3-compatible client — see its own `R2_*` env vars). Backend's `file` domain now only holds the client side: `FileServiceClient` (`WebClient`, guarded by Resilience4j circuit breaker + retry, config under `application.file-service.*` / `resilience4j.*.instances.fileService`) and `FileUtils`. Max multipart size 50 MB. `Message.mediaFilePath` holds a public R2 URL; `MessageMapper`/`Notification` resolve it via `FileUtils.resolveMedia`, which also still reads pre-migration messages whose `mediaFilePath` is a legacy local disk path (returned as base64) for backward compatibility.
 - **Flyway** — present in deps but `flyway.enabled: false`; schema is applied manually from `database/schema.sql`. JPA `ddl-auto: update` handles incremental DDL in dev.
 - **Scheduled cleanup** — `UserCleanupService` runs every Monday at 03:00 AM; deletes inactive users (>21 days, configurable) from both Keycloak and the local DB. The `ADMIN_EMAIL` / `application.cleanup.protected-email` account is never deleted.
 - **Mail** — Resend SMTP (`smtp.resend.com:465`). Credentials via `MAIL_USERNAME` / `MAIL_PASSWORD` env vars.
@@ -141,8 +171,15 @@ Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT
 | `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `admin` |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | (empty — mail disabled) |
 | `ADMIN_EMAIL` | (empty — cleanup protects no account) |
-| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` / `R2_PUBLIC_BASE_URL` | (empty — avatar upload disabled) |
+| `FILE_SERVICE_BASE_URL` | `http://localhost:8083` |
+| `FILE_SERVICE_INTERNAL_API_KEY` | (empty) |
+
+`wac/file-service/src/main/resources/application.yml` — `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` / `R2_PUBLIC_BASE_URL` (empty — avatar/media upload disabled) and `FILE_SERVICE_INTERNAL_API_KEY` (must match the value backend uses to call it).
+
+`wac/api-gateway/src/main/resources/application.yml` — `BACKEND_BASE_URL` (default `http://localhost:8082`) and `FILE_SERVICE_BASE_URL` (default `http://localhost:8083`).
 
 `wac/keycloak/realms/wacchat.json` is **generated** from `wacchat.json.template` by `deploy-local.sh` and `deploy-prod.sh` via `envsubst`. Never commit the rendered `.json` file; edit the `.json.template` instead.
 
-CORS and WebSocket allowed origins: `http://localhost:4200` and `https://wacchat.win`.
+`wac/keycloak/themes/wacchat/` is a custom Keycloak theme (`loginTheme`/`accountTheme: wacchat` in the realm template) — FreeMarker templates (`login.ftl`, `register.ftl`, `login-reset-password.ftl`, `login-update-password.ftl`, etc.) under `login/` give the login/register/password-reset flows the WacChat dark glassmorphism look instead of Keycloak's default theme. Note: the "forgot password" flow asks for the Keycloak login identifier (email, or username for Google-linked accounts), which is distinct from the in-app chat `username` stored in the `users` table.
+
+CORS is enforced at `wac/api-gateway` (`spring.cloud.gateway.globalcors`), not in the backend. Allowed origins everywhere (gateway CORS + `WebSocketConfig`'s SockJS handshake check): `http://localhost:4200` and `https://wacchat.win`.
