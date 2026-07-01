@@ -22,7 +22,7 @@ export class UsernameSetupComponent implements OnInit, OnDestroy {
 
   private inputSubject = new Subject<string>();
   private checkSub?: Subscription;
-  private readonly usernamePattern = /^[a-z0-9_-]{3,20}$/;
+  private readonly usernamePattern = /^[a-z0-9_.-]{3,20}$/;
 
   constructor(private usernameService: UsernameService) {}
 
