@@ -24,20 +24,13 @@
     </#if>
 
     <p class="wac-page-subtitle" style="margin-bottom:1.25rem">
-      <#if realm.duplicateEmailsAllowed>
-        ${msg("emailInstructionUsername")}
-      <#else>
-        ${msg("emailInstruction")}
-      </#if>
+      Inserisci l'email con cui hai effettuato l'accesso a WacChat: ti invieremo un link per reimpostare la password.
+      <br><strong>Attenzione:</strong> non è lo username della chat (quello con la @ mostrato agli altri utenti), ma l'email dell'account di accesso.
     </p>
 
     <form id="kc-reset-password-form" action="${url.loginAction}" method="post">
       <div class="wac-field">
-        <label for="username">
-          <#if !realm.loginWithEmailAllowed>${msg("username")}
-          <#elseif !realm.registrationEmailAsUsername>${msg("usernameOrEmail")}
-          <#else>${msg("email")}</#if>
-        </label>
+        <label for="username">Email di accesso</label>
         <input id="username" name="username" type="text"
                value="${(auth.attemptedUsername!'')}"
                autofocus
