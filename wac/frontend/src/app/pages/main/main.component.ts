@@ -88,17 +88,20 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.browserNotifications.requestPermission();
     this.initWebSocket();
     this.getAllChats();
+    this.refreshCurrentUser();
+    this.heartbeatHandle = setInterval(() => this.refreshCurrentUser(), HEARTBEAT_INTERVAL_MS);
+  }
+
+  private refreshCurrentUser(): void {
     this.usernameService.getMe().subscribe({
       next: user => {
         this.currentUser = user;
         if (!user.username) {
           this.showUsernameModal = true;
         }
-      }
+      },
+      error: err => console.error('Failed to refresh current user', err)
     });
-    this.heartbeatHandle = setInterval(() => {
-      this.usernameService.getMe().subscribe();
-    }, HEARTBEAT_INTERVAL_MS);
   }
 
   onUsernameSet(username: string): void {
