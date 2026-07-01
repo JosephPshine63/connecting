@@ -37,6 +37,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 50MB
+      max-request-size: 50MB
 
 management:
   health:
@@ -58,11 +59,29 @@ application:
   cleanup:
     inactivity-days: 21
     protected-email: ${ADMIN_EMAIL:}
-  r2:
-    account-id: ${R2_ACCOUNT_ID:}
-    access-key-id: ${R2_ACCESS_KEY_ID:}
-    secret-access-key: ${R2_SECRET_ACCESS_KEY:}
-    bucket-name: ${R2_BUCKET_NAME:}
-    public-base-url: ${R2_PUBLIC_BASE_URL:}
+  file-service:
+    base-url: ${FILE_SERVICE_BASE_URL:http://localhost:8083}
+    internal-api-key: ${FILE_SERVICE_INTERNAL_API_KEY:}
+    connect-timeout-ms: 2000
+    response-timeout-ms: 15000
   session:
     stale-after-seconds: ${SESSION_STALE_SECONDS:120}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      fileService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15s
+        permittedNumberOfCallsInHalfOpenState: 3
+        ignoreExceptions:
+          - org.springframework.web.server.ResponseStatusException
+  retry:
+    instances:
+      fileService:
+        maxAttempts: 2
+        waitDuration: 300ms
+        ignoreExceptions:
+          - org.springframework.web.server.ResponseStatusException

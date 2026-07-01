@@ -5,17 +5,21 @@ set -euo pipefail
 REGISTRY=""                          # e.g. "registry.example.com/myorg" (leave empty for no prefix)
 IMAGE_BACKEND="wacchat-backend"
 IMAGE_FRONTEND="wacchat-frontend"
+IMAGE_FILE_SERVICE="wacchat-file-service"
 TAG="latest"
 CONTAINER_BACKEND="wacchat-backend"
 CONTAINER_FRONTEND="wacchat-frontend"
+CONTAINER_FILE_SERVICE="wacchat-file-service"
 PORT_BACKEND=8082
 PORT_FRONTEND=4200
+PORT_FILE_SERVICE=8083
 COMPOSE_DIR="."
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/wac/backend"
 FRONTEND_DIR="$SCRIPT_DIR/wac/frontend"
+FILE_SERVICE_DIR="$SCRIPT_DIR/wac/file-service"
 
 # ─── 0. Git pull (always first) ──────────────────────────────────────────────
 echo "[$(date '+%H:%M:%S')] Pulling latest changes from origin..."
@@ -36,6 +40,8 @@ POSTGRES_DB=wacchat_db
 
 KEYCLOAK_ADMIN_USERNAME=admin
 KEYCLOAK_ADMIN_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
+
+FILE_SERVICE_INTERNAL_API_KEY=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 EOF
   echo "[deploy] .env created at $SCRIPT_DIR/.env — save the Keycloak admin password before proceeding."
 fi
@@ -121,8 +127,9 @@ command -v docker compose >/dev/null 2>&1 || \
   command -v docker-compose >/dev/null 2>&1 || \
   err "docker compose (v2) or docker-compose (v1) is required"
 
-[[ -d "$BACKEND_DIR" ]]  || err "Backend directory not found: $BACKEND_DIR"
-[[ -d "$FRONTEND_DIR" ]] || err "Frontend directory not found: $FRONTEND_DIR"
+[[ -d "$BACKEND_DIR" ]]      || err "Backend directory not found: $BACKEND_DIR"
+[[ -d "$FRONTEND_DIR" ]]     || err "Frontend directory not found: $FRONTEND_DIR"
+[[ -d "$FILE_SERVICE_DIR" ]] || err "File-service directory not found: $FILE_SERVICE_DIR"
 
 ok "Preflight checks passed"
 
@@ -149,9 +156,11 @@ esac
 if [[ -n "$REGISTRY" ]]; then
   FULL_BACKEND="$REGISTRY/$IMAGE_BACKEND:$TAG"
   FULL_FRONTEND="$REGISTRY/$IMAGE_FRONTEND:$TAG"
+  FULL_FILE_SERVICE="$REGISTRY/$IMAGE_FILE_SERVICE:$TAG"
 else
   FULL_BACKEND="$IMAGE_BACKEND:$TAG"
   FULL_FRONTEND="$IMAGE_FRONTEND:$TAG"
+  FULL_FILE_SERVICE="$IMAGE_FILE_SERVICE:$TAG"
 fi
 
 BUILD_FLAGS="--no-cache"
@@ -213,6 +222,14 @@ docker build $BUILD_FLAGS \
   "$BACKEND_DIR"
 ok "Backend image built: $FULL_BACKEND"
 
+# ─── 5b. Build file-service image ────────────────────────────────────────────
+log "Building file-service image: $FULL_FILE_SERVICE ..."
+docker build $BUILD_FLAGS \
+  -t "$FULL_FILE_SERVICE" \
+  -f "$FILE_SERVICE_DIR/Dockerfile" \
+  "$FILE_SERVICE_DIR"
+ok "File-service image built: $FULL_FILE_SERVICE"
+
 # ─── 3. Build frontend image ─────────────────────────────────────────────────
 log "Building frontend image: $FULL_FRONTEND ..."
 docker build $BUILD_FLAGS \
@@ -227,11 +244,12 @@ if $PUSH; then
   log "Pushing images to $REGISTRY ..."
   docker push "$FULL_BACKEND"
   docker push "$FULL_FRONTEND"
+  docker push "$FULL_FILE_SERVICE"
   ok "Images pushed to registry"
 fi
 
 # ─── 5. Stop and remove existing app containers ──────────────────────────────
-for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND"; do
+for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND" "$CONTAINER_FILE_SERVICE"; do
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
     log "Stopping and removing container: $name"
     docker stop "$name" 2>/dev/null || true
@@ -240,7 +258,23 @@ for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND"; do
 done
 ok "Old containers removed"
 
-# ─── 6. Run backend container ────────────────────────────────────────────────
+# ─── 6a. Run file-service container ──────────────────────────────────────────
+log "Starting file-service container on port $PORT_FILE_SERVICE ..."
+docker run -d \
+  --name "$CONTAINER_FILE_SERVICE" \
+  --network "wacchat_wacchat" \
+  -p "$PORT_FILE_SERVICE:8080" \
+  -e R2_ACCOUNT_ID="${R2_ACCOUNT_ID:-}" \
+  -e R2_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID:-}" \
+  -e R2_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY:-}" \
+  -e R2_BUCKET_NAME="${R2_BUCKET_NAME:-}" \
+  -e R2_PUBLIC_BASE_URL="${R2_PUBLIC_BASE_URL:-}" \
+  -e FILE_SERVICE_INTERNAL_API_KEY="${FILE_SERVICE_INTERNAL_API_KEY:-}" \
+  --restart unless-stopped \
+  "$FULL_FILE_SERVICE"
+ok "File-service container started"
+
+# ─── 6b. Run backend container ───────────────────────────────────────────────
 log "Starting backend container on port $PORT_BACKEND ..."
 docker run -d \
   --name "$CONTAINER_BACKEND" \
@@ -257,11 +291,8 @@ docker run -d \
   -e MAIL_USERNAME="${MAIL_USERNAME:-}" \
   -e MAIL_PASSWORD="${MAIL_PASSWORD:-}" \
   -e MAIL_FROM="${MAIL_FROM:-}" \
-  -e R2_ACCOUNT_ID="${R2_ACCOUNT_ID:-}" \
-  -e R2_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID:-}" \
-  -e R2_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY:-}" \
-  -e R2_BUCKET_NAME="${R2_BUCKET_NAME:-}" \
-  -e R2_PUBLIC_BASE_URL="${R2_PUBLIC_BASE_URL:-}" \
+  -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:8080" \
+  -e FILE_SERVICE_INTERNAL_API_KEY="${FILE_SERVICE_INTERNAL_API_KEY:-}" \
   -v "$SCRIPT_DIR/wac/backend/uploads:/app/uploads" \
   --restart unless-stopped \
   "$FULL_BACKEND"
@@ -307,12 +338,14 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " Deploy complete — env=$ENV"
 echo ""
-echo " Backend  : http://localhost:$PORT_BACKEND"
-echo " Frontend : http://localhost:$PORT_FRONTEND"
-echo " Swagger  : http://localhost:$PORT_BACKEND/swagger-ui.html"
-echo " Keycloak : http://localhost:8180"
+echo " Backend      : http://localhost:$PORT_BACKEND"
+echo " Frontend     : http://localhost:$PORT_FRONTEND"
+echo " File-service : http://localhost:$PORT_FILE_SERVICE"
+echo " Swagger      : http://localhost:$PORT_BACKEND/swagger-ui.html"
+echo " Keycloak     : http://localhost:8180"
 echo ""
 echo " Logs:"
 echo "   docker logs -f $CONTAINER_BACKEND"
 echo "   docker logs -f $CONTAINER_FRONTEND"
+echo "   docker logs -f $CONTAINER_FILE_SERVICE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

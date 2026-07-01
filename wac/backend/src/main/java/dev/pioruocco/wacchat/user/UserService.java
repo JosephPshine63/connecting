@@ -2,7 +2,7 @@ package dev.pioruocco.wacchat.user;
 
 import dev.pioruocco.wacchat.chat.Chat;
 import dev.pioruocco.wacchat.chat.ChatRepository;
-import dev.pioruocco.wacchat.file.R2StorageService;
+import dev.pioruocco.wacchat.file.FileServiceClient;
 import dev.pioruocco.wacchat.notification.Notification;
 import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.notification.NotificationType;
@@ -23,7 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-    private final R2StorageService r2StorageService;
+    private final FileServiceClient fileServiceClient;
     private final ChatRepository chatRepository;
     private final NotificationService notificationService;
 
@@ -58,11 +58,11 @@ public class UserService {
         User user = userRepository.findByPublicId(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         String oldAvatarUrl = user.getAvatarUrl();
-        String newAvatarUrl = r2StorageService.uploadAvatar(file, user.getId());
+        String newAvatarUrl = fileServiceClient.uploadAvatar(file, user.getId());
         user.setAvatarUrl(newAvatarUrl);
         UserResponse response = userMapper.toUserResponse(userRepository.save(user));
         if (oldAvatarUrl != null) {
-            r2StorageService.deleteAvatar(oldAvatarUrl);
+            fileServiceClient.deleteAvatar(oldAvatarUrl);
         }
         notifyChatPartnersOfAvatarChange(user.getId(), newAvatarUrl);
         return response;
@@ -75,7 +75,7 @@ public class UserService {
         user.setAvatarUrl(null);
         UserResponse response = userMapper.toUserResponse(userRepository.save(user));
         if (oldAvatarUrl != null) {
-            r2StorageService.deleteAvatar(oldAvatarUrl);
+            fileServiceClient.deleteAvatar(oldAvatarUrl);
         }
         notifyChatPartnersOfAvatarChange(user.getId(), null);
         return response;

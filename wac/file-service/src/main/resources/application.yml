@@ -1,0 +1,19 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: file-service
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+application:
+  r2:
+    account-id: ${R2_ACCOUNT_ID:}
+    access-key-id: ${R2_ACCESS_KEY_ID:}
+    secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+    bucket-name: ${R2_BUCKET_NAME:}
+    public-base-url: ${R2_PUBLIC_BASE_URL:}
+  internal-api-key: ${FILE_SERVICE_INTERNAL_API_KEY:}
