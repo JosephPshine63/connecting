@@ -26,12 +26,12 @@ public class WebClientConfig {
     private long responseTimeoutMs;
 
     @Bean
-    public WebClient fileServiceWebClient() {
+    public WebClient fileServiceWebClient(WebClient.Builder webClientBuilder) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeoutMs)
                 .responseTimeout(Duration.ofMillis(responseTimeoutMs));
 
-        return WebClient.builder()
+        return webClientBuilder
                 .baseUrl(baseUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .defaultHeader("X-Internal-Api-Key", internalApiKey)

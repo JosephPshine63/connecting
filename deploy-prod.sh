@@ -46,6 +46,9 @@ KEYCLOAK_ADMIN_USERNAME=admin
 KEYCLOAK_ADMIN_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 
 FILE_SERVICE_INTERNAL_API_KEY=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
+
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 EOF
   echo "[deploy] .env created at $SCRIPT_DIR/.env — save the Keycloak admin password before proceeding."
 fi
@@ -177,6 +180,9 @@ log "Stopping infrastructure containers for rebuild..."
 COMPOSE_CMD="docker compose"
 command -v docker compose >/dev/null 2>&1 || COMPOSE_CMD="docker-compose"
 
+# Observability stack depends on the infra network, so stop it first
+(cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD -f docker-compose.observability.yml down 2>/dev/null || true)
+
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD down)
 ok "Infrastructure stopped"
 
@@ -215,6 +221,11 @@ log "Starting infrastructure (PostgreSQL + Keycloak)..."
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD up -d)
 ok "Infrastructure is up"
 set_keycloak_admin_email
+
+# Observability stack needs the network created by the infra compose file
+log "Starting observability stack (Prometheus, Grafana, Loki, Tempo)..."
+(cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD -f docker-compose.observability.yml up -d)
+ok "Observability stack is up"
 
 # ─── 4. Docker cleanup ───────────────────────────────────────────────────────
 log "Cleaning Docker build cache..."
@@ -286,6 +297,9 @@ docker run -d \
   -e R2_BUCKET_NAME="${R2_BUCKET_NAME:-}" \
   -e R2_PUBLIC_BASE_URL="${R2_PUBLIC_BASE_URL:-}" \
   -e FILE_SERVICE_INTERNAL_API_KEY="${FILE_SERVICE_INTERNAL_API_KEY:-}" \
+  -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
+  -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
+  -e TRACING_SAMPLING_PROBABILITY="${TRACING_SAMPLING_PROBABILITY:-1.0}" \
   --restart unless-stopped \
   "$FULL_FILE_SERVICE"
 ok "File-service container started"
@@ -309,6 +323,9 @@ docker run -d \
   -e MAIL_FROM="${MAIL_FROM:-}" \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:8080" \
   -e FILE_SERVICE_INTERNAL_API_KEY="${FILE_SERVICE_INTERNAL_API_KEY:-}" \
+  -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
+  -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
+  -e TRACING_SAMPLING_PROBABILITY="${TRACING_SAMPLING_PROBABILITY:-1.0}" \
   -v "$SCRIPT_DIR/wac/backend/uploads:/app/uploads" \
   --restart unless-stopped \
   "$FULL_BACKEND"
@@ -322,6 +339,9 @@ docker run -d \
   -p "$PORT_API_GATEWAY:$PORT_API_GATEWAY" \
   -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:$PORT_FILE_SERVICE" \
+  -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
+  -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
+  -e TRACING_SAMPLING_PROBABILITY="${TRACING_SAMPLING_PROBABILITY:-1.0}" \
   --restart unless-stopped \
   "$FULL_API_GATEWAY"
 ok "API gateway container started"
@@ -395,6 +415,8 @@ echo " Frontend     : http://localhost:$PORT_FRONTEND"
 echo " File-service : http://localhost:$PORT_FILE_SERVICE"
 echo " Swagger      : http://localhost:$PORT_BACKEND/swagger-ui.html"
 echo " Keycloak     : http://localhost:8180"
+echo " Grafana      : http://localhost:3000"
+echo " Prometheus   : http://localhost:9090"
 echo ""
 echo " Logs:"
 echo "   docker logs -f $CONTAINER_API_GATEWAY"

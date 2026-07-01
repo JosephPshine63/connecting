@@ -58,6 +58,13 @@ fi
 envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET} ${MAIL_USERNAME} ${MAIL_PASSWORD} ${MAIL_FROM}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
 MAIL_PASSWORD="$_pw_orig"
 
+# Stop existing observability stack (depends on the infra network, so stop it first)
+log "Stopping existing observability stack..."
+docker compose \
+  -f "$SCRIPT_DIR/docker-compose.observability.yml" \
+  -f "$SCRIPT_DIR/docker-compose.observability.local.yml" \
+  down 2>/dev/null || true
+
 # Stop existing infra containers
 log "Stopping existing infrastructure..."
 docker compose \
@@ -78,12 +85,23 @@ docker compose \
 ok "Infrastructure up"
 set_keycloak_admin_email
 
+# Start observability stack (needs the network created by the infra compose file)
+log "Starting observability stack (Prometheus, Grafana, Loki, Tempo)..."
+docker compose \
+  -f "$SCRIPT_DIR/docker-compose.observability.yml" \
+  -f "$SCRIPT_DIR/docker-compose.observability.local.yml" \
+  up -d
+ok "Observability stack up"
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " Local dev environment ready"
 echo ""
 echo " Keycloak : http://localhost:8180"
 echo " Database : localhost:5433"
+echo ""
+echo " Grafana    : http://localhost:3000 (admin/admin unless overridden in .env)"
+echo " Prometheus : http://localhost:9090"
 echo ""
 echo " Start backend (terminal 1):"
 echo "   cd wac/backend && ./mvnw spring-boot:run"
