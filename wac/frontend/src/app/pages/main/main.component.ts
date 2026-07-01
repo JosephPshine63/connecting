@@ -278,8 +278,10 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.socketClient = new Client({
       webSocketFactory: () => new SockJS(`${window.location.origin}/ws`) as any,
       connectHeaders: {
-        'Authorization': 'Bearer ' + this.keycloakService.keycloak.token
+        'Authorization': 'Bearer ' + this.keycloakService.keycloak.token,
+        'X-Tab-Id': this.keycloakService.tabId
       },
+      reconnectDelay: 5000,
       onConnect: () => {
         this.notificationSubscription = this.socketClient!.subscribe(
           subUrl,

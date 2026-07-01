@@ -5,12 +5,15 @@ import {HttpClient} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+const TAB_ID_STORAGE_KEY = 'wacchat_tab_id';
+
 @Injectable({
   providedIn: 'root'
 })
 export class KeycloakService {
 
   private _keycloak: Keycloak | undefined;
+  private _tabId: string | undefined;
 
   constructor(
     private router: Router,
@@ -50,6 +53,18 @@ export class KeycloakService {
 
   get fullName(): string {
     return this.keycloak.tokenParsed?.['name'] as string;
+  }
+
+  /**
+   * Identifies this browser tab, unlike Keycloak's `sid` which is shared by every tab of the
+   * same browser via the SSO cookie. sessionStorage is per-tab, so each tab gets its own id.
+   */
+  get tabId(): string {
+    if (!this._tabId) {
+      this._tabId = sessionStorage.getItem(TAB_ID_STORAGE_KEY) ?? crypto.randomUUID();
+      sessionStorage.setItem(TAB_ID_STORAGE_KEY, this._tabId);
+    }
+    return this._tabId;
   }
 
   async logout() {
