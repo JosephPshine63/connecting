@@ -2,6 +2,8 @@ server:
   port: 8083
 
 spring:
+  banner:
+    location: classpath:banner/banner.txt
   application:
     name: file-service
   servlet:
