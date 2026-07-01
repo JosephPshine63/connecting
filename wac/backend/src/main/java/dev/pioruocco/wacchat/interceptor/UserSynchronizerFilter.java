@@ -31,7 +31,7 @@ public class UserSynchronizerFilter extends OncePerRequestFilter {
             JwtAuthenticationToken token = ((JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication());
 
             try {
-                userSynchronizer.synchronizeWithIdp(token.getToken());
+                userSynchronizer.synchronizeWithIdp(token.getToken(), request.getHeader("X-Tab-Id"));
             } catch (SessionConflictException e) {
                 response.setStatus(HttpServletResponse.SC_CONFLICT);
                 response.setContentType("application/json");

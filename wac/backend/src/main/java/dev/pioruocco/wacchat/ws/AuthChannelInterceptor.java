@@ -46,10 +46,10 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
             try {
                 Jwt jwt = jwtDecoder.decode(tokenValue);
                 AbstractAuthenticationToken auth = jwtConverter.convert(jwt);
-                String sid = jwt.getClaimAsString("sid");
-                if (sid != null && auth != null) {
+                String tabId = accessor.getFirstNativeHeader("X-Tab-Id");
+                if (tabId != null && auth != null) {
                     userRepository.findByPublicId(auth.getName())
-                            .filter(user -> sessionGuard.isConflicting(user, sid))
+                            .filter(user -> sessionGuard.isConflicting(user, tabId))
                             .ifPresent(user -> {
                                 throw new MessageDeliveryException("Blocked: another session is already active for user " + user.getId());
                             });
