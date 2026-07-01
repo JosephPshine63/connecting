@@ -29,8 +29,13 @@ public class MailService {
             msg.setSubject("Benvenuto su WacChat!");
             msg.setText(
                 "Ciao " + user.getFirstName() + ",\n\n" +
-                "Il tuo account è stato creato con successo su WacChat.\n" +
+                "Benvenuto su WacChat! Sono Giuseppe Pio Ruocco, il creatore di questa app.\n" +
+                "L'ho realizzata puramente per passione, come hobby, ma anche per attrarre qualche occasione professionale.\n" +
+                "Spero possa piacerti ;)\n\n" +
                 "Puoi iniziare a chattare visitando https://wacchat.win\n\n" +
+                "Se vuoi contattarmi:\n" +
+                "Email: dev.pioruocco@gmail.com\n" +
+                "LinkedIn: https://www.linkedin.com/in/giuseppe-pio-ruocco-7b4367267/\n\n" +
                 "A presto!"
             );
             mailSender.send(msg);
