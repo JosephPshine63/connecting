@@ -23,6 +23,11 @@ import {SessionGuardService} from '../../utils/session/session-guard.service';
 import {BrowserNotificationService} from '../../utils/notifications/browser-notification.service';
 
 const HEARTBEAT_INTERVAL_MS = 60000;
+const ARNO_USER_ID = '00000000-0000-0000-0000-000000000001';
+const ARNO_TYPING_TIMEOUT_MS = 20000;
+const PEER_TYPING_SAFETY_TIMEOUT_MS = 8000;
+const TYPING_STOP_DEBOUNCE_MS = 2000;
+const TYPING_SEND_THROTTLE_MS = 3000;
 
 @Component({
   selector: 'app-main',
@@ -57,6 +62,11 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('scrollableDiv') scrollableDiv!: ElementRef<HTMLDivElement>;
   private notificationSubscription: StompSubscription | null = null;
   private heartbeatHandle: ReturnType<typeof setInterval> | null = null;
+  peerTypingChatId: string | null = null;
+  private peerTypingTimeout: ReturnType<typeof setTimeout> | null = null;
+  private typingStopTimeout: ReturnType<typeof setTimeout> | null = null;
+  private typingActive = false;
+  private lastTypingSentAt = 0;
 
   constructor(
     private chatService: ChatService,
@@ -81,6 +91,12 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     if (this.heartbeatHandle !== null) {
       clearInterval(this.heartbeatHandle);
+    }
+    if (this.peerTypingTimeout !== null) {
+      clearTimeout(this.peerTypingTimeout);
+    }
+    if (this.typingStopTimeout !== null) {
+      clearTimeout(this.typingStopTimeout);
     }
   }
 
@@ -127,6 +143,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   chatSelected(chatResponse: ChatResponse) {
+    this.sendTypingStop();
+    this.stopPeerTyping();
     if (!this.chats.find(c => c.id === chatResponse.id)) {
       this.chats.unshift(chatResponse);
     }
@@ -163,8 +181,95 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.chatMessages.push(message);
           this.messageContent = '';
           this.showEmojis = false;
+          if (this.getReceiverId() === ARNO_USER_ID) {
+            this.startArnoTyping(this.selectedChat.id as string);
+          } else {
+            this.sendTypingStop();
+          }
         }
       });
+    }
+  }
+
+  onMessageInput(): void {
+    if (!this.selectedChat.id || this.getReceiverId() === ARNO_USER_ID) {
+      return;
+    }
+    this.sendTypingStart();
+    if (this.typingStopTimeout !== null) {
+      clearTimeout(this.typingStopTimeout);
+    }
+    this.typingStopTimeout = setTimeout(() => this.sendTypingStop(), TYPING_STOP_DEBOUNCE_MS);
+  }
+
+  private sendTypingStart(): void {
+    const now = Date.now();
+    if (this.typingActive && now - this.lastTypingSentAt < TYPING_SEND_THROTTLE_MS) {
+      return;
+    }
+    this.typingActive = true;
+    this.lastTypingSentAt = now;
+    this.publishTyping(true);
+  }
+
+  private sendTypingStop(): void {
+    if (this.typingStopTimeout !== null) {
+      clearTimeout(this.typingStopTimeout);
+      this.typingStopTimeout = null;
+    }
+    if (!this.typingActive) {
+      return;
+    }
+    this.typingActive = false;
+    this.publishTyping(false);
+  }
+
+  private publishTyping(typing: boolean): void {
+    if (!this.socketClient?.connected || !this.selectedChat.id) {
+      return;
+    }
+    this.socketClient.publish({
+      destination: '/app/chat.typing',
+      body: JSON.stringify({
+        chatId: this.selectedChat.id,
+        receiverId: this.getReceiverId(),
+        typing
+      })
+    });
+  }
+
+  private startArnoTyping(chatId: string): void {
+    this.peerTypingChatId = chatId;
+    if (this.peerTypingTimeout !== null) {
+      clearTimeout(this.peerTypingTimeout);
+    }
+    this.peerTypingTimeout = setTimeout(() => {
+      this.ngZone.run(() => this.stopPeerTyping());
+    }, ARNO_TYPING_TIMEOUT_MS);
+  }
+
+  private handlePeerTyping(notification: Notification): void {
+    if (this.selectedChat?.id !== notification.chatId) {
+      return;
+    }
+    if (notification.type === 'TYPING_START') {
+      this.peerTypingChatId = notification.chatId ?? null;
+      if (this.peerTypingTimeout !== null) {
+        clearTimeout(this.peerTypingTimeout);
+      }
+      this.peerTypingTimeout = setTimeout(() => {
+        this.ngZone.run(() => this.stopPeerTyping());
+      }, PEER_TYPING_SAFETY_TIMEOUT_MS);
+    } else {
+      this.stopPeerTyping();
+    }
+  }
+
+  private stopPeerTyping(): void {
+    this.peerTypingChatId = null;
+    if (this.peerTypingTimeout !== null) {
+      clearTimeout(this.peerTypingTimeout);
+      this.peerTypingTimeout = null;
     }
   }
 
@@ -303,8 +408,15 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.applyAvatarUpdate(notification);
         return;
       }
+      if (notification.type === 'TYPING_START' || notification.type === 'TYPING_STOP') {
+        this.handlePeerTyping(notification);
+        return;
+      }
       if (notification.type === 'MESSAGE' || notification.type === 'IMAGE') {
         this.maybeShowDesktopNotification(notification);
+      }
+      if (notification.chatId === this.peerTypingChatId) {
+        this.stopPeerTyping();
       }
       if (this.selectedChat && this.selectedChat.id === notification.chatId) {
         switch (notification.type) {

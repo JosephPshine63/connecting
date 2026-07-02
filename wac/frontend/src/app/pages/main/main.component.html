@@ -131,6 +131,13 @@
               </div>
             }
           }
+          @if (peerTypingChatId === selectedChat.id) {
+            <div class="message-bubble friend typing-indicator">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </div>
+          }
         </div>
 
         <div class="input-bar">
@@ -164,6 +171,7 @@
             placeholder="Scrivi un messaggio…"
             [(ngModel)]="messageContent"
             (keydown)="keyDown($event)"
+            (input)="onMessageInput()"
             (click)="onClick()"
           >
           @if (messageContent) {
