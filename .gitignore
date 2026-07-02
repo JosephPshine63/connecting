@@ -4,3 +4,5 @@ wac/keycloak/realms/connecting.json
 .idea/
 wac/.idea/
 wac/backend/uploads/
+logs/
+.local-services.pids
