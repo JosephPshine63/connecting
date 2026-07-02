@@ -21,6 +21,11 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
   flyway:
     enabled: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:wacchat}
+    password: ${RABBITMQ_PASSWORD:wacchat}
   mail:
     host: smtp.resend.com
     port: 465
@@ -88,6 +93,11 @@ application:
     response-timeout-ms: 15000
   session:
     stale-after-seconds: ${SESSION_STALE_SECONDS:120}
+    internal-api-key: ${BACKEND_INTERNAL_API_KEY:}
+  notification:
+    exchange: wacchat.notifications
+    routing-key: notification
+    queue: wacchat.notifications.queue
 
 resilience4j:
   circuitbreaker:

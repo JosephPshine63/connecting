@@ -40,10 +40,29 @@ services:
       - "start-dev"
       - "--import-realm"
 
+  rabbitmq:
+    container_name: wacchat-rabbitmq
+    image: rabbitmq:3.13-management
+    ports:
+      - 5672:5672     # AMQP (publish/consume notification events)
+      - 61613:61613   # STOMP (WebSocketConfig's broker relay in notification-service)
+      - 15672:15672   # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-wacchat}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-wacchat}
+    volumes:
+      - ./wac/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - rabbitmq:/var/lib/rabbitmq
+    networks:
+      - wacchat
+    restart: unless-stopped
+
 networks:
   wacchat:
     driver: bridge
 
 volumes:
   postgres:
+    driver: local
+  rabbitmq:
     driver: local

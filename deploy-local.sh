@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Local development — starts PostgreSQL + Keycloak in Docker.
-# Run backend and frontend manually (see summary at the end).
+# Local development — starts PostgreSQL + Keycloak + RabbitMQ in Docker.
+# Run backend, api-gateway, notification-service and frontend manually (see summary at the end).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -71,13 +71,13 @@ docker compose \
   -f "$SCRIPT_DIR/docker-compose.yml" \
   -f "$SCRIPT_DIR/docker-compose.local.yml" \
   down 2>/dev/null || true
-for name in wacchat-db keycloak-wacchat; do
+for name in wacchat-db keycloak-wacchat wacchat-rabbitmq; do
   docker rm -f "$name" 2>/dev/null || true
 done
 ok "Cleaned up"
 
 # Start infra with local overrides (KC_HOSTNAME = http://localhost:8180)
-log "Starting PostgreSQL + Keycloak (local mode)..."
+log "Starting PostgreSQL + Keycloak + RabbitMQ (local mode)..."
 docker compose \
   -f "$SCRIPT_DIR/docker-compose.yml" \
   -f "$SCRIPT_DIR/docker-compose.local.yml" \
@@ -99,6 +99,7 @@ echo " Local dev environment ready"
 echo ""
 echo " Keycloak : http://localhost:8180"
 echo " Database : localhost:5433"
+echo " RabbitMQ : localhost:5672 (AMQP), localhost:61613 (STOMP), http://localhost:15672 (management UI)"
 echo ""
 echo " Grafana    : http://localhost:3000 (admin/admin unless overridden in .env)"
 echo " Prometheus : http://localhost:9090"
@@ -107,11 +108,15 @@ echo " Start backend (terminal 1):"
 echo "   cd wac/backend && ./mvnw spring-boot:run"
 echo "   (direnv loads .env automatically — no extra vars needed)"
 echo ""
-echo " Start API gateway (terminal 2):"
-echo "   cd wac/api-gateway && ./mvnw spring-boot:run"
-echo "   (routes to backend:8082 and file-service:8083 by default — no extra vars needed for local dev)"
+echo " Start notification-service (terminal 2):"
+echo "   cd wac/notification-service && ./mvnw spring-boot:run"
+echo "   (connects to RabbitMQ on localhost:5672/61613 and backend:8082 by default)"
 echo ""
-echo " Start frontend (terminal 3):"
+echo " Start API gateway (terminal 3):"
+echo "   cd wac/api-gateway && ./mvnw spring-boot:run"
+echo "   (routes to backend:8082, file-service:8083, notification-service:8084 by default — no extra vars needed for local dev)"
+echo ""
+echo " Start frontend (terminal 4):"
 echo "   cd wac/frontend && npm start"
 echo ""
 echo " Then open: http://localhost:4200"

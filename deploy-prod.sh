@@ -7,15 +7,18 @@ IMAGE_BACKEND="wacchat-backend"
 IMAGE_FRONTEND="wacchat-frontend"
 IMAGE_FILE_SERVICE="wacchat-file-service"
 IMAGE_API_GATEWAY="wacchat-api-gateway"
+IMAGE_NOTIFICATION_SERVICE="wacchat-notification-service"
 TAG="latest"
 CONTAINER_BACKEND="wacchat-backend"
 CONTAINER_FRONTEND="wacchat-frontend"
 CONTAINER_FILE_SERVICE="wacchat-file-service"
 CONTAINER_API_GATEWAY="wacchat-api-gateway"
+CONTAINER_NOTIFICATION_SERVICE="wacchat-notification-service"
 PORT_BACKEND=8082
 PORT_FRONTEND=4200
 PORT_FILE_SERVICE=8083
 PORT_API_GATEWAY=8081
+PORT_NOTIFICATION_SERVICE=8084
 COMPOSE_DIR="."
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -24,6 +27,7 @@ BACKEND_DIR="$SCRIPT_DIR/wac/backend"
 FRONTEND_DIR="$SCRIPT_DIR/wac/frontend"
 FILE_SERVICE_DIR="$SCRIPT_DIR/wac/file-service"
 API_GATEWAY_DIR="$SCRIPT_DIR/wac/api-gateway"
+NOTIFICATION_SERVICE_DIR="$SCRIPT_DIR/wac/notification-service"
 
 # ─── 0. Git pull (always first) ──────────────────────────────────────────────
 echo "[$(date '+%H:%M:%S')] Pulling latest changes from origin..."
@@ -46,6 +50,11 @@ KEYCLOAK_ADMIN_USERNAME=admin
 KEYCLOAK_ADMIN_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 
 FILE_SERVICE_INTERNAL_API_KEY=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
+
+RABBITMQ_USER=wacchat
+RABBITMQ_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
+
+BACKEND_INTERNAL_API_KEY=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 
 GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
@@ -134,10 +143,11 @@ command -v docker compose >/dev/null 2>&1 || \
   command -v docker-compose >/dev/null 2>&1 || \
   err "docker compose (v2) or docker-compose (v1) is required"
 
-[[ -d "$BACKEND_DIR" ]]      || err "Backend directory not found: $BACKEND_DIR"
-[[ -d "$FRONTEND_DIR" ]]     || err "Frontend directory not found: $FRONTEND_DIR"
-[[ -d "$FILE_SERVICE_DIR" ]] || err "File-service directory not found: $FILE_SERVICE_DIR"
-[[ -d "$API_GATEWAY_DIR" ]]  || err "API gateway directory not found: $API_GATEWAY_DIR"
+[[ -d "$BACKEND_DIR" ]]                 || err "Backend directory not found: $BACKEND_DIR"
+[[ -d "$FRONTEND_DIR" ]]                || err "Frontend directory not found: $FRONTEND_DIR"
+[[ -d "$FILE_SERVICE_DIR" ]]            || err "File-service directory not found: $FILE_SERVICE_DIR"
+[[ -d "$API_GATEWAY_DIR" ]]             || err "API gateway directory not found: $API_GATEWAY_DIR"
+[[ -d "$NOTIFICATION_SERVICE_DIR" ]]    || err "Notification-service directory not found: $NOTIFICATION_SERVICE_DIR"
 
 ok "Preflight checks passed"
 
@@ -166,11 +176,13 @@ if [[ -n "$REGISTRY" ]]; then
   FULL_FRONTEND="$REGISTRY/$IMAGE_FRONTEND:$TAG"
   FULL_FILE_SERVICE="$REGISTRY/$IMAGE_FILE_SERVICE:$TAG"
   FULL_API_GATEWAY="$REGISTRY/$IMAGE_API_GATEWAY:$TAG"
+  FULL_NOTIFICATION_SERVICE="$REGISTRY/$IMAGE_NOTIFICATION_SERVICE:$TAG"
 else
   FULL_BACKEND="$IMAGE_BACKEND:$TAG"
   FULL_FRONTEND="$IMAGE_FRONTEND:$TAG"
   FULL_FILE_SERVICE="$IMAGE_FILE_SERVICE:$TAG"
   FULL_API_GATEWAY="$IMAGE_API_GATEWAY:$TAG"
+  FULL_NOTIFICATION_SERVICE="$IMAGE_NOTIFICATION_SERVICE:$TAG"
 fi
 
 BUILD_FLAGS="--no-cache"
@@ -210,7 +222,7 @@ done
 # Force-remove named infra containers so docker compose always recreates them
 # with the correct port mappings from docker-compose.yml (avoids stale containers
 # created outside compose that end up without port bindings)
-for name in wacchat-db keycloak-wacchat; do
+for name in wacchat-db keycloak-wacchat wacchat-rabbitmq; do
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
     log "Removing stale container: $name"
     docker rm -f "$name" 2>/dev/null || true
@@ -256,6 +268,14 @@ docker build $BUILD_FLAGS \
   "$API_GATEWAY_DIR"
 ok "API gateway image built: $FULL_API_GATEWAY"
 
+# ─── 5d. Build notification-service image ────────────────────────────────────
+log "Building notification-service image: $FULL_NOTIFICATION_SERVICE ..."
+docker build $BUILD_FLAGS \
+  -t "$FULL_NOTIFICATION_SERVICE" \
+  -f "$NOTIFICATION_SERVICE_DIR/Dockerfile" \
+  "$NOTIFICATION_SERVICE_DIR"
+ok "Notification-service image built: $FULL_NOTIFICATION_SERVICE"
+
 # ─── 3. Build frontend image ─────────────────────────────────────────────────
 log "Building frontend image: $FULL_FRONTEND ..."
 docker build $BUILD_FLAGS \
@@ -272,11 +292,12 @@ if $PUSH; then
   docker push "$FULL_FRONTEND"
   docker push "$FULL_FILE_SERVICE"
   docker push "$FULL_API_GATEWAY"
+  docker push "$FULL_NOTIFICATION_SERVICE"
   ok "Images pushed to registry"
 fi
 
 # ─── 5. Stop and remove existing app containers ──────────────────────────────
-for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND" "$CONTAINER_FILE_SERVICE" "$CONTAINER_API_GATEWAY"; do
+for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND" "$CONTAINER_FILE_SERVICE" "$CONTAINER_API_GATEWAY" "$CONTAINER_NOTIFICATION_SERVICE"; do
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
     log "Stopping and removing container: $name"
     docker stop "$name" 2>/dev/null || true
@@ -323,6 +344,10 @@ docker run -d \
   -e MAIL_FROM="${MAIL_FROM:-}" \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:8080" \
   -e FILE_SERVICE_INTERNAL_API_KEY="${FILE_SERVICE_INTERNAL_API_KEY:-}" \
+  -e RABBITMQ_HOST="wacchat-rabbitmq" \
+  -e RABBITMQ_USER="${RABBITMQ_USER:-wacchat}" \
+  -e RABBITMQ_PASSWORD="${RABBITMQ_PASSWORD:-wacchat}" \
+  -e BACKEND_INTERNAL_API_KEY="${BACKEND_INTERNAL_API_KEY:-}" \
   -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
   -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
   -e TRACING_SAMPLING_PROBABILITY="${TRACING_SAMPLING_PROBABILITY:-1.0}" \
@@ -331,7 +356,26 @@ docker run -d \
   "$FULL_BACKEND"
 ok "Backend container started"
 
-# ─── 6c. Run api-gateway container ───────────────────────────────────────────
+# ─── 6c. Run notification-service container ──────────────────────────────────
+log "Starting notification-service container on port $PORT_NOTIFICATION_SERVICE ..."
+docker run -d \
+  --name "$CONTAINER_NOTIFICATION_SERVICE" \
+  --network "wacchat_wacchat" \
+  -p "$PORT_NOTIFICATION_SERVICE:8084" \
+  -e KEYCLOAK_ISSUER_URI="https://auth.wacchat.win/realms/wacchat" \
+  -e RABBITMQ_HOST="wacchat-rabbitmq" \
+  -e RABBITMQ_USER="${RABBITMQ_USER:-wacchat}" \
+  -e RABBITMQ_PASSWORD="${RABBITMQ_PASSWORD:-wacchat}" \
+  -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
+  -e BACKEND_INTERNAL_API_KEY="${BACKEND_INTERNAL_API_KEY:-}" \
+  -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
+  -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
+  -e TRACING_SAMPLING_PROBABILITY="${TRACING_SAMPLING_PROBABILITY:-1.0}" \
+  --restart unless-stopped \
+  "$FULL_NOTIFICATION_SERVICE"
+ok "Notification-service container started"
+
+# ─── 6d. Run api-gateway container ───────────────────────────────────────────
 log "Starting api-gateway container on port $PORT_API_GATEWAY ..."
 docker run -d \
   --name "$CONTAINER_API_GATEWAY" \
@@ -339,6 +383,7 @@ docker run -d \
   -p "$PORT_API_GATEWAY:$PORT_API_GATEWAY" \
   -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:$PORT_FILE_SERVICE" \
+  -e NOTIFICATION_SERVICE_BASE_URL="http://wacchat-notification-service:$PORT_NOTIFICATION_SERVICE" \
   -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
   -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
   -e TRACING_SAMPLING_PROBABILITY="${TRACING_SAMPLING_PROBABILITY:-1.0}" \
@@ -404,23 +449,49 @@ else
   echo "  docker logs $CONTAINER_API_GATEWAY"
 fi
 
+# ─── 8c. Notification-service health check ──────────────────────────────────
+log "Waiting for notification-service to be ready..."
+NOTIFICATION_HEALTH_URL="http://localhost:$PORT_NOTIFICATION_SERVICE/actuator/health"
+
+notification_healthy=false
+for i in $(seq 1 $MAX_RETRIES); do
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" "$NOTIFICATION_HEALTH_URL" 2>/dev/null || echo "000")
+  if [[ "$http_code" == "200" ]]; then
+    notification_healthy=true
+    break
+  fi
+  echo "  Attempt $i/$MAX_RETRIES — HTTP $http_code (retrying in ${RETRY_INTERVAL}s...)"
+  sleep $RETRY_INTERVAL
+done
+
+if $notification_healthy; then
+  ok "Notification-service is healthy at $NOTIFICATION_HEALTH_URL"
+else
+  echo ""
+  log "Notification-service health check timed out after $((MAX_RETRIES * RETRY_INTERVAL))s — check container logs:"
+  echo "  docker logs $CONTAINER_NOTIFICATION_SERVICE"
+fi
+
 # ─── Summary ─────────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " Deploy complete — env=$ENV"
 echo ""
-echo " API Gateway  : http://localhost:$PORT_API_GATEWAY"
-echo " Backend      : http://localhost:$PORT_BACKEND"
-echo " Frontend     : http://localhost:$PORT_FRONTEND"
-echo " File-service : http://localhost:$PORT_FILE_SERVICE"
-echo " Swagger      : http://localhost:$PORT_BACKEND/swagger-ui.html"
-echo " Keycloak     : http://localhost:8180"
-echo " Grafana      : http://localhost:3000"
-echo " Prometheus   : http://localhost:9090"
+echo " API Gateway         : http://localhost:$PORT_API_GATEWAY"
+echo " Backend             : http://localhost:$PORT_BACKEND"
+echo " Frontend            : http://localhost:$PORT_FRONTEND"
+echo " File-service        : http://localhost:$PORT_FILE_SERVICE"
+echo " Notification-service: http://localhost:$PORT_NOTIFICATION_SERVICE"
+echo " Swagger             : http://localhost:$PORT_BACKEND/swagger-ui.html"
+echo " Keycloak            : http://localhost:8180"
+echo " RabbitMQ management : http://localhost:15672"
+echo " Grafana             : http://localhost:3000"
+echo " Prometheus          : http://localhost:9090"
 echo ""
 echo " Logs:"
 echo "   docker logs -f $CONTAINER_API_GATEWAY"
 echo "   docker logs -f $CONTAINER_BACKEND"
 echo "   docker logs -f $CONTAINER_FRONTEND"
 echo "   docker logs -f $CONTAINER_FILE_SERVICE"
+echo "   docker logs -f $CONTAINER_NOTIFICATION_SERVICE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

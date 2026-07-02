@@ -35,8 +35,8 @@ spring:
           filters:
             - RewritePath=/files/(?<segment>.*), /api/v1/files/$\{segment}
           order: -1
-        - id: backend-ws
-          uri: ${BACKEND_BASE_URL:http://localhost:8082}
+        - id: notification-service-ws
+          uri: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8084}
           predicates:
             - Path=/ws/**
           order: 0

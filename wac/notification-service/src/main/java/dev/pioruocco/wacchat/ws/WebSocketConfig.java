@@ -2,6 +2,7 @@ package dev.pioruocco.wacchat.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -20,6 +21,12 @@ import java.util.List;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
+/**
+ * Uses enableStompBrokerRelay (delegating to RabbitMQ's STOMP plugin) instead of
+ * enableSimpleBroker, so subscription state lives in the broker rather than this JVM's
+ * memory — multiple notification-service instances can then share WS push delivery:
+ * a message published from any instance reaches a client connected to any other.
+ */
 @Configuration
 @EnableWebSocketMessageBroker
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
@@ -28,9 +35,27 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final AuthChannelInterceptor authChannelInterceptor;
 
+    @Value("${application.notification.broker-relay-host}")
+    private String relayHost;
+
+    @Value("${application.notification.broker-relay-port}")
+    private int relayPort;
+
+    @Value("${spring.rabbitmq.username}")
+    private String relayLogin;
+
+    @Value("${spring.rabbitmq.password}")
+    private String relayPasscode;
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/user");
+        registry.enableStompBrokerRelay("/topic", "/queue")
+                .setRelayHost(relayHost)
+                .setRelayPort(relayPort)
+                .setClientLogin(relayLogin)
+                .setClientPasscode(relayPasscode)
+                .setSystemLogin(relayLogin)
+                .setSystemPasscode(relayPasscode);
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
     }
