@@ -1,5 +1,6 @@
 package dev.pioruocco.wacchat.user;
 
+import dev.pioruocco.wacchat.bot.BotService;
 import dev.pioruocco.wacchat.chat.Chat;
 import dev.pioruocco.wacchat.chat.ChatRepository;
 import dev.pioruocco.wacchat.file.FileServiceClient;
@@ -7,6 +8,7 @@ import dev.pioruocco.wacchat.notification.Notification;
 import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.notification.NotificationType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
@@ -26,6 +29,7 @@ public class UserService {
     private final FileServiceClient fileServiceClient;
     private final ChatRepository chatRepository;
     private final NotificationService notificationService;
+    private final BotService botService;
 
     public List<UserResponse> finAllUsersExceptSelf(Authentication connectedUser) {
         return userRepository.findAllUsersExceptSelf(connectedUser.getName())
@@ -47,7 +51,13 @@ public class UserService {
         User user = userRepository.findByPublicId(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setUsername(request.getUsername());
-        return userMapper.toUserResponse(userRepository.save(user));
+        UserResponse response = userMapper.toUserResponse(userRepository.save(user));
+        try {
+            botService.createChatWithWelcomeMessage(user.getId());
+        } catch (Exception e) {
+            log.error("Failed to create Arno welcome chat for user {}: {}", user.getId(), e.getMessage());
+        }
+        return response;
     }
 
     public boolean isUsernameAvailable(String value) {

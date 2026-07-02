@@ -1,5 +1,7 @@
 package dev.pioruocco.wacchat.message;
 
+import dev.pioruocco.wacchat.bot.BotConstants;
+import dev.pioruocco.wacchat.bot.BotService;
 import dev.pioruocco.wacchat.chat.Chat;
 import dev.pioruocco.wacchat.chat.ChatRepository;
 import dev.pioruocco.wacchat.file.FileServiceClient;
@@ -26,6 +28,7 @@ public class MessageService {
     private final MessageMapper mapper;
     private final NotificationService notificationService;
     private final FileServiceClient fileServiceClient;
+    private final BotService botService;
 
     public void saveMessage(MessageRequest messageRequest, Authentication authentication) {
         Chat chat = chatRepository.findById(messageRequest.getChatId())
@@ -56,6 +59,10 @@ public class MessageService {
                 .build();
 
         notificationService.sendNotification(receiverId, notification);
+
+        if (BotConstants.ARNO_USER_ID.equals(receiverId) && messageRequest.getType() == MessageType.TEXT) {
+            botService.generateAndSendReply(chat.getId(), senderId);
+        }
     }
 
     public List<MessageResponse> findChatMessages(String chatId, Authentication authentication) {

@@ -84,13 +84,22 @@ application:
   mail:
     from: ${MAIL_FROM:}
   cleanup:
-    inactivity-days: 21
+    inactivity-days: 14
     protected-email: ${ADMIN_EMAIL:}
   file-service:
     base-url: ${FILE_SERVICE_BASE_URL:http://localhost:8083}
     internal-api-key: ${FILE_SERVICE_INTERNAL_API_KEY:}
     connect-timeout-ms: 2000
     response-timeout-ms: 15000
+  bot:
+    gemini:
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-2.5-flash}
+      connect-timeout-ms: 2000
+      response-timeout-ms: 15000
+    arno:
+      avatar-url: ${ARNO_AVATAR_URL:}
   session:
     stale-after-seconds: ${SESSION_STALE_SECONDS:120}
     internal-api-key: ${BACKEND_INTERNAL_API_KEY:}
@@ -110,6 +119,12 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 3
         ignoreExceptions:
           - org.springframework.web.server.ResponseStatusException
+      gemini:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15s
+        permittedNumberOfCallsInHalfOpenState: 3
   retry:
     instances:
       fileService:
@@ -117,3 +132,6 @@ resilience4j:
         waitDuration: 300ms
         ignoreExceptions:
           - org.springframework.web.server.ResponseStatusException
+      gemini:
+        maxAttempts: 2
+        waitDuration: 300ms
