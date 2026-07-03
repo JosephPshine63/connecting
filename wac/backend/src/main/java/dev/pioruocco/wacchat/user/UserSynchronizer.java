@@ -26,12 +26,17 @@ public class UserSynchronizer {
     @Transactional
     public void synchronizeWithIdp(Jwt token, String tabId) {
         log.info("Synchronizing user with idp");
-        getUserEmail(token).ifPresent(userEmail -> synchronizeUser(userEmail, token, tabId));
+        getUserEmail(token).ifPresent(userEmail -> synchronizeUser(token, tabId));
     }
 
-    private void synchronizeUser(String userEmail, Jwt token, String tabId) {
-        log.info("Synchronizing user having email {}", userEmail);
-        Optional<User> optUser = userRepository.findByEmailForUpdate(userEmail);
+    private void synchronizeUser(Jwt token, String tabId) {
+        String userId = token.getSubject();
+        log.info("Synchronizing user having id {}", userId);
+        // Looked up by the stable Keycloak sub (not email): an email lookup can miss on a
+        // legitimate existing user (case difference, provider resync, etc.), and since User's
+        // @Id is manually assigned, a miss here would build a near-empty User with the SAME id
+        // as the real row, which JPA then merge()s over it — silently wiping username/avatar.
+        Optional<User> optUser = userRepository.findByPublicIdForUpdate(userId);
         boolean isNew = optUser.isEmpty();
         User user = optUser.orElseGet(User::new);
         applySessionAndClaims(user, token, tabId);

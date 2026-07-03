@@ -25,6 +25,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(name = UserConstants.FIND_USER_BY_PUBLIC_ID)
     Optional<User> findByPublicId(@Param("publicId") String senderId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(name = UserConstants.FIND_USER_BY_PUBLIC_ID)
+    Optional<User> findByPublicIdForUpdate(@Param("publicId") String publicId);
+
     @Query("SELECT u FROM User u WHERE u.lastSeen < :cutoff OR (u.lastSeen IS NULL AND u.createdDate < :cutoff)")
     List<User> findInactiveUsersBefore(@Param("cutoff") LocalDateTime cutoff);
 
