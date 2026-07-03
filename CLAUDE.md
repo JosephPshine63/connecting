@@ -41,7 +41,7 @@ cp .env.example .env            # fill in passwords, Google OAuth, mail credenti
 docker compose down             # stop containers
 ```
 
-Do **not** use `docker compose up` directly — `deploy-local.sh` renders `wacchat.json` from the template first, sets the correct `KC_HOSTNAME` override for local development, builds and starts `api-gateway` as a container (`docker-compose.local.yml`, rebuilt on every run via `--build`), and also brings up `docker-compose.observability.yml` (Prometheus :9090, Grafana :3000, Loki :3100, Tempo :4318/4317/3200) on the same Docker network.
+Do **not** use `docker compose up` directly — `deploy-local.sh` renders `wacchat.json` from the template first, sets the correct `KC_HOSTNAME` override for local development, builds and starts `api-gateway` as a container (`docker-compose.local.yml`, rebuilt on every run via `--build`), and also brings up `docker-compose.observability.yml` (Prometheus :9091, Grafana :3000, Loki :3100, Tempo :4318/4317/3200) on the same Docker network.
 
 Once the infra above is up, `./start-local-services.sh` starts the 5 non-Docker services (backend, file-service, notification-service, api-gateway, frontend) in the background via `direnv exec` (so each loads `.env` through `.envrc`), logging to `logs/<name>.log`:
 
