@@ -311,7 +311,7 @@ log "Starting file-service container on port $PORT_FILE_SERVICE ..."
 docker run -d \
   --name "$CONTAINER_FILE_SERVICE" \
   --network "wacchat_wacchat" \
-  -p "$PORT_FILE_SERVICE:8080" \
+  -p "127.0.0.1:$PORT_FILE_SERVICE:8080" \
   -e R2_ACCOUNT_ID="${R2_ACCOUNT_ID:-}" \
   -e R2_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID:-}" \
   -e R2_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY:-}" \
@@ -330,7 +330,7 @@ log "Starting backend container on port $PORT_BACKEND ..."
 docker run -d \
   --name "$CONTAINER_BACKEND" \
   --network "wacchat_wacchat" \
-  -p "$PORT_BACKEND:8080" \
+  -p "127.0.0.1:$PORT_BACKEND:8080" \
   -e SPRING_DATASOURCE_URL="jdbc:postgresql://wacchat-db:5432/${POSTGRES_DB:-wacchat_db}" \
   -e SPRING_DATASOURCE_USERNAME="${POSTGRES_USER:-admin}" \
   -e SPRING_DATASOURCE_PASSWORD="${POSTGRES_PASSWORD:-admin}" \
@@ -361,7 +361,7 @@ log "Starting notification-service container on port $PORT_NOTIFICATION_SERVICE 
 docker run -d \
   --name "$CONTAINER_NOTIFICATION_SERVICE" \
   --network "wacchat_wacchat" \
-  -p "$PORT_NOTIFICATION_SERVICE:8084" \
+  -p "127.0.0.1:$PORT_NOTIFICATION_SERVICE:8084" \
   -e KEYCLOAK_ISSUER_URI="https://auth.wacchat.win/realms/wacchat" \
   -e RABBITMQ_HOST="wacchat-rabbitmq" \
   -e RABBITMQ_USER="${RABBITMQ_USER:-wacchat}" \
@@ -380,7 +380,7 @@ log "Starting api-gateway container on port $PORT_API_GATEWAY ..."
 docker run -d \
   --name "$CONTAINER_API_GATEWAY" \
   --network "wacchat_wacchat" \
-  -p "$PORT_API_GATEWAY:8081" \
+  -p "127.0.0.1:$PORT_API_GATEWAY:8081" \
   -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:$PORT_FILE_SERVICE" \
   -e NOTIFICATION_SERVICE_BASE_URL="http://wacchat-notification-service:$PORT_NOTIFICATION_SERVICE" \
@@ -396,7 +396,7 @@ log "Starting frontend container on port $PORT_FRONTEND ..."
 docker run -d \
   --name "$CONTAINER_FRONTEND" \
   --network "wacchat_wacchat" \
-  -p "$PORT_FRONTEND:80" \
+  -p "127.0.0.1:$PORT_FRONTEND:80" \
   --restart unless-stopped \
   "$FULL_FRONTEND"
 ok "Frontend container started"

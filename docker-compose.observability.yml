@@ -8,7 +8,7 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     ports:
-      - "9091:9090"
+      - "127.0.0.1:9091:9090"
     networks:
       - wacchat_wacchat
     restart: unless-stopped
@@ -17,7 +17,7 @@ services:
     image: grafana/grafana:11.4.0
     container_name: wacchat-grafana
     ports:
-      - "3000:3000"
+      - "${TAILSCALE_IP:-127.0.0.1}:3000:3000"   # bound to the Tailscale IP in prod (set in .env), loopback-only by default for local dev
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -38,7 +38,7 @@ services:
     container_name: wacchat-loki
     command: -config.file=/etc/loki/loki-config.yml
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     volumes:
       - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
       - loki-data:/loki
@@ -51,9 +51,9 @@ services:
     container_name: wacchat-tempo
     command: -config.file=/etc/tempo/tempo.yml
     ports:
-      - "4318:4318"   # OTLP HTTP
-      - "4317:4317"   # OTLP gRPC
-      - "3200:3200"   # Tempo query API (used by Grafana)
+      - "127.0.0.1:4318:4318"   # OTLP HTTP
+      - "127.0.0.1:4317:4317"   # OTLP gRPC
+      - "127.0.0.1:3200:3200"   # Tempo query API (used by Grafana)
     volumes:
       - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
       - tempo-data:/var/tempo

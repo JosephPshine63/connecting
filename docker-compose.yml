@@ -10,7 +10,7 @@ services:
       PGDATA: /var/lib/postgresql/data
       POSTGRES_DB: ${POSTGRES_DB:-wacchat_db}
     ports:
-      - 5433:5432
+      - 127.0.0.1:5433:5432
     networks:
       - wacchat
     volumes:
@@ -21,7 +21,7 @@ services:
     container_name: keycloak-wacchat
     image: quay.io/keycloak/keycloak:26.0.0
     ports:
-      - 8180:8080
+      - 127.0.0.1:8180:8080
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-gpradmin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -45,9 +45,9 @@ services:
     container_name: wacchat-rabbitmq
     image: rabbitmq:3.13-management
     ports:
-      - 5672:5672     # AMQP (publish/consume notification events)
-      - 61613:61613   # STOMP (WebSocketConfig's broker relay in notification-service)
-      - 15672:15672   # Management UI
+      - 127.0.0.1:5672:5672     # AMQP (publish/consume notification events) — Docker-internal only, no host access needed
+      - 127.0.0.1:61613:61613   # STOMP (WebSocketConfig's broker relay in notification-service) — Docker-internal only
+      - ${TAILSCALE_IP:-127.0.0.1}:15672:15672   # Management UI — bound to the Tailscale IP in prod (set in .env), loopback-only by default for local dev
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-wacchat}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-wacchat}
