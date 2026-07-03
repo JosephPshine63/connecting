@@ -23,6 +23,7 @@ COMPOSE_DIR="."
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WAC_DIR="$SCRIPT_DIR/wac"
 BACKEND_DIR="$SCRIPT_DIR/wac/backend"
 FRONTEND_DIR="$SCRIPT_DIR/wac/frontend"
 FILE_SERVICE_DIR="$SCRIPT_DIR/wac/file-service"
@@ -268,7 +269,7 @@ log "Building backend image: $FULL_BACKEND ..."
 docker build $BUILD_FLAGS \
   -t "$FULL_BACKEND" \
   -f "$BACKEND_DIR/Dockerfile" \
-  "$BACKEND_DIR"
+  "$WAC_DIR"
 ok "Backend image built: $FULL_BACKEND"
 
 # ─── 5b. Build file-service image ────────────────────────────────────────────
@@ -276,7 +277,7 @@ log "Building file-service image: $FULL_FILE_SERVICE ..."
 docker build $BUILD_FLAGS \
   -t "$FULL_FILE_SERVICE" \
   -f "$FILE_SERVICE_DIR/Dockerfile" \
-  "$FILE_SERVICE_DIR"
+  "$WAC_DIR"
 ok "File-service image built: $FULL_FILE_SERVICE"
 
 # ─── 5c. Build api-gateway image ─────────────────────────────────────────────
@@ -292,7 +293,7 @@ log "Building notification-service image: $FULL_NOTIFICATION_SERVICE ..."
 docker build $BUILD_FLAGS \
   -t "$FULL_NOTIFICATION_SERVICE" \
   -f "$NOTIFICATION_SERVICE_DIR/Dockerfile" \
-  "$NOTIFICATION_SERVICE_DIR"
+  "$WAC_DIR"
 ok "Notification-service image built: $FULL_NOTIFICATION_SERVICE"
 
 # ─── 3. Build frontend image ─────────────────────────────────────────────────

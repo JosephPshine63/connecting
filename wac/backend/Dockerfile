@@ -1,10 +1,19 @@
+FROM eclipse-temurin:17-jdk-alpine AS shared
+WORKDIR /shared
+COPY shared-security/.mvn/ .mvn/
+COPY shared-security/mvnw shared-security/pom.xml ./
+RUN chmod +x mvnw && ./mvnw -q -Dmaven.repo.local=/root/.m2/repository dependency:go-offline
+COPY shared-security/src ./src
+RUN ./mvnw -q -Dmaven.repo.local=/root/.m2/repository clean install -DskipTests
+
 FROM eclipse-temurin:17-jdk-alpine AS build
 WORKDIR /app
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -q
-COPY src ./src
-RUN ./mvnw clean package -DskipTests -q
+COPY --from=shared /root/.m2/repository /root/.m2/repository
+COPY backend/.mvn/ .mvn/
+COPY backend/mvnw backend/pom.xml ./
+RUN chmod +x mvnw && ./mvnw -q -Dmaven.repo.local=/root/.m2/repository dependency:go-offline
+COPY backend/src ./src
+RUN ./mvnw -q -Dmaven.repo.local=/root/.m2/repository clean package -DskipTests
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app

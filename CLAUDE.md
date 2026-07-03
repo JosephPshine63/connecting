@@ -15,10 +15,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ├── docker-compose.observability.local.yml # Local override
 ├── observability/              # Prometheus/Loki/Tempo configs + provisioned Grafana dashboard
 └── wac/
-    ├── backend/                # Spring Boot 3.4.1 API (Java 17, Maven)
+    ├── backend/                # Spring Boot 3.4.13 API (Java 17, Maven)
     ├── api-gateway/            # Spring Cloud Gateway — single edge entrypoint (Java 17, Maven)
     ├── file-service/           # Standalone file storage microservice — Cloudflare R2 (Java 17, Maven)
     ├── notification-service/   # Standalone realtime/WebSocket microservice — STOMP over RabbitMQ (Java 17, Maven)
+    ├── shared-security/        # Maven library module — KeycloakJwtAuthenticationConverter, consumed by backend/file-service/notification-service
     ├── rabbitmq/                # enabled_plugins (rabbitmq_management, rabbitmq_stomp), mounted into the RabbitMQ container
     ├── frontend/                # Angular 19 SPA (TypeScript, npm)
     ├── database/                # Reference schema SQL (schema.sql)
@@ -32,6 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 cp .env.example .env            # fill in passwords, Google OAuth, mail credentials
+cd wac/shared-security && ./mvnw install -DskipTests && cd ../..   # one-time: installs the shared-security jar to ~/.m2 so backend/file-service/notification-service resolve it
 ```
 
 ### Infrastructure
@@ -138,7 +140,7 @@ Two independent RabbitMQ channels are involved:
 - **STOMP (61613)** — the broker relay itself, used by Spring's WS layer for the actual client subscriptions/fan-out (`/topic`, `/queue` prefixes; `/user/**` destinations are translated internally to per-session `/queue/...` names before being relayed).
 - **AMQP (5672)** — a separate application-level event bus. Backend's `NotificationService.sendNotification(userId, notification)` no longer calls `SimpMessagingTemplate` directly (it can't — the WS layer lives in another process); instead it publishes a `NotificationEvent(userId, notification)` to the `wacchat.notifications` exchange (routing key `notification`, queue `wacchat.notifications.queue` — names configurable under `application.notification.*`, identical in both modules). notification-service's `NotificationListener` (`@RabbitListener`) consumes it and calls `convertAndSendToUser(userId, "/queue/chat", notification)`.
 
-`Notification`, `NotificationType`, `NotificationEvent`, and `MessageType` are duplicated verbatim (identical package + class name) in both `wac/backend` and `wac/notification-service` — there's no shared library between independently-deployable services (see `KeycloakJwtAuthenticationConverter`, duplicated the same way), and matching FQCNs let `Jackson2JsonMessageConverter`'s default `__TypeId__` header resolve to the same class on both ends without extra `DefaultClassMapper` config.
+`Notification`, `NotificationType`, `NotificationEvent`, and `MessageType` are duplicated verbatim (identical package + class name) in both `wac/backend` and `wac/notification-service` — these are message-queue DTOs, not extracted into `shared-security`, because matching FQCNs let `Jackson2JsonMessageConverter`'s default `__TypeId__` header resolve to the same class on both ends without extra `DefaultClassMapper` config; a shared library would still need the FQCN to match, so the duplication is deliberate here rather than something a shared module would remove. `KeycloakJwtAuthenticationConverter`, by contrast, had no such constraint and now lives in `wac/shared-security` (Maven module, installed to the local repo and consumed as a regular dependency by backend/file-service/notification-service — see that module's own `pom.xml`). Docker builds for those three services use a multi-stage `Dockerfile` (`FROM ... AS shared` stage building/installing `shared-security` first) with the build context set to `wac/` in `deploy-prod.sh`, not each service's own directory, so the shared module's sources are reachable at build time.
 
 The single-session lock (`AuthChannelInterceptor`, moved into notification-service) can no longer read `SessionGuard`/`UserRepository` directly (that's backend-only DB logic), so on STOMP `CONNECT` it makes a synchronous call via `SessionValidationClient` (WebClient + Resilience4j `sessionValidation` circuit breaker/retry instance) to backend's internal `POST /api/v1/internal/sessions/validate` (guarded by `InternalAuthFilter`, shared-secret header `X-Internal-Api-Key` / `BACKEND_INTERNAL_API_KEY`). This call **fails open** (treats backend-down as "not conflicting") — the session lock is a UX nicety, not a security boundary, and a lost WS connection is worse than a rare double-session.
 
