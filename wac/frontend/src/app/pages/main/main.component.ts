@@ -400,12 +400,25 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private initWebSocket() {
     if (!this.keycloakService.keycloak.tokenParsed?.sub) return;
-    const subUrl = `/user/${this.keycloakService.keycloak.tokenParsed.sub}/chat`;
+    // No userId in the path: Spring's DefaultUserDestinationResolver scopes "/user/**"
+    // destinations to the current STOMP session's Principal automatically. Embedding the
+    // userId here (as this used to do) breaks the SUBSCRIBE-side destination resolution —
+    // it only strips the "/user" prefix for SUBSCRIBE frames, unlike the SEND side, so the
+    // physical broker destination ends up different and no delivery ever happens.
+    const subUrl = '/user/queue/chat';
     this.socketClient = new Client({
       webSocketFactory: () => new SockJS(`${window.location.origin}/ws`) as any,
-      connectHeaders: {
-        'Authorization': 'Bearer ' + this.keycloakService.keycloak.token,
-        'X-Tab-Id': this.keycloakService.tabId
+      // connectHeaders is captured once at CONNECT time (including every automatic
+      // reconnect), not just at Client construction — without refreshing the token here,
+      // a STOMP reconnect after the access token expires (accessTokenLifespan, 5 min) keeps
+      // resending the same stale JWT forever, so delivery silently dies until the page is
+      // reloaded (which rebuilds the Client with a fresh token).
+      beforeConnect: async () => {
+        await this.keycloakService.keycloak.updateToken(30).catch(() => undefined);
+        this.socketClient!.connectHeaders = {
+          'Authorization': 'Bearer ' + this.keycloakService.keycloak.token,
+          'X-Tab-Id': this.keycloakService.tabId
+        };
       },
       reconnectDelay: 5000,
       onConnect: () => {

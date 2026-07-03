@@ -59,18 +59,11 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
             if (user == null) {
                 throw new MessageDeliveryException("Unauthenticated STOMP SUBSCRIBE");
             }
-            String destination = accessor.getDestination();
-            if (destination != null && destination.startsWith("/user/")) {
-                // destination format: /user/{userId}/chat
-                String[] parts = destination.split("/");
-                if (parts.length >= 3) {
-                    String destUserId = parts[2];
-                    if (!destUserId.equals(user.getName())) {
-                        log.warn("Blocked subscription attempt: user {} tried to subscribe to {}", user.getName(), destination);
-                        throw new MessageDeliveryException("Forbidden: cannot subscribe to " + destination);
-                    }
-                }
-            }
+            // No per-destination userId check needed: clients subscribe to the bare
+            // "/user/queue/chat" (no embedded id — see main.component.ts), and Spring's
+            // DefaultUserDestinationResolver already scopes "/user/**" destinations to the
+            // subscribing session's own Principal (accessor.setUser(auth) above), so there is
+            // no destination string a client could craft to reach another user's queue.
         }
 
         return message;

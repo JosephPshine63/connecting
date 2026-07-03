@@ -33,6 +33,6 @@ public class TypingController {
                 .receiverId(request.receiverId())
                 .type(request.typing() ? NotificationType.TYPING_START : NotificationType.TYPING_STOP)
                 .build();
-        messagingTemplate.convertAndSendToUser(request.receiverId(), "/chat", notification);
+        messagingTemplate.convertAndSendToUser(request.receiverId(), "/queue/chat", notification);
     }
 }
