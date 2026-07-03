@@ -4,3 +4,25 @@ services:
       KC_HOSTNAME: http://localhost:8180
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
+
+  api-gateway:
+    container_name: wacchat-api-gateway
+    build:
+      context: ./wac/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - 8081:8081
+    environment:
+      # backend, file-service and notification-service still run on the host
+      # via ./mvnw spring-boot:run in local dev — reach them through the
+      # Docker-provided host gateway.
+      BACKEND_BASE_URL: http://host.docker.internal:8082
+      FILE_SERVICE_BASE_URL: http://host.docker.internal:8083
+      NOTIFICATION_SERVICE_BASE_URL: http://host.docker.internal:8084
+      OTLP_TRACING_ENDPOINT: http://wacchat-tempo:4318/v1/traces
+      LOKI_URL: http://wacchat-loki:3100/loki/api/v1/push
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - wacchat
+    restart: unless-stopped

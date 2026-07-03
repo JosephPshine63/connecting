@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 .
 ├── docker-compose.yml          # Base compose (PostgreSQL :5433 + Keycloak :8180 + RabbitMQ :5672/61613/15672)
-├── docker-compose.local.yml    # Local override — sets KC_HOSTNAME to http://localhost:8180
+├── docker-compose.local.yml    # Local override — sets KC_HOSTNAME to http://localhost:8180, builds+runs api-gateway as a container
 ├── deploy-local.sh             # Preferred local startup script (sources .env, renders realm template)
 ├── deploy-prod.sh              # Production deploy script (builds images, pushes if --push)
 ├── .env.example                # Copy to .env and fill in values
@@ -37,11 +37,11 @@ cp .env.example .env            # fill in passwords, Google OAuth, mail credenti
 ### Infrastructure
 
 ```bash
-./deploy-local.sh               # starts PostgreSQL :5433, Keycloak :8180, RabbitMQ :5672/61613/15672, and the observability stack (sources .env, renders realm JSON)
+./deploy-local.sh               # starts PostgreSQL :5433, Keycloak :8180, RabbitMQ :5672/61613/15672, API Gateway :8081, and the observability stack (sources .env, renders realm JSON)
 docker compose down             # stop containers
 ```
 
-Do **not** use `docker compose up` directly — `deploy-local.sh` renders `wacchat.json` from the template first, sets the correct `KC_HOSTNAME` override for local development, and also brings up `docker-compose.observability.yml` (Prometheus :9090, Grafana :3000, Loki :3100, Tempo :4318/4317/3200) on the same Docker network.
+Do **not** use `docker compose up` directly — `deploy-local.sh` renders `wacchat.json` from the template first, sets the correct `KC_HOSTNAME` override for local development, builds and starts `api-gateway` as a container (`docker-compose.local.yml`, rebuilt on every run via `--build`), and also brings up `docker-compose.observability.yml` (Prometheus :9090, Grafana :3000, Loki :3100, Tempo :4318/4317/3200) on the same Docker network.
 
 ### First-run database schema
 
@@ -79,10 +79,14 @@ cd wac/notification-service
 
 ### API Gateway
 
+Runs as a Docker container in local dev (started by `deploy-local.sh`, defined in `docker-compose.local.yml`), not via `mvnw`:
+
 ```bash
-cd wac/api-gateway
-./mvnw spring-boot:run          # dev server at http://localhost:8081 — routes to backend:8082, file-service:8083, notification-service:8084
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build api-gateway   # rebuild after a code change
+docker compose -f docker-compose.yml -f docker-compose.local.yml logs -f api-gateway         # tail logs
 ```
+
+Dev server at `http://localhost:8081` — reaches backend/file-service/notification-service (which still run on the host via `mvnw`) through `host.docker.internal` (`BACKEND_BASE_URL`/`FILE_SERVICE_BASE_URL`/`NOTIFICATION_SERVICE_BASE_URL` overridden in `docker-compose.local.yml`; `extra_hosts: host.docker.internal:host-gateway` makes this resolve on Linux). Traces/logs go to the `wacchat-tempo`/`wacchat-loki` containers by service name since api-gateway shares their Docker network.
 
 The frontend never calls backend, file-service, or notification-service directly — it always goes through the gateway (`proxy.conf.json` in dev, `nginx.conf` in prod).
 
