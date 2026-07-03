@@ -2,7 +2,6 @@ package dev.pioruocco.wacchat.user;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,16 +36,7 @@ public class UserSynchronizer {
         User user = optUser.orElseGet(User::new);
         applySessionAndClaims(user, token, tabId);
 
-        try {
-            userRepository.saveAndFlush(user);
-        } catch (DataIntegrityViolationException e) {
-            // Lost the race on the very first insert for this email — another concurrent
-            // request already created the row; fall back to updating it instead.
-            user = userRepository.findByEmailForUpdate(userEmail).orElseThrow(() -> e);
-            isNew = false;
-            applySessionAndClaims(user, token, tabId);
-            userRepository.saveAndFlush(user);
-        }
+        userRepository.saveAndFlush(user);
 
         if (isNew) {
             mailService.sendWelcome(user);

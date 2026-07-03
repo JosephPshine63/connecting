@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,6 +38,11 @@ public class UserSynchronizerFilter extends OncePerRequestFilter {
                 response.setContentType("application/json");
                 response.getWriter().write("{\"code\":\"SESSION_CONFLICT\"}");
                 return;
+            } catch (DataIntegrityViolationException e) {
+                // Lost a race with a concurrent request creating the same user (first login can
+                // fire more than one request before the row exists). The failed attempt aborted
+                // its own transaction; retry in a brand new one, where the row now exists.
+                userSynchronizer.synchronizeWithIdp(token.getToken(), request.getHeader("X-Tab-Id"));
             }
         }
 
