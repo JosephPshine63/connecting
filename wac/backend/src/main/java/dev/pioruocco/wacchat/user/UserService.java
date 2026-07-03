@@ -97,11 +97,16 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
-    public void clearActiveSession(Authentication authentication) {
+    public void clearActiveSession(Authentication authentication, String tabId) {
         userRepository.findByPublicId(authentication.getName())
                 .ifPresent(user -> {
-                    user.setActiveSessionId(null);
-                    userRepository.save(user);
+                    // Only release the lock if it's still held by the tab that's asking — a
+                    // stale/losing tab closing shouldn't be able to kick out the tab that has
+                    // since taken over the single-session lock.
+                    if (tabId == null || tabId.equals(user.getActiveSessionId())) {
+                        user.setActiveSessionId(null);
+                        userRepository.save(user);
+                    }
                 });
     }
 

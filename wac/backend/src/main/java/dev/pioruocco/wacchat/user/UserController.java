@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -68,8 +69,9 @@ public class UserController {
     }
 
     @DeleteMapping("/me/session")
-    public ResponseEntity<Void> clearSession(Authentication authentication) {
-        userService.clearActiveSession(authentication);
+    public ResponseEntity<Void> clearSession(Authentication authentication,
+                                              @RequestHeader(value = "X-Tab-Id", required = false) String tabId) {
+        userService.clearActiveSession(authentication, tabId);
         return ResponseEntity.noContent().build();
     }
 }

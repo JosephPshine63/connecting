@@ -98,6 +98,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (this.typingStopTimeout !== null) {
       clearTimeout(this.typingStopTimeout);
     }
+    window.removeEventListener('pagehide', this.releaseSessionOnUnload);
   }
 
   ngOnInit(): void {
@@ -106,7 +107,27 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.getAllChats();
     this.refreshCurrentUser();
     this.heartbeatHandle = setInterval(() => this.refreshCurrentUser(), HEARTBEAT_INTERVAL_MS);
+    window.addEventListener('pagehide', this.releaseSessionOnUnload);
   }
+
+  // Releases the single-session lock when the tab closes/navigates away, so reopening the app
+  // right after doesn't get falsely blocked as a "conflicting" session for the stale-after
+  // window. Uses fetch+keepalive (not HttpClient) since regular requests can be aborted mid-flight
+  // once the page starts unloading; keepalive lets this one survive that.
+  private releaseSessionOnUnload = (): void => {
+    const token = this.keycloakService.keycloak.token;
+    if (!token) return;
+    fetch('/api/v1/users/me/session', {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-Tab-Id': this.keycloakService.tabId
+      },
+      keepalive: true
+    }).catch(() => {
+      // best-effort: the tab is closing, nothing to recover from here
+    });
+  };
 
   private refreshCurrentUser(): void {
     this.usernameService.getMe().subscribe({
