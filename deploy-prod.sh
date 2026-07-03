@@ -17,7 +17,7 @@ CONTAINER_NOTIFICATION_SERVICE="wacchat-notification-service"
 PORT_BACKEND=8082
 PORT_FRONTEND=4200
 PORT_FILE_SERVICE=8083
-PORT_API_GATEWAY=8081
+PORT_API_GATEWAY=8085   # host-side only; container still listens on 8081 internally (Pi-hole owns 8081 on this host)
 PORT_NOTIFICATION_SERVICE=8084
 COMPOSE_DIR="."
 # ─────────────────────────────────────────────────────────────────────────────
@@ -380,7 +380,7 @@ log "Starting api-gateway container on port $PORT_API_GATEWAY ..."
 docker run -d \
   --name "$CONTAINER_API_GATEWAY" \
   --network "wacchat_wacchat" \
-  -p "$PORT_API_GATEWAY:$PORT_API_GATEWAY" \
+  -p "$PORT_API_GATEWAY:8081" \
   -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:$PORT_FILE_SERVICE" \
   -e NOTIFICATION_SERVICE_BASE_URL="http://wacchat-notification-service:$PORT_NOTIFICATION_SERVICE" \
