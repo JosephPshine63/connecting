@@ -1,6 +1,7 @@
 .env
 wac/keycloak/realms/wacchat.json
 wac/keycloak/realms/connecting.json
+wac/rabbitmq/definitions.json
 .idea/
 wac/.idea/
 wac/backend/uploads/

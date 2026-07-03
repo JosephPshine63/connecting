@@ -48,11 +48,10 @@ services:
       - 127.0.0.1:5672:5672     # AMQP (publish/consume notification events) — Docker-internal only, no host access needed
       - 127.0.0.1:61613:61613   # STOMP (WebSocketConfig's broker relay in notification-service) — Docker-internal only
       - ${TAILSCALE_IP:-127.0.0.1}:15672:15672   # Management UI — bound to the Tailscale IP in prod (set in .env), loopback-only by default for local dev
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-wacchat}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-wacchat}
     volumes:
       - ./wac/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./wac/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/10-definitions.conf:ro
+      - ./wac/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - rabbitmq:/var/lib/rabbitmq
     networks:
       - wacchat

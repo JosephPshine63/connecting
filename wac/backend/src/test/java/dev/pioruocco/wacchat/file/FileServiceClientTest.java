@@ -44,11 +44,12 @@ class FileServiceClientTest {
                 .setBody("{\"url\":\"https://r2.example.com/avatars/user-1/1.png\"}"));
 
         MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", "content".getBytes());
-        String url = client.uploadAvatar(file, "user-1");
+        String url = client.uploadAvatar(file, "user-1", "test-token");
 
         assertThat(url).isEqualTo("https://r2.example.com/avatars/user-1/1.png");
         RecordedRequest recorded = server.takeRequest();
         assertThat(recorded.getPath()).isEqualTo("/api/v1/files/avatars/user-1");
+        assertThat(recorded.getHeader("Authorization")).isEqualTo("Bearer test-token");
     }
 
     @Test
@@ -59,7 +60,7 @@ class FileServiceClientTest {
 
         MockMultipartFile file = new MockMultipartFile("file", "avatar.exe", "application/octet-stream", "content".getBytes());
 
-        assertThatThrownBy(() -> client.uploadAvatar(file, "user-1"))
+        assertThatThrownBy(() -> client.uploadAvatar(file, "user-1", "test-token"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
@@ -74,7 +75,7 @@ class FileServiceClientTest {
         // No Resilience4j aspect is active in this plain unit test (that requires a Spring
         // context), so a 5xx propagates as the raw WebClient exception here. Translating *this*
         // failure mode into a 503 is the job of the fallback method, exercised directly below.
-        assertThatThrownBy(() -> client.uploadAvatar(file, "user-1"))
+        assertThatThrownBy(() -> client.uploadAvatar(file, "user-1", "test-token"))
                 .isNotInstanceOf(ResponseStatusException.class);
     }
 
@@ -82,7 +83,7 @@ class FileServiceClientTest {
     void deleteObject_succeedsOnNoContent() {
         server.enqueue(new MockResponse().setResponseCode(204));
 
-        client.deleteObject("https://r2.example.com/avatars/user-1/1.png");
+        client.deleteObject("https://r2.example.com/avatars/user-1/1.png", "test-token");
     }
 
     @Test

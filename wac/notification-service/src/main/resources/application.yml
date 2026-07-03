@@ -9,8 +9,8 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:wacchat}
-    password: ${RABBITMQ_PASSWORD:wacchat}
+    username: ${RABBITMQ_NOTIFICATION_USER:${RABBITMQ_USER:wacchat}}
+    password: ${RABBITMQ_NOTIFICATION_PASSWORD:${RABBITMQ_PASSWORD:wacchat}}
   security:
     oauth2:
       resourceserver:

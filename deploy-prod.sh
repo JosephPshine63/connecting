@@ -53,6 +53,10 @@ FILE_SERVICE_INTERNAL_API_KEY=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | h
 
 RABBITMQ_USER=wacchat
 RABBITMQ_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
+RABBITMQ_BACKEND_USER=wacchat-backend
+RABBITMQ_BACKEND_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
+RABBITMQ_NOTIFICATION_USER=wacchat-notification
+RABBITMQ_NOTIFICATION_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 
 BACKEND_INTERNAL_API_KEY=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 
@@ -75,6 +79,21 @@ if [[ ${#_pw_orig} -eq 16 ]]; then
 fi
 envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET} ${MAIL_USERNAME} ${MAIL_PASSWORD} ${MAIL_FROM}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
 MAIL_PASSWORD="$_pw_orig"
+
+# Generate RabbitMQ definitions (per-consumer credentials) from template.
+# Falls back to the shared RABBITMQ_USER/PASSWORD if the per-service vars aren't set in
+# .env, so existing deployments keep working with a single admin account unless you opt
+# into separated credentials.
+: "${RABBITMQ_USER:=wacchat}"
+: "${RABBITMQ_PASSWORD:=wacchat}"
+: "${RABBITMQ_BACKEND_USER:=$RABBITMQ_USER}"
+: "${RABBITMQ_BACKEND_PASSWORD:=$RABBITMQ_PASSWORD}"
+: "${RABBITMQ_NOTIFICATION_USER:=$RABBITMQ_USER}"
+: "${RABBITMQ_NOTIFICATION_PASSWORD:=$RABBITMQ_PASSWORD}"
+RABBITMQ_DEFS_TEMPLATE="$SCRIPT_DIR/wac/rabbitmq/definitions.json.template"
+RABBITMQ_DEFS_OUTPUT="$SCRIPT_DIR/wac/rabbitmq/definitions.json"
+envsubst '${RABBITMQ_USER} ${RABBITMQ_PASSWORD} ${RABBITMQ_BACKEND_USER} ${RABBITMQ_BACKEND_PASSWORD} ${RABBITMQ_NOTIFICATION_USER} ${RABBITMQ_NOTIFICATION_PASSWORD}' \
+  < "$RABBITMQ_DEFS_TEMPLATE" > "$RABBITMQ_DEFS_OUTPUT"
 
 PUSH=false
 ENV="development"
@@ -345,8 +364,8 @@ docker run -d \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:8080" \
   -e FILE_SERVICE_INTERNAL_API_KEY="${FILE_SERVICE_INTERNAL_API_KEY:-}" \
   -e RABBITMQ_HOST="wacchat-rabbitmq" \
-  -e RABBITMQ_USER="${RABBITMQ_USER:-wacchat}" \
-  -e RABBITMQ_PASSWORD="${RABBITMQ_PASSWORD:-wacchat}" \
+  -e RABBITMQ_BACKEND_USER="$RABBITMQ_BACKEND_USER" \
+  -e RABBITMQ_BACKEND_PASSWORD="$RABBITMQ_BACKEND_PASSWORD" \
   -e BACKEND_INTERNAL_API_KEY="${BACKEND_INTERNAL_API_KEY:-}" \
   -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
   -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
@@ -364,8 +383,8 @@ docker run -d \
   -p "127.0.0.1:$PORT_NOTIFICATION_SERVICE:8084" \
   -e KEYCLOAK_ISSUER_URI="https://auth.wacchat.win/realms/wacchat" \
   -e RABBITMQ_HOST="wacchat-rabbitmq" \
-  -e RABBITMQ_USER="${RABBITMQ_USER:-wacchat}" \
-  -e RABBITMQ_PASSWORD="${RABBITMQ_PASSWORD:-wacchat}" \
+  -e RABBITMQ_NOTIFICATION_USER="$RABBITMQ_NOTIFICATION_USER" \
+  -e RABBITMQ_NOTIFICATION_PASSWORD="$RABBITMQ_NOTIFICATION_PASSWORD" \
   -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
   -e BACKEND_INTERNAL_API_KEY="${BACKEND_INTERNAL_API_KEY:-}" \
   -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \

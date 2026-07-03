@@ -58,6 +58,21 @@ fi
 envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET} ${MAIL_USERNAME} ${MAIL_PASSWORD} ${MAIL_FROM}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
 MAIL_PASSWORD="$_pw_orig"
 
+# Generate RabbitMQ definitions (per-consumer credentials) from template.
+# Falls back to the shared RABBITMQ_USER/PASSWORD if the per-service vars aren't set in
+# .env, so local dev keeps working with a single admin account unless you opt into
+# separated credentials.
+: "${RABBITMQ_USER:=wacchat}"
+: "${RABBITMQ_PASSWORD:=wacchat}"
+: "${RABBITMQ_BACKEND_USER:=$RABBITMQ_USER}"
+: "${RABBITMQ_BACKEND_PASSWORD:=$RABBITMQ_PASSWORD}"
+: "${RABBITMQ_NOTIFICATION_USER:=$RABBITMQ_USER}"
+: "${RABBITMQ_NOTIFICATION_PASSWORD:=$RABBITMQ_PASSWORD}"
+RABBITMQ_DEFS_TEMPLATE="$SCRIPT_DIR/wac/rabbitmq/definitions.json.template"
+RABBITMQ_DEFS_OUTPUT="$SCRIPT_DIR/wac/rabbitmq/definitions.json"
+envsubst '${RABBITMQ_USER} ${RABBITMQ_PASSWORD} ${RABBITMQ_BACKEND_USER} ${RABBITMQ_BACKEND_PASSWORD} ${RABBITMQ_NOTIFICATION_USER} ${RABBITMQ_NOTIFICATION_PASSWORD}' \
+  < "$RABBITMQ_DEFS_TEMPLATE" > "$RABBITMQ_DEFS_OUTPUT"
+
 # Stop existing observability stack (depends on the infra network, so stop it first)
 log "Stopping existing observability stack..."
 docker compose \

@@ -13,6 +13,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -102,7 +103,7 @@ public class MessageService {
         final String senderId = getSenderId(chat, authentication);
         final String receiverId = getRecipientId(chat, authentication);
 
-        final String mediaUrl = fileServiceClient.uploadMessageMedia(file, senderId);
+        final String mediaUrl = fileServiceClient.uploadMessageMedia(file, senderId, bearerToken(authentication));
         Message message = new Message();
         message.setReceiverId(receiverId);
         message.setSenderId(senderId);
@@ -122,6 +123,10 @@ public class MessageService {
                 .build();
 
         notificationService.sendNotification(receiverId, notification);
+    }
+
+    private static String bearerToken(Authentication authentication) {
+        return ((Jwt) authentication.getPrincipal()).getTokenValue();
     }
 
     private void assertParticipant(Chat chat, String userId) {

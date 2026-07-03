@@ -16,8 +16,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.util.Set;
-
-import static java.lang.System.currentTimeMillis;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -48,17 +47,17 @@ public class R2StorageService {
         return upload(file, "messages/" + userId, ALLOWED_MESSAGE_MEDIA_EXTENSIONS, MAX_MESSAGE_MEDIA_SIZE_BYTES);
     }
 
-    public void deleteAvatar(@Nonnull String avatarUrl) {
-        deleteObject(avatarUrl);
-    }
-
-    public void deleteObject(@Nonnull String publicUrl) {
+    public void deleteObject(@Nonnull String publicUrl, @Nonnull String requesterId) {
         String prefix = publicBaseUrl + "/";
         if (!publicUrl.startsWith(prefix)) {
             log.warn("URL does not match configured public base URL, skipping delete: {}", publicUrl);
             return;
         }
         String key = publicUrl.substring(prefix.length());
+        String[] segments = key.split("/");
+        if (segments.length < 2 || !segments[1].equals(requesterId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot delete another user's file");
+        }
         try {
             r2Client.deleteObject(DeleteObjectRequest.builder()
                     .bucket(bucketName)
@@ -78,7 +77,7 @@ public class R2StorageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File exceeds the " + (maxSizeBytes / (1024 * 1024)) + "MB limit");
         }
 
-        String key = keyPrefix + "/" + currentTimeMillis() + "." + extension;
+        String key = keyPrefix + "/" + UUID.randomUUID() + "." + extension;
         try {
             r2Client.putObject(
                     PutObjectRequest.builder()

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -67,12 +68,13 @@ public class UserService {
     public UserResponse uploadAvatar(MultipartFile file, Authentication authentication) {
         User user = userRepository.findByPublicId(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        String bearerToken = bearerToken(authentication);
         String oldAvatarUrl = user.getAvatarUrl();
-        String newAvatarUrl = fileServiceClient.uploadAvatar(file, user.getId());
+        String newAvatarUrl = fileServiceClient.uploadAvatar(file, user.getId(), bearerToken);
         user.setAvatarUrl(newAvatarUrl);
         UserResponse response = userMapper.toUserResponse(userRepository.save(user));
         if (oldAvatarUrl != null) {
-            fileServiceClient.deleteAvatar(oldAvatarUrl);
+            fileServiceClient.deleteAvatar(oldAvatarUrl, bearerToken);
         }
         notifyChatPartnersOfAvatarChange(user.getId(), newAvatarUrl);
         return response;
@@ -85,10 +87,14 @@ public class UserService {
         user.setAvatarUrl(null);
         UserResponse response = userMapper.toUserResponse(userRepository.save(user));
         if (oldAvatarUrl != null) {
-            fileServiceClient.deleteAvatar(oldAvatarUrl);
+            fileServiceClient.deleteAvatar(oldAvatarUrl, bearerToken(authentication));
         }
         notifyChatPartnersOfAvatarChange(user.getId(), null);
         return response;
+    }
+
+    private static String bearerToken(Authentication authentication) {
+        return ((Jwt) authentication.getPrincipal()).getTokenValue();
     }
 
     public UserResponse findUserById(String id) {

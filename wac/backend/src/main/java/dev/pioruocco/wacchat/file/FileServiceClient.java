@@ -6,6 +6,7 @@ import jakarta.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -41,28 +42,29 @@ public class FileServiceClient {
 
     @CircuitBreaker(name = "fileService", fallbackMethod = "uploadFallback")
     @Retry(name = "fileService")
-    public String uploadAvatar(@Nonnull MultipartFile file, @Nonnull String userId) {
-        return upload("/api/v1/files/avatars/" + userId, file);
+    public String uploadAvatar(@Nonnull MultipartFile file, @Nonnull String userId, @Nonnull String bearerToken) {
+        return upload("/api/v1/files/avatars/" + userId, file, bearerToken);
     }
 
     @CircuitBreaker(name = "fileService", fallbackMethod = "uploadFallback")
     @Retry(name = "fileService")
-    public String uploadMessageMedia(@Nonnull MultipartFile file, @Nonnull String userId) {
-        return upload("/api/v1/files/messages/" + userId + "/media", file);
+    public String uploadMessageMedia(@Nonnull MultipartFile file, @Nonnull String userId, @Nonnull String bearerToken) {
+        return upload("/api/v1/files/messages/" + userId + "/media", file, bearerToken);
     }
 
     @CircuitBreaker(name = "fileService", fallbackMethod = "deleteFallback")
     @Retry(name = "fileService")
-    public void deleteAvatar(@Nonnull String avatarUrl) {
-        deleteObject(avatarUrl);
+    public void deleteAvatar(@Nonnull String avatarUrl, @Nonnull String bearerToken) {
+        deleteObject(avatarUrl, bearerToken);
     }
 
     @CircuitBreaker(name = "fileService", fallbackMethod = "deleteFallback")
     @Retry(name = "fileService")
-    public void deleteObject(@Nonnull String publicUrl) {
+    public void deleteObject(@Nonnull String publicUrl, @Nonnull String bearerToken) {
         try {
             webClient.method(HttpMethod.DELETE)
                     .uri(uriBuilder -> uriBuilder.path("/api/v1/files/objects").queryParam("url", publicUrl).build())
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
                     .retrieve()
                     .toBodilessEntity()
                     .block(Duration.ofMillis(responseTimeoutMs));
@@ -71,7 +73,7 @@ public class FileServiceClient {
         }
     }
 
-    private String upload(String uri, MultipartFile file) {
+    private String upload(String uri, MultipartFile file, String bearerToken) {
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         try {
             byte[] bytes = file.getBytes();
@@ -90,6 +92,7 @@ public class FileServiceClient {
             UploadResponseDto response = webClient.post()
                     .uri(uri)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken)
                     .body(BodyInserters.fromMultipartData(builder.build()))
                     .retrieve()
                     .bodyToMono(UploadResponseDto.class)
@@ -111,12 +114,12 @@ public class FileServiceClient {
     }
 
     @SuppressWarnings("unused")
-    private String uploadFallback(MultipartFile file, String userId, Throwable t) {
+    private String uploadFallback(MultipartFile file, String userId, String bearerToken, Throwable t) {
         throw translateFailure(t);
     }
 
     @SuppressWarnings("unused")
-    private void deleteFallback(String publicUrl, Throwable t) {
+    private void deleteFallback(String publicUrl, String bearerToken, Throwable t) {
         if (t instanceof ResponseStatusException rse) {
             throw rse;
         }
