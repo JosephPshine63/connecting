@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 /**
  * Gates /api/v1/internal/** (called by notification-service, not by end users) with a
@@ -26,7 +28,8 @@ public class InternalAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String providedKey = request.getHeader(INTERNAL_API_KEY_HEADER);
-        if (internalApiKey == null || internalApiKey.isBlank() || !internalApiKey.equals(providedKey)) {
+        if (internalApiKey == null || internalApiKey.isBlank() || providedKey == null
+                || !MessageDigest.isEqual(internalApiKey.getBytes(StandardCharsets.UTF_8), providedKey.getBytes(StandardCharsets.UTF_8))) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid internal API key");
             return;
         }

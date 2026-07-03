@@ -77,6 +77,14 @@ public class R2StorageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File exceeds the " + (maxSizeBytes / (1024 * 1024)) + "MB limit");
         }
 
+        byte[] content;
+        try {
+            content = file.getBytes();
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded file");
+        }
+        MagicByteValidator.validate(extension, content);
+
         String key = keyPrefix + "/" + UUID.randomUUID() + "." + extension;
         try {
             r2Client.putObject(
@@ -85,8 +93,8 @@ public class R2StorageService {
                             .key(key)
                             .contentType(file.getContentType())
                             .build(),
-                    RequestBody.fromBytes(file.getBytes()));
-        } catch (IOException | S3Exception e) {
+                    RequestBody.fromBytes(content));
+        } catch (S3Exception e) {
             log.error("Failed to upload file to R2 at key {}", key, e);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Could not upload file");
         }
