@@ -30,12 +30,6 @@ FILE_SERVICE_DIR="$SCRIPT_DIR/wac/file-service"
 API_GATEWAY_DIR="$SCRIPT_DIR/wac/api-gateway"
 NOTIFICATION_SERVICE_DIR="$SCRIPT_DIR/wac/notification-service"
 
-# ─── 0. Git pull (always first) ──────────────────────────────────────────────
-echo "[$(date '+%H:%M:%S')] Pulling latest changes from origin..."
-command -v git >/dev/null 2>&1 || { echo "[ERROR] git not found in PATH"; exit 1; }
-git -C "$SCRIPT_DIR" pull --ff-only origin main
-echo "[$(date '+%H:%M:%S')] ✓ Repository is up to date"
-
 # ─── Auto-generate .env with strong passwords if missing ─────────────────────
 if [[ ! -f "$SCRIPT_DIR/.env" ]]; then
   echo "[deploy] .env not found — generating strong passwords..."

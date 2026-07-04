@@ -7,6 +7,8 @@
 # containers and pruned the whole Docker host.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()  { echo "[$(date '+%H:%M:%S')] ✓ $*"; }
 
@@ -48,3 +50,8 @@ done
 
 ok "Done."
 docker images | grep -E "($PATTERN)" || echo "No matching images remain."
+
+log "Pulling latest changes from origin..."
+command -v git >/dev/null 2>&1 || { echo "[ERROR] git not found in PATH"; exit 1; }
+git -C "$SCRIPT_DIR" pull --ff-only origin main
+ok "Repository is up to date"
