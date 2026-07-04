@@ -1,10 +1,10 @@
 import { Injectable, signal } from '@angular/core';
 
-export type ThemeId = 'pio' | 'blue' | 'light' | 'dark';
+export type ThemeId = 'pio-light' | 'pio-dark' | 'blue' | 'light' | 'dark';
 
 const THEME_STORAGE_KEY = 'appTheme';
-const DEFAULT_THEME: ThemeId = 'pio';
-const VALID_THEMES: ThemeId[] = ['pio', 'blue', 'light', 'dark'];
+const DEFAULT_THEME: ThemeId = 'pio-light';
+const VALID_THEMES: ThemeId[] = ['pio-light', 'pio-dark', 'blue', 'light', 'dark'];
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {

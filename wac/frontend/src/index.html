@@ -6,7 +6,7 @@
       try {
         var t = localStorage.getItem('appTheme');
         document.documentElement.setAttribute('data-theme',
-          (t === 'pio' || t === 'blue' || t === 'light' || t === 'dark') ? t : 'pio');
+          (t === 'pio-light' || t === 'pio-dark' || t === 'blue' || t === 'light' || t === 'dark') ? t : 'pio-light');
       } catch (e) {}
     })();
   </script>

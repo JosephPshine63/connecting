@@ -12,7 +12,8 @@ export class SettingsComponent {
   @Output() closed = new EventEmitter<void>();
 
   readonly themes: { id: ThemeId; label: string }[] = [
-    { id: 'pio', label: 'Pio (brand)' },
+    { id: 'pio-light', label: 'Pio Light' },
+    { id: 'pio-dark', label: 'Pio Dark' },
     { id: 'blue', label: 'Blu classico' },
     { id: 'light', label: 'Bianco / Chiaro' },
     { id: 'dark', label: 'Nero / Scuro' },
