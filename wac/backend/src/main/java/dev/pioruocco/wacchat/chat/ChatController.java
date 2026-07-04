@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,5 +38,23 @@ public class ChatController {
     @GetMapping
     public ResponseEntity<List<ChatResponse>> getChatsByReceiver(Authentication authentication) {
         return ResponseEntity.ok(chatService.getChatsByReceiverId(authentication));
+    }
+
+    @PatchMapping("/{chatId}/accept")
+    public ResponseEntity<Void> acceptChat(
+            @PathVariable String chatId,
+            Authentication authentication
+    ) {
+        chatService.acceptChat(chatId, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{chatId}/reject")
+    public ResponseEntity<Void> rejectChat(
+            @PathVariable String chatId,
+            Authentication authentication
+    ) {
+        chatService.rejectChat(chatId, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }

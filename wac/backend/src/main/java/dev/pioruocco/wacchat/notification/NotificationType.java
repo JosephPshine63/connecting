@@ -8,5 +8,8 @@ public enum NotificationType {
     AUDIO,
     VIDEO,
     AVATAR_UPDATED,
+    CHAT_REQUEST,
+    CHAT_REQUEST_ACCEPTED,
+    CHAT_REQUEST_REJECTED,
 
 }

@@ -23,8 +23,33 @@
 </div>
 
 <div class="chat-items">
-  @if (chats().length && !searchNewContact) {
-    @for (chat of chats(); track chat) {
+  @if (!searchNewContact && incomingRequests().length) {
+    <div class="chat-requests-section">
+      <span class="chat-requests-title">Richieste in arrivo ({{ incomingRequests().length }})</span>
+      @for (chat of incomingRequests(); track chat) {
+        <div class="chat-item chat-request-item" (click)="chatClicked(chat)">
+          <div class="item-avatar" (click)="onAvatarClick($event, otherUserId(chat))">
+            @if (chat.avatarUrl) {
+              <img [src]="chat.avatarUrl" alt="">
+            } @else {
+              {{ chat.name?.charAt(0)?.toUpperCase() }}
+            }
+          </div>
+          <div class="item-body">
+            <div class="item-top">
+              <span class="item-name">{{ chat.name }}</span>
+            </div>
+            <div class="item-bottom chat-request-buttons">
+              <button class="chat-request-accept-btn" (click)="acceptRequest(chat, $event)">Accetta</button>
+              <button class="chat-request-reject-btn" (click)="rejectRequest(chat, $event)">Rifiuta</button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+  @if (visibleChats().length && !searchNewContact) {
+    @for (chat of visibleChats(); track chat) {
       <div class="chat-item" (click)="chatClicked(chat)">
         <div class="item-avatar" (click)="onAvatarClick($event, otherUserId(chat))">
           @if (chat.avatarUrl) {
@@ -36,9 +61,13 @@
         <div class="item-body">
           <div class="item-top">
             <span class="item-name">{{ chat.name }}</span>
-            <span class="item-time" [class.unread]="chat.unreadCount && chat.unreadCount > 0">
-              {{ chat.lastMessageTime | date:'HH:mm' }}
-            </span>
+            @if (isPendingOutgoing(chat)) {
+              <span class="item-time pending-badge">In attesa</span>
+            } @else {
+              <span class="item-time" [class.unread]="chat.unreadCount && chat.unreadCount > 0">
+                {{ chat.lastMessageTime | date:'HH:mm' }}
+              </span>
+            }
           </div>
           <div class="item-bottom">
             <span class="item-preview">

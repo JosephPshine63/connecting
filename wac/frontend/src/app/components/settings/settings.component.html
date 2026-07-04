@@ -1,0 +1,21 @@
+<div class="settings-overlay" (click)="close()">
+  <div class="settings-box" (click)="$event.stopPropagation()">
+    <button class="settings-close" (click)="close()" aria-label="Chiudi">
+      <i class="fas fa-xmark"></i>
+    </button>
+
+    <h2 class="settings-title">Impostazioni</h2>
+
+    <label class="settings-label" for="theme-select">Tema</label>
+    <select
+      id="theme-select"
+      class="settings-select"
+      [ngModel]="themeService.theme()"
+      (ngModelChange)="themeService.setTheme($event)"
+    >
+      @for (theme of themes; track theme.id) {
+        <option [value]="theme.id">{{ theme.label }}</option>
+      }
+    </select>
+  </div>
+</div>

@@ -8,8 +8,10 @@ export interface ChatResponse {
   lastMessage?: string;
   lastMessageTime?: string;
   name?: string;
+  pendingMessageCount?: number;
   receiverId?: string;
   recipientOnline?: boolean;
   senderId?: string;
+  status?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   unreadCount?: number;
 }

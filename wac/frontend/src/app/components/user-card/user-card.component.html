@@ -32,6 +32,11 @@
           <span>Mai connesso</span>
         }
       </div>
+      @if (requestSent) {
+        <span class="user-card-request-sent">Richiesta inviata</span>
+      } @else {
+        <button class="user-card-request-btn" (click)="sendChatRequest()">Invia richiesta di chat</button>
+      }
     }
   </div>
 </div>

@@ -8,6 +8,9 @@ public enum NotificationType {
     AUDIO,
     VIDEO,
     AVATAR_UPDATED,
+    CHAT_REQUEST,
+    CHAT_REQUEST_ACCEPTED,
+    CHAT_REQUEST_REJECTED,
 
     /** Produced and consumed entirely within notification-service (see ws.TypingController) —
      *  never published by the backend, so unlike the other constants above it does not need

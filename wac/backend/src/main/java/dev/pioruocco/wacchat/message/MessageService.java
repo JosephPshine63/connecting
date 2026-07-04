@@ -3,7 +3,11 @@ package dev.pioruocco.wacchat.message;
 import dev.pioruocco.wacchat.bot.BotConstants;
 import dev.pioruocco.wacchat.bot.BotService;
 import dev.pioruocco.wacchat.chat.Chat;
+import dev.pioruocco.wacchat.chat.ChatConstants;
+import dev.pioruocco.wacchat.chat.ChatNotAcceptedException;
 import dev.pioruocco.wacchat.chat.ChatRepository;
+import dev.pioruocco.wacchat.chat.ChatRequestLimitExceededException;
+import dev.pioruocco.wacchat.chat.ChatStatus;
 import dev.pioruocco.wacchat.file.FileServiceClient;
 import dev.pioruocco.wacchat.file.FileUtils;
 import dev.pioruocco.wacchat.notification.Notification;
@@ -37,6 +41,7 @@ public class MessageService {
 
         final String senderId = authentication.getName();
         assertParticipant(chat, senderId);
+        assertCanSendMessage(chat, senderId);
         final String receiverId = resolveReceiverId(chat, senderId);
 
         Message message = new Message();
@@ -99,6 +104,7 @@ public class MessageService {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
         assertParticipant(chat, authentication.getName());
+        assertCanSendMessage(chat, authentication.getName());
 
         final String senderId = getSenderId(chat, authentication);
         final String receiverId = getRecipientId(chat, authentication);
@@ -133,6 +139,20 @@ public class MessageService {
         if (!chat.getSender().getId().equals(userId) && !chat.getRecipient().getId().equals(userId)) {
             throw new AccessDeniedException("You are not a participant in this chat");
         }
+    }
+
+    private void assertCanSendMessage(Chat chat, String senderId) {
+        if (chat.getStatus() == ChatStatus.ACCEPTED) {
+            return;
+        }
+        if (chat.getStatus() == ChatStatus.REJECTED || !chat.getSender().getId().equals(senderId)) {
+            throw new ChatNotAcceptedException(chat.getId());
+        }
+        if (chat.getPendingMessageCount() >= ChatConstants.MAX_PENDING_MESSAGES) {
+            throw new ChatRequestLimitExceededException(chat.getId());
+        }
+        chat.setPendingMessageCount(chat.getPendingMessageCount() + 1);
+        chatRepository.save(chat);
     }
 
     private String resolveReceiverId(Chat chat, String senderId) {

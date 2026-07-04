@@ -72,7 +72,7 @@
 
   &:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(160, 96, 255, 0.1);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
   }
 }
 
@@ -93,7 +93,7 @@
 
   &.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
   }
 
   &:hover:not(.active) {
@@ -132,7 +132,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
   font-size: 1em;
   flex-shrink: 0;
@@ -202,7 +202,7 @@
   height: 20px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.7em;
   display: flex;
   align-items: center;
@@ -216,4 +216,52 @@
   text-align: center;
   color: var(--text-muted);
   font-size: 0.85em;
+}
+
+.chat-requests-section {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+
+.chat-requests-title {
+  display: block;
+  padding: 8px 16px 4px;
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.chat-request-buttons {
+  gap: 8px;
+}
+
+.chat-request-accept-btn,
+.chat-request-reject-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 4px 12px;
+  font-size: 0.75em;
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover { opacity: 0.85; }
+}
+
+.chat-request-accept-btn {
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+  color: var(--on-accent);
+}
+
+.chat-request-reject-btn {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.pending-badge {
+  font-size: 0.7em;
+  color: var(--text-muted);
+  font-style: italic;
 }

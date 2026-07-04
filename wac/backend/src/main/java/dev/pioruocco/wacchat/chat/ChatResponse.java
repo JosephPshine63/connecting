@@ -24,4 +24,6 @@ public class ChatResponse {
     private String senderId;
     private String receiverId;
     private String avatarUrl;
+    private ChatStatus status;
+    private int pendingMessageCount;
 }

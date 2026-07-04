@@ -2,11 +2,13 @@ CREATE SEQUENCE IF NOT EXISTS msg_seq START WITH 1 INCREMENT BY 1;
 
 CREATE TABLE chat
 (
-    id                 VARCHAR(255)                NOT NULL,
-    created_date       TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    last_modified_date TIMESTAMP WITHOUT TIME ZONE,
-    sender_id          VARCHAR(255),
-    recipient_id       VARCHAR(255),
+    id                     VARCHAR(255)                NOT NULL,
+    created_date           TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    last_modified_date     TIMESTAMP WITHOUT TIME ZONE,
+    sender_id              VARCHAR(255),
+    recipient_id           VARCHAR(255),
+    status                 VARCHAR(50)                 NOT NULL DEFAULT 'ACCEPTED',
+    pending_message_count  INTEGER                     NOT NULL DEFAULT 0,
     CONSTRAINT pk_chat PRIMARY KEY (id)
 );
 

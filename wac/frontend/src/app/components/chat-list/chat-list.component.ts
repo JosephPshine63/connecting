@@ -21,6 +21,8 @@ export class ChatListComponent {
   contacts: Array<UserResponse> = [];
   chatSelected = output<ChatResponse>();
   avatarClicked = output<string>();
+  chatAccepted = output<ChatResponse>();
+  chatRejected = output<ChatResponse>();
 
   constructor(
     private chatService: ChatService,
@@ -51,7 +53,9 @@ export class ChatListComponent {
           lastMessageTime: contact.lastSeen,
           senderId: this.keycloakService.userId,
           receiverId: contact.id,
-          avatarUrl: contact.avatarUrl
+          avatarUrl: contact.avatarUrl,
+          status: 'PENDING',
+          pendingMessageCount: 0
         };
         this.searchNewContact = false;
         this.chatSelected.emit(chat);
@@ -62,6 +66,37 @@ export class ChatListComponent {
 
   chatClicked(chat: ChatResponse) {
     this.chatSelected.emit(chat);
+  }
+
+  incomingRequests(): ChatResponse[] {
+    const me = this.keycloakService.userId;
+    return this.chats().filter(c => c.status === 'PENDING' && c.receiverId === me);
+  }
+
+  visibleChats(): ChatResponse[] {
+    const me = this.keycloakService.userId;
+    return this.chats().filter(c => !(c.status === 'PENDING' && c.receiverId === me));
+  }
+
+  isPendingOutgoing(chat: ChatResponse): boolean {
+    return chat.status === 'PENDING' && chat.senderId === this.keycloakService.userId;
+  }
+
+  acceptRequest(chat: ChatResponse, event: Event): void {
+    event.stopPropagation();
+    this.chatService.acceptChat({ chatId: chat.id as string }).subscribe({
+      next: () => {
+        chat.status = 'ACCEPTED';
+        this.chatAccepted.emit(chat);
+      }
+    });
+  }
+
+  rejectRequest(chat: ChatResponse, event: Event): void {
+    event.stopPropagation();
+    this.chatService.rejectChat({ chatId: chat.id as string }).subscribe({
+      next: () => this.chatRejected.emit(chat)
+    });
   }
 
   otherUserId(chat: ChatResponse): string | undefined {

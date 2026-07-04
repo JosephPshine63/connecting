@@ -1,7 +1,7 @@
 .session-blocked-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--overlay-scrim);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
@@ -10,8 +10,8 @@
 }
 
 .session-blocked-box {
-  background: rgba(30, 30, 46, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 2.5rem 2rem;
   width: 100%;
@@ -24,25 +24,26 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #db2777);
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 1.25rem;
   font-size: 1.6rem;
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .session-blocked-title {
+  font-family: var(--font-heading);
   font-size: 1.4rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .session-blocked-sub {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-secondary);
   line-height: 1.5;
   margin-bottom: 1.75rem;
 }
@@ -52,8 +53,8 @@
   padding: 0.75rem;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #7c3aed, #db2777);
-  color: #fff;
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+  color: var(--on-accent);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
@@ -73,17 +74,17 @@
 .session-blocked-logout-btn {
   width: 100%;
   padding: 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   border-radius: 12px;
   background: transparent;
-  color: #94a3b8;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: color 0.2s, border-color 0.2s;
 
   &:hover {
-    color: #f1f5f9;
-    border-color: rgba(255, 255, 255, 0.25);
+    color: var(--text-primary);
+    border-color: rgba(var(--accent-rgb), 0.25);
   }
 }

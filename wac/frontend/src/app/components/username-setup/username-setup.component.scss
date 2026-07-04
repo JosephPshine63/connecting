@@ -1,7 +1,7 @@
 .username-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--overlay-scrim);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
@@ -10,8 +10,8 @@
 }
 
 .username-box {
-  background: rgba(30, 30, 46, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 2.5rem 2rem;
   width: 100%;
@@ -24,25 +24,26 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #db2777);
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 1.25rem;
   font-size: 1.6rem;
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .username-title {
+  font-family: var(--font-heading);
   font-size: 1.4rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .username-sub {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-secondary);
   line-height: 1.5;
   margin-bottom: 1.75rem;
 }
@@ -50,19 +51,19 @@
 .username-input-wrap {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0 0.75rem;
   transition: border-color 0.2s;
 
   &:focus-within {
-    border-color: rgba(124, 58, 237, 0.6);
+    border-color: rgba(var(--accent-rgb), 0.6);
   }
 }
 
 .username-prefix {
-  color: #94a3b8;
+  color: var(--text-secondary);
   font-size: 1.1rem;
   user-select: none;
   padding-right: 4px;
@@ -73,13 +74,13 @@
   background: transparent;
   border: none;
   outline: none;
-  color: #f1f5f9;
+  color: var(--text-primary);
   font-size: 1rem;
   padding: 0.75rem 0;
   letter-spacing: 0.01em;
 
   &::placeholder {
-    color: rgba(148, 163, 184, 0.5);
+    color: var(--text-muted);
   }
 }
 
@@ -88,9 +89,9 @@
   text-align: center;
   font-size: 0.9rem;
 
-  .checking { color: #94a3b8; }
-  .available { color: #34d399; }
-  .unavailable { color: #f87171; }
+  .checking { color: var(--text-secondary); }
+  .available { color: var(--online); }
+  .unavailable { color: var(--error); }
 }
 
 .username-feedback {
@@ -99,8 +100,8 @@
   font-size: 0.8rem;
 
   .feedback {
-    &.available { color: #34d399; }
-    &.unavailable { color: #f87171; }
+    &.available { color: var(--online); }
+    &.unavailable { color: var(--error); }
   }
 }
 
@@ -109,8 +110,8 @@
   padding: 0.75rem;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #7c3aed, #db2777);
-  color: #fff;
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+  color: var(--on-accent);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;

@@ -34,7 +34,11 @@
     <app-username-setup (usernameSet)="onUsernameSet($event)"></app-username-setup>
   }
   @if (selectedCardUserId) {
-    <app-user-card [userId]="selectedCardUserId" (closed)="closeUserCard()"></app-user-card>
+    <app-user-card
+      [userId]="selectedCardUserId"
+      (closed)="closeUserCard()"
+      (chatRequested)="onChatRequested($event)"
+    ></app-user-card>
   }
   @if (showAvatarUpload) {
     <app-avatar-upload
@@ -42,6 +46,9 @@
       (avatarChanged)="onAvatarChanged($event)"
       (closed)="showAvatarUpload = false"
     ></app-avatar-upload>
+  }
+  @if (showSettings) {
+    <app-settings (closed)="showSettings = false"></app-settings>
   }
 
   <div class="app-shell" [class.has-banner]="showDemoBanner">
@@ -63,6 +70,9 @@
         <button class="nav-icon-btn" (click)="userProfile()" title="Profilo">
           <i class="fa-solid fa-user"></i>
         </button>
+        <button class="nav-icon-btn" (click)="showSettings = true" title="Impostazioni">
+          <i class="fa-solid fa-palette"></i>
+        </button>
         <button class="nav-icon-btn" (click)="logout()" title="Esci">
           <i class="fa-solid fa-right-from-bracket"></i>
         </button>
@@ -74,6 +84,8 @@
         [chats]="chats"
         (chatSelected)="chatSelected($event)"
         (avatarClicked)="openUserCard($event)"
+        (chatAccepted)="onChatAccepted($event)"
+        (chatRejected)="onChatRejected($event)"
       ></app-chat-list>
     </div>
 
@@ -140,50 +152,70 @@
           }
         </div>
 
-        <div class="input-bar">
-          <button class="input-icon-btn" (click)="inputFile.click()" title="Allega file">
-            <i class="fas fa-paperclip"></i>
-          </button>
-          <input
-            #inputFile
-            type="file"
-            [hidden]="true"
-            accept=".jpg,.jpeg,.png,.svg,.mp4,.mov,.mp3"
-            (change)="uploadMedia($event.target)"
-          >
-          <div class="emoji-wrapper">
-            <button class="input-icon-btn" (click)="showEmojis = !showEmojis" title="Emoji">
-              <i class="fa-regular fa-face-smile"></i>
+        @if (isChatRejected()) {
+          <div class="chat-request-banner">
+            <p>Richiesta di chat rifiutata.</p>
+          </div>
+        } @else if (isChatPending() && !isRequester()) {
+          <div class="chat-request-banner">
+            <p>{{ selectedChat.name }} vuole iniziare una chat con te.</p>
+            <div class="chat-request-actions">
+              <button class="chat-request-accept" (click)="acceptSelectedChat()">Accetta</button>
+              <button class="chat-request-reject" (click)="rejectSelectedChat()">Rifiuta</button>
+            </div>
+          </div>
+        } @else {
+          <div class="input-bar">
+            <button class="input-icon-btn" [disabled]="isChatPending() && pendingLimitReached()" (click)="inputFile.click()" title="Allega file">
+              <i class="fas fa-paperclip"></i>
             </button>
-            @if (showEmojis) {
-              <emoji-mart
-                [set]="'google'"
-                title="Pick your emoji.."
-                emoji="smile"
-                class="emoji-picker"
-                (emojiClick)="onSelectEmojis($event)"
-              ></emoji-mart>
+            <input
+              #inputFile
+              type="file"
+              [hidden]="true"
+              accept=".jpg,.jpeg,.png,.svg,.mp4,.mov,.mp3"
+              (change)="uploadMedia($event.target)"
+            >
+            <div class="emoji-wrapper">
+              <button class="input-icon-btn" (click)="showEmojis = !showEmojis" title="Emoji">
+                <i class="fa-regular fa-face-smile"></i>
+              </button>
+              @if (showEmojis) {
+                <emoji-mart
+                  [set]="'google'"
+                  title="Pick your emoji.."
+                  emoji="smile"
+                  class="emoji-picker"
+                  (emojiClick)="onSelectEmojis($event)"
+                ></emoji-mart>
+              }
+            </div>
+            <input
+              type="text"
+              class="message-input"
+              [disabled]="isChatPending() && pendingLimitReached()"
+              [placeholder]="isChatPending() && pendingLimitReached() ? 'Limite di messaggi di richiesta raggiunto' : 'Scrivi un messaggio…'"
+              [(ngModel)]="messageContent"
+              (keydown)="keyDown($event)"
+              (input)="onMessageInput()"
+              (click)="onClick()"
+            >
+            @if (messageContent) {
+              <button class="send-btn" [disabled]="isChatPending() && pendingLimitReached()" (click)="sendMessage()" title="Invia">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            } @else {
+              <button class="mic-btn" title="Vocale">
+                <i class="fa-solid fa-microphone"></i>
+              </button>
             }
           </div>
-          <input
-            type="text"
-            class="message-input"
-            placeholder="Scrivi un messaggio…"
-            [(ngModel)]="messageContent"
-            (keydown)="keyDown($event)"
-            (input)="onMessageInput()"
-            (click)="onClick()"
-          >
-          @if (messageContent) {
-            <button class="send-btn" (click)="sendMessage()" title="Invia">
-              <i class="fa-solid fa-paper-plane"></i>
-            </button>
-          } @else {
-            <button class="mic-btn" title="Vocale">
-              <i class="fa-solid fa-microphone"></i>
-            </button>
+          @if (isChatPending() && isRequester()) {
+            <div class="chat-request-hint">
+              {{ selectedChat.pendingMessageCount || 0 }}/3 messaggi di richiesta inviati — in attesa che {{ selectedChat.name }} accetti
+            </div>
           }
-        </div>
+        }
       } @else {
         <div class="empty-state">
           <div class="empty-state-icon">

@@ -11,11 +11,15 @@ import { BaseService } from '../base-service';
 import { ApiConfiguration } from '../api-configuration';
 import { StrictHttpResponse } from '../strict-http-response';
 
+import { acceptChat } from '../fn/chat/accept-chat';
+import { AcceptChat$Params } from '../fn/chat/accept-chat';
 import { ChatResponse } from '../models/chat-response';
 import { createChat } from '../fn/chat/create-chat';
 import { CreateChat$Params } from '../fn/chat/create-chat';
 import { getChatsByReceiver } from '../fn/chat/get-chats-by-receiver';
 import { GetChatsByReceiver$Params } from '../fn/chat/get-chats-by-receiver';
+import { rejectChat } from '../fn/chat/reject-chat';
+import { RejectChat$Params } from '../fn/chat/reject-chat';
 import { StringResponse } from '../models/string-response';
 
 @Injectable({ providedIn: 'root' })
@@ -71,6 +75,56 @@ export class ChatService extends BaseService {
   createChat(params: CreateChat$Params, context?: HttpContext): Observable<StringResponse> {
     return this.createChat$Response(params, context).pipe(
       map((r: StrictHttpResponse<StringResponse>): StringResponse => r.body)
+    );
+  }
+
+  /** Path part for operation `rejectChat()` */
+  static readonly RejectChatPath = '/api/v1/chats/{chatId}/reject';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `rejectChat()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  rejectChat$Response(params: RejectChat$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+    return rejectChat(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `rejectChat$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  rejectChat(params: RejectChat$Params, context?: HttpContext): Observable<void> {
+    return this.rejectChat$Response(params, context).pipe(
+      map((r: StrictHttpResponse<void>): void => r.body)
+    );
+  }
+
+  /** Path part for operation `acceptChat()` */
+  static readonly AcceptChatPath = '/api/v1/chats/{chatId}/accept';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `acceptChat()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  acceptChat$Response(params: AcceptChat$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+    return acceptChat(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `acceptChat$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  acceptChat(params: AcceptChat$Params, context?: HttpContext): Observable<void> {
+    return this.acceptChat$Response(params, context).pipe(
+      map((r: StrictHttpResponse<void>): void => r.body)
     );
   }
 

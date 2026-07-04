@@ -41,7 +41,7 @@ public class BotService {
         if (!isEnabled()) {
             return;
         }
-        String chatId = chatService.createChat(realUserId, BotConstants.ARNO_USER_ID);
+        String chatId = chatService.createSystemChat(realUserId, BotConstants.ARNO_USER_ID);
         systemMessageSender.saveSystemMessage(
                 chatId, BotConstants.ARNO_USER_ID, realUserId,
                 BotConstants.WELCOME_MESSAGE, MessageType.TEXT);

@@ -8,6 +8,7 @@ import { ApiConfiguration, ApiConfigurationParams } from './api-configuration';
 
 import { UserService } from './services/user.service';
 import { MessageService } from './services/message.service';
+import { SessionValidationControllerService } from './services/session-validation-controller.service';
 import { ChatService } from './services/chat.service';
 
 /**
@@ -20,6 +21,7 @@ import { ChatService } from './services/chat.service';
   providers: [
     UserService,
     MessageService,
+    SessionValidationControllerService,
     ChatService,
     ApiConfiguration
   ],

@@ -15,6 +15,8 @@ public class ChatMapper {
                 .senderId(chat.getSender().getId())
                 .receiverId(chat.getRecipient().getId())
                 .avatarUrl(chat.getChatAvatarUrl(senderId))
+                .status(chat.getStatus())
+                .pendingMessageCount(chat.getPendingMessageCount())
                 .build();
     }
 }

@@ -9,7 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ├── docker-compose.yml          # Base compose (PostgreSQL :5433 + Keycloak :8180 + RabbitMQ :5672/61613/15672)
 ├── docker-compose.local.yml    # Local override — sets KC_HOSTNAME to http://localhost:8180, builds+runs api-gateway as a container
 ├── deploy-local.sh             # Preferred local startup script (sources .env, renders realm template)
-├── deploy-prod.sh              # Production deploy script (builds images, pushes if --push)
+├── deploy-prod.sh              # Production deploy script (builds images, pushes if --push); Keycloak runs in production `start` mode (docker-compose.local.yml overrides back to `start-dev` for local)
+├── cleanup-images.sh           # Project-scoped Docker image/container cleanup (backend/frontend/file-service/api-gateway/notification-service + observability stack only — leaves postgres/keycloak/rabbitmq untouched) + git pull; replaces the old cleanup.sh which pruned the entire Docker host
 ├── .env.example                # Copy to .env and fill in values
 ├── docker-compose.observability.yml       # Prometheus + Grafana + Loki + Tempo
 ├── docker-compose.observability.local.yml # Local override
@@ -44,6 +45,10 @@ docker compose down             # stop containers
 ```
 
 Do **not** use `docker compose up` directly — `deploy-local.sh` renders `wacchat.json` from the template first, sets the correct `KC_HOSTNAME` override for local development, builds and starts `api-gateway` as a container (`docker-compose.local.yml`, rebuilt on every run via `--build`), and also brings up `docker-compose.observability.yml` (Prometheus :9091, Grafana :3000, Loki :3100, Tempo :4318/4317/3200) on the same Docker network.
+
+Both `deploy-local.sh` and `deploy-prod.sh` share an `ensure_keycloak_db()` bootstrap: Postgres is started alone first, then the `keycloak` database is created idempotently (connecting explicitly to the `postgres` admin database, since `-U <user>` alone defaults to a same-named DB that doesn't exist) before the rest of the stack — Keycloak included — comes up.
+
+To clean up project-local Docker images/containers (not the shared host), run `./cleanup-images.sh` — it prompts for confirmation, removes only this project's app + observability images/containers, then does a `git pull --ff-only` at the end.
 
 Once the infra above is up, `./start-local-services.sh` starts backend, file-service, notification-service, and frontend in the background via `direnv exec` (so each loads `.env` through `.envrc`), logging to `logs/<name>.log`. Note: the script's own `SERVICES` array still lists a 5th entry, `api-gateway` via `./mvnw spring-boot:run` on :8081 — this is stale since `deploy-local.sh` already runs api-gateway as a Docker container on the same port (added in `a2f0f82`); running it will attempt a redundant/conflicting bind on :8081.
 

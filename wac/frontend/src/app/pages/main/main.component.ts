@@ -21,6 +21,7 @@ import {AvatarUploadComponent} from '../../components/avatar-upload/avatar-uploa
 import {SessionBlockedComponent} from '../../components/session-blocked/session-blocked.component';
 import {SessionGuardService} from '../../utils/session/session-guard.service';
 import {BrowserNotificationService} from '../../utils/notifications/browser-notification.service';
+import {SettingsComponent} from '../../components/settings/settings.component';
 
 const HEARTBEAT_INTERVAL_MS = 60000;
 const ARNO_USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -28,6 +29,8 @@ const ARNO_TYPING_TIMEOUT_MS = 20000;
 const PEER_TYPING_SAFETY_TIMEOUT_MS = 8000;
 const TYPING_STOP_DEBOUNCE_MS = 2000;
 const TYPING_SEND_THROTTLE_MS = 3000;
+// Must match ChatConstants.MAX_PENDING_MESSAGES in the backend.
+const MAX_PENDING_MESSAGES = 3;
 
 @Component({
   selector: 'app-main',
@@ -39,7 +42,8 @@ const TYPING_SEND_THROTTLE_MS = 3000;
     UsernameSetupComponent,
     UserCardComponent,
     AvatarUploadComponent,
-    SessionBlockedComponent
+    SessionBlockedComponent,
+    SettingsComponent
   ],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
@@ -59,6 +63,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   showUsernameModal = false;
   selectedCardUserId: string | null = null;
   showAvatarUpload = false;
+  showSettings = false;
   @ViewChild('scrollableDiv') scrollableDiv!: ElementRef<HTMLDivElement>;
   private notificationSubscription: StompSubscription | null = null;
   private heartbeatHandle: ReturnType<typeof setInterval> | null = null;
@@ -152,6 +157,26 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectedCardUserId = userId;
   }
 
+  onChatAccepted(chat: ChatResponse): void {
+    if (this.selectedChat.id === chat.id) {
+      this.selectedChat.status = 'ACCEPTED';
+    }
+  }
+
+  onChatRejected(chat: ChatResponse): void {
+    this.chats = this.chats.filter(c => c.id !== chat.id);
+    if (this.selectedChat.id === chat.id) {
+      this.selectedChat = {};
+    }
+  }
+
+  onChatRequested(chat: ChatResponse): void {
+    if (!this.chats.find(c => c.id === chat.id)) {
+      this.chats.unshift(chat);
+    }
+    this.closeUserCard();
+  }
+
   closeUserCard(): void {
     this.selectedCardUserId = null;
   }
@@ -202,6 +227,9 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.chatMessages.push(message);
           this.messageContent = '';
           this.showEmojis = false;
+          if (this.isChatPending() && this.isRequester()) {
+            this.selectedChat.pendingMessageCount = (this.selectedChat.pendingMessageCount ?? 0) + 1;
+          }
           if (this.getReceiverId() === ARNO_USER_ID) {
             this.startArnoTyping(this.selectedChat.id as string);
           } else {
@@ -446,6 +474,18 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.handlePeerTyping(notification);
         return;
       }
+      if (notification.type === 'CHAT_REQUEST') {
+        this.handleChatRequest(notification);
+        return;
+      }
+      if (notification.type === 'CHAT_REQUEST_ACCEPTED') {
+        this.handleChatRequestAccepted(notification);
+        return;
+      }
+      if (notification.type === 'CHAT_REQUEST_REJECTED') {
+        this.handleChatRequestRejected(notification);
+        return;
+      }
       if (notification.type === 'MESSAGE' || notification.type === 'IMAGE') {
         this.maybeShowDesktopNotification(notification);
       }
@@ -528,6 +568,79 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (destChat) {
       destChat.avatarUrl = notification.avatarUrl;
     }
+  }
+
+  private handleChatRequest(notification: Notification): void {
+    if (this.chats.find(c => c.id === notification.chatId)) return;
+    const newChat: ChatResponse = {
+      id: notification.chatId,
+      senderId: notification.senderId,
+      receiverId: notification.receiverId,
+      name: notification.chatName,
+      status: 'PENDING',
+      pendingMessageCount: 0,
+      unreadCount: 0
+    };
+    this.chats.unshift(newChat);
+    this.browserNotifications.notify(
+      notification.chatName || 'Nuova richiesta di chat',
+      'Vuole iniziare una chat con te',
+      () => this.ngZone.run(() => {
+        const chat = this.chats.find(c => c.id === notification.chatId);
+        if (chat) this.chatSelected(chat);
+      })
+    );
+  }
+
+  private handleChatRequestAccepted(notification: Notification): void {
+    const chat = this.chats.find(c => c.id === notification.chatId);
+    if (chat) chat.status = 'ACCEPTED';
+    if (this.selectedChat?.id === notification.chatId) {
+      this.selectedChat.status = 'ACCEPTED';
+    }
+  }
+
+  private handleChatRequestRejected(notification: Notification): void {
+    this.chats = this.chats.filter(c => c.id !== notification.chatId);
+    if (this.selectedChat?.id === notification.chatId) {
+      this.selectedChat = {};
+    }
+  }
+
+  isChatPending(): boolean {
+    return this.selectedChat.status === 'PENDING';
+  }
+
+  isChatRejected(): boolean {
+    return this.selectedChat.status === 'REJECTED';
+  }
+
+  isRequester(): boolean {
+    return this.selectedChat.senderId === this.keycloakService.userId;
+  }
+
+  pendingLimitReached(): boolean {
+    return (this.selectedChat.pendingMessageCount ?? 0) >= MAX_PENDING_MESSAGES;
+  }
+
+  acceptSelectedChat(): void {
+    this.chatService.acceptChat({ chatId: this.selectedChat.id as string }).subscribe({
+      next: () => {
+        this.selectedChat.status = 'ACCEPTED';
+        const chat = this.chats.find(c => c.id === this.selectedChat.id);
+        if (chat) chat.status = 'ACCEPTED';
+      }
+    });
+  }
+
+  rejectSelectedChat(): void {
+    const chatId = this.selectedChat.id;
+    this.chatService.rejectChat({ chatId: chatId as string }).subscribe({
+      next: () => {
+        this.chats = this.chats.filter(c => c.id !== chatId);
+        this.selectedChat = {};
+      }
+    });
   }
 
   private getSenderId(): string {

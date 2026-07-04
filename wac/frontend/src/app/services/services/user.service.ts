@@ -13,6 +13,8 @@ import { StrictHttpResponse } from '../strict-http-response';
 
 import { checkUsername } from '../fn/user/check-username';
 import { CheckUsername$Params } from '../fn/user/check-username';
+import { clearSession } from '../fn/user/clear-session';
+import { ClearSession$Params } from '../fn/user/clear-session';
 import { deleteAvatar } from '../fn/user/delete-avatar';
 import { DeleteAvatar$Params } from '../fn/user/delete-avatar';
 import { getAllUsers } from '../fn/user/get-all-users';
@@ -213,6 +215,31 @@ export class UserService extends BaseService {
 }>): {
 [key: string]: boolean;
 } => r.body)
+    );
+  }
+
+  /** Path part for operation `clearSession()` */
+  static readonly ClearSessionPath = '/api/v1/users/me/session';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `clearSession()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  clearSession$Response(params?: ClearSession$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+    return clearSession(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `clearSession$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  clearSession(params?: ClearSession$Params, context?: HttpContext): Observable<void> {
+    return this.clearSession$Response(params, context).pipe(
+      map((r: StrictHttpResponse<void>): void => r.body)
     );
   }
 
