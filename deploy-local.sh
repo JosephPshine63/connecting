@@ -20,11 +20,11 @@ ensure_keycloak_db() {
     (( ++i )); if (( i >= 30 )); then err "PostgreSQL did not become ready in time"; fi
     sleep 2
   done
-  if docker exec wacchat-db psql -U "$pg_user" -tAc "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1; then
+  if docker exec wacchat-db psql -U "$pg_user" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1; then
     ok "keycloak database already exists"
   else
     log "Creating keycloak database (first run against this volume)..."
-    docker exec wacchat-db psql -U "$pg_user" -c "CREATE DATABASE keycloak"
+    docker exec wacchat-db psql -U "$pg_user" -d postgres -c "CREATE DATABASE keycloak"
     ok "keycloak database created"
   fi
 }
