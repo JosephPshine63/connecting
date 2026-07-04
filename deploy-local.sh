@@ -12,6 +12,23 @@ err() { echo "[$(date '+%H:%M:%S')] ✗ $*" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || err "Docker not found"
 docker info       >/dev/null 2>&1 || err "Docker daemon is not running"
 
+ensure_keycloak_db() {
+  local pg_user="${POSTGRES_USER:-admin}"
+  log "Waiting for PostgreSQL to be ready..."
+  local i=0
+  until docker exec wacchat-db pg_isready -U "$pg_user" >/dev/null 2>&1; do
+    (( ++i )); if (( i >= 30 )); then err "PostgreSQL did not become ready in time"; fi
+    sleep 2
+  done
+  if docker exec wacchat-db psql -U "$pg_user" -tAc "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1; then
+    ok "keycloak database already exists"
+  else
+    log "Creating keycloak database (first run against this volume)..."
+    docker exec wacchat-db psql -U "$pg_user" -c "CREATE DATABASE keycloak"
+    ok "keycloak database created"
+  fi
+}
+
 set_keycloak_admin_email() {
   [[ -z "${ADMIN_EMAIL:-}"              ]] && return 0
   [[ -z "${KEYCLOAK_ADMIN_USERNAME:-}"  ]] && return 0
@@ -91,9 +108,19 @@ for name in wacchat-db keycloak-wacchat wacchat-rabbitmq; do
 done
 ok "Cleaned up"
 
+# Start Postgres first and make sure the keycloak database exists before Keycloak
+# tries to connect — docker-entrypoint-initdb.d only runs on a brand-new empty
+# volume, so pre-existing local volumes need this checked/created explicitly.
+log "Starting PostgreSQL..."
+docker compose \
+  -f "$SCRIPT_DIR/docker-compose.yml" \
+  -f "$SCRIPT_DIR/docker-compose.local.yml" \
+  up -d postgres
+ensure_keycloak_db
+
 # Start infra with local overrides (KC_HOSTNAME = http://localhost:8180)
 # --build picks up api-gateway source changes on every run.
-log "Starting PostgreSQL + Keycloak + RabbitMQ + API Gateway (local mode)..."
+log "Starting Keycloak + RabbitMQ + API Gateway (local mode)..."
 docker compose \
   -f "$SCRIPT_DIR/docker-compose.yml" \
   -f "$SCRIPT_DIR/docker-compose.local.yml" \

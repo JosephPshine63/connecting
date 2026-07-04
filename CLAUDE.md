@@ -45,10 +45,10 @@ docker compose down             # stop containers
 
 Do **not** use `docker compose up` directly — `deploy-local.sh` renders `wacchat.json` from the template first, sets the correct `KC_HOSTNAME` override for local development, builds and starts `api-gateway` as a container (`docker-compose.local.yml`, rebuilt on every run via `--build`), and also brings up `docker-compose.observability.yml` (Prometheus :9091, Grafana :3000, Loki :3100, Tempo :4318/4317/3200) on the same Docker network.
 
-Once the infra above is up, `./start-local-services.sh` starts the 5 non-Docker services (backend, file-service, notification-service, api-gateway, frontend) in the background via `direnv exec` (so each loads `.env` through `.envrc`), logging to `logs/<name>.log`:
+Once the infra above is up, `./start-local-services.sh` starts backend, file-service, notification-service, and frontend in the background via `direnv exec` (so each loads `.env` through `.envrc`), logging to `logs/<name>.log`. Note: the script's own `SERVICES` array still lists a 5th entry, `api-gateway` via `./mvnw spring-boot:run` on :8081 — this is stale since `deploy-local.sh` already runs api-gateway as a Docker container on the same port (added in `a2f0f82`); running it will attempt a redundant/conflicting bind on :8081.
 
 ```bash
-./start-local-services.sh               # start all 5 services
+./start-local-services.sh               # start backend, file-service, notification-service, frontend
 ./start-local-services.sh status        # show which are running
 ./start-local-services.sh stop          # stop everything it started
 ```
