@@ -52,7 +52,7 @@ services:
       - ./wac/keycloak/realms:/opt/keycloak/data/import
       - ./wac/keycloak/themes:/opt/keycloak/themes
     command:
-      - "start-dev"
+      - "start"
       - "--import-realm"
     restart: unless-stopped
 

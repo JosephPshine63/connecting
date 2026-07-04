@@ -7,3 +7,6 @@ wac/.idea/
 wac/backend/uploads/
 logs/
 .local-services.pids
+*.swp
+*.swo
+*~

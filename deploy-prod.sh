@@ -121,6 +121,23 @@ log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()   { echo "[$(date '+%H:%M:%S')] ✓ $*"; }
 err()  { echo "[$(date '+%H:%M:%S')] ✗ $*" >&2; exit 1; }
 
+ensure_keycloak_db() {
+  local pg_user="${POSTGRES_USER:-admin}"
+  log "Waiting for PostgreSQL to be ready..."
+  local i=0
+  until docker exec wacchat-db pg_isready -U "$pg_user" >/dev/null 2>&1; do
+    (( ++i )); if (( i >= 30 )); then err "PostgreSQL did not become ready in time"; fi
+    sleep 2
+  done
+  if docker exec wacchat-db psql -U "$pg_user" -tAc "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1; then
+    ok "keycloak database already exists"
+  else
+    log "Creating keycloak database (first run against this volume)..."
+    docker exec wacchat-db psql -U "$pg_user" -c "CREATE DATABASE keycloak"
+    ok "keycloak database created"
+  fi
+}
+
 set_keycloak_admin_email() {
   [[ -z "${ADMIN_EMAIL:-}"              ]] && return 0
   [[ -z "${KEYCLOAK_ADMIN_USERNAME:-}"  ]] && return 0
@@ -249,7 +266,11 @@ for name in wacchat-db keycloak-wacchat wacchat-rabbitmq; do
   fi
 done
 
-log "Starting infrastructure (PostgreSQL + Keycloak)..."
+log "Starting PostgreSQL..."
+(cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD up -d postgres)
+ensure_keycloak_db
+
+log "Starting infrastructure (Keycloak + RabbitMQ)..."
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD up -d)
 ok "Infrastructure is up"
 set_keycloak_admin_email

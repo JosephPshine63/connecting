@@ -4,6 +4,9 @@ services:
       KC_HOSTNAME: http://localhost:8180
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
+    command:
+      - "start-dev"
+      - "--import-realm"
 
   api-gateway:
     container_name: wacchat-api-gateway
