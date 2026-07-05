@@ -30,7 +30,7 @@
   "loginTheme": "wacchat",
   "accountTheme": "wacchat",
   "registrationAllowed": true,
-  "registrationEmailAsUsername": false,
+  "registrationEmailAsUsername": true,
   "rememberMe": true,
   "verifyEmail": true,
   "loginWithEmailAllowed": true,
