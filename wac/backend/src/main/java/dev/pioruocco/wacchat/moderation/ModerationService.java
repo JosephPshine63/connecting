@@ -50,6 +50,10 @@ public class ModerationService {
         return blockedUserRepository.existsBlockBetween(userIdA, userIdB);
     }
 
+    public boolean isBlockedByMe(String blockerId, String blockedId) {
+        return blockedUserRepository.existsByBlockerIdAndBlockedId(blockerId, blockedId);
+    }
+
     public List<String> getBlockedIds(String blockerId) {
         return blockedUserRepository.findBlockedIdsByBlockerId(blockerId);
     }

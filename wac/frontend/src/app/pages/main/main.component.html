@@ -173,6 +173,27 @@
               <button class="chat-request-reject" (click)="rejectSelectedChat()">Rifiuta</button>
             </div>
           </div>
+        } @else if (recordingState === 'recording') {
+          <div class="recording-bar">
+            <button class="recording-cancel-btn" (click)="cancelRecording()" title="Annulla">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+            <span class="recording-dot"></span>
+            <span class="recording-timer">{{ recordingElapsedLabel() }}</span>
+            <button class="recording-stop-btn" (click)="stopRecording()" title="Ferma">
+              <i class="fa-solid fa-stop"></i>
+            </button>
+          </div>
+        } @else if (recordingState === 'preview' || recordingState === 'sending') {
+          <div class="voice-preview-bar">
+            <audio controls [src]="recordedPreviewUrl"></audio>
+            <button class="recording-cancel-btn" [disabled]="recordingState === 'sending'" (click)="discardRecording()" title="Scarta">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+            <button class="send-btn" [disabled]="recordingState === 'sending'" (click)="sendRecordedVoiceNote()" title="Invia">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
         } @else {
           <div class="input-bar">
             <button class="input-icon-btn" [disabled]="isChatPending() && pendingLimitReached()" (click)="inputFile.click()" title="Allega file">
@@ -214,7 +235,7 @@
                 <i class="fa-solid fa-paper-plane"></i>
               </button>
             } @else {
-              <button class="mic-btn" title="Vocale">
+              <button class="mic-btn" [disabled]="isChatPending() && pendingLimitReached()" (click)="startRecording()" title="Vocale">
                 <i class="fa-solid fa-microphone"></i>
               </button>
             }

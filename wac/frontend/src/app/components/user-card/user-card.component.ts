@@ -25,6 +25,7 @@ export class UserCardComponent implements OnChanges {
   user: UserResponse | null = null;
   loading = false;
   requestSent = false;
+  blocked = false;
 
   confirmBlock = false;
   confirmReport = false;
@@ -44,6 +45,7 @@ export class UserCardComponent implements OnChanges {
       this.loading = true;
       this.user = null;
       this.requestSent = false;
+      this.blocked = false;
       this.confirmBlock = false;
       this.confirmReport = false;
       this.reportSent = false;
@@ -52,6 +54,9 @@ export class UserCardComponent implements OnChanges {
       this.userService.getUserById({ id: this.userId }).subscribe({
         next: user => { this.user = user; this.loading = false; },
         error: () => { this.loading = false; }
+      });
+      this.moderationService.isBlockedByMe({ id: this.userId }).subscribe({
+        next: res => { this.blocked = !!res['blocked']; }
       });
     }
   }
@@ -102,9 +107,16 @@ export class UserCardComponent implements OnChanges {
     this.moderationService.blockUser({ id: this.user.id }).subscribe({
       next: () => {
         this.confirmBlock = false;
+        this.blocked = true;
         this.userBlocked.emit(this.user!.id);
-        this.close();
       }
+    });
+  }
+
+  unblockUser(): void {
+    if (!this.user?.id) return;
+    this.moderationService.unblockUser({ id: this.user.id }).subscribe({
+      next: () => { this.blocked = false; }
     });
   }
 

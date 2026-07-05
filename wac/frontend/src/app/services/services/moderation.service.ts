@@ -16,6 +16,8 @@ import { blockUser } from '../fn/moderation/block-user';
 import { BlockUser$Params } from '../fn/moderation/block-user';
 import { getBlockedUsers } from '../fn/moderation/get-blocked-users';
 import { GetBlockedUsers$Params } from '../fn/moderation/get-blocked-users';
+import { isBlockedByMe } from '../fn/moderation/is-blocked-by-me';
+import { IsBlockedByMe$Params } from '../fn/moderation/is-blocked-by-me';
 import { reportUser } from '../fn/moderation/report-user';
 import { ReportUser$Params } from '../fn/moderation/report-user';
 import { unblockUser } from '../fn/moderation/unblock-user';
@@ -99,6 +101,39 @@ export class ModerationService extends BaseService {
   unblockUser(params: UnblockUser$Params, context?: HttpContext): Observable<void> {
     return this.unblockUser$Response(params, context).pipe(
       map((r: StrictHttpResponse<void>): void => r.body)
+    );
+  }
+
+  /** Path part for operation `isBlockedByMe()` */
+  static readonly IsBlockedByMePath = '/api/v1/users/{id}/blocked-by-me';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `isBlockedByMe()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  isBlockedByMe$Response(params: IsBlockedByMe$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+[key: string]: boolean;
+}>> {
+    return isBlockedByMe(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `isBlockedByMe$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  isBlockedByMe(params: IsBlockedByMe$Params, context?: HttpContext): Observable<{
+[key: string]: boolean;
+}> {
+    return this.isBlockedByMe$Response(params, context).pipe(
+      map((r: StrictHttpResponse<{
+[key: string]: boolean;
+}>): {
+[key: string]: boolean;
+} => r.body)
     );
   }
 

@@ -32,6 +32,7 @@ final class MagicByteValidator {
                     || matchesAscii(content, 4, "wide")
                     || matchesAscii(content, 4, "skip");
             case "mp3" -> matchesAscii(content, 0, "ID3") || isMpegFrameSync(content);
+            case "webm" -> startsWith(content, 0x1A, 0x45, 0xDF, 0xA3);
             default -> false;
         };
         if (!valid) {

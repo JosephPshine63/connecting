@@ -145,7 +145,7 @@ class MessageServiceTest {
         when(fileServiceClient.uploadMessageMedia(any(MultipartFile.class), anyString(), anyString()))
                 .thenReturn("https://cdn.example.com/messages/requester-1/some-uuid.mp4");
 
-        messageService.uploadMediaMessage(chat.getId(), mock(MultipartFile.class), authentication);
+        messageService.uploadMediaMessage(chat.getId(), mock(MultipartFile.class), null, authentication);
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(messageRepository).save(messageCaptor.capture());
@@ -168,7 +168,7 @@ class MessageServiceTest {
         when(fileServiceClient.uploadMessageMedia(any(MultipartFile.class), anyString(), anyString()))
                 .thenReturn("https://cdn.example.com/messages/requester-1/some-uuid.mp3");
 
-        messageService.uploadMediaMessage(chat.getId(), mock(MultipartFile.class), authentication);
+        messageService.uploadMediaMessage(chat.getId(), mock(MultipartFile.class), null, authentication);
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(messageRepository).save(messageCaptor.capture());
@@ -191,11 +191,34 @@ class MessageServiceTest {
         when(fileServiceClient.uploadMessageMedia(any(MultipartFile.class), anyString(), anyString()))
                 .thenReturn("https://cdn.example.com/messages/requester-1/some-uuid.jpg");
 
-        messageService.uploadMediaMessage(chat.getId(), mock(MultipartFile.class), authentication);
+        messageService.uploadMediaMessage(chat.getId(), mock(MultipartFile.class), null, authentication);
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(messageRepository).save(messageCaptor.capture());
         assertThat(messageCaptor.getValue().getType()).isEqualTo(MessageType.IMAGE);
+    }
+
+    @Test
+    void uploadMediaMessage_webmFileWithAudioHint_overridesAmbiguousResolver() {
+        Chat chat = chat(ChatStatus.ACCEPTED, 0);
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+        when(authentication.getName()).thenReturn(REQUESTER_ID);
+        Jwt jwt = mock(Jwt.class);
+        when(jwt.getTokenValue()).thenReturn("token");
+        when(authentication.getPrincipal()).thenReturn(jwt);
+        when(fileServiceClient.uploadMessageMedia(any(MultipartFile.class), anyString(), anyString()))
+                .thenReturn("https://cdn.example.com/messages/requester-1/some-uuid.webm");
+
+        messageService.uploadMediaMessage(chat.getId(), mock(MultipartFile.class), MessageType.AUDIO, authentication);
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(messageRepository).save(messageCaptor.capture());
+        assertThat(messageCaptor.getValue().getType()).isEqualTo(MessageType.AUDIO);
+
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationService).sendNotification(anyString(), notificationCaptor.capture());
+        assertThat(notificationCaptor.getValue().getType()).isEqualTo(NotificationType.AUDIO);
+        assertThat(notificationCaptor.getValue().getMessageType()).isEqualTo(MessageType.AUDIO);
     }
 
     private static MessageRequest request(String chatId) {

@@ -11,6 +11,7 @@ import { RequestBuilder } from '../../request-builder';
 
 export interface UploadMedia$Params {
   'chat-id': string;
+  'media-type'?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO';
       body?: {
 'file': Blob;
 }
@@ -20,6 +21,7 @@ export function uploadMedia(http: HttpClient, rootUrl: string, params: UploadMed
   const rb = new RequestBuilder(rootUrl, uploadMedia.PATH, 'post');
   if (params) {
     rb.query('chat-id', params['chat-id'], {});
+    rb.query('media-type', params['media-type'], {});
     rb.body(params.body, 'multipart/form-data');
   }
 

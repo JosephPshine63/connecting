@@ -121,6 +121,20 @@ class ModerationServiceTest {
         assertThat(moderationService.isBlocked(BLOCKER_ID, BLOCKED_ID)).isTrue();
     }
 
+    @Test
+    void isBlockedByMe_delegatesToDirectionalExistsCheck() {
+        when(blockedUserRepository.existsByBlockerIdAndBlockedId(BLOCKER_ID, BLOCKED_ID)).thenReturn(true);
+
+        assertThat(moderationService.isBlockedByMe(BLOCKER_ID, BLOCKED_ID)).isTrue();
+    }
+
+    @Test
+    void isBlockedByMe_returnsFalseWhenOnlyReverseDirectionIsBlocked() {
+        when(blockedUserRepository.existsByBlockerIdAndBlockedId(BLOCKER_ID, BLOCKED_ID)).thenReturn(false);
+
+        assertThat(moderationService.isBlockedByMe(BLOCKER_ID, BLOCKED_ID)).isFalse();
+    }
+
     private static Chat chat(ChatStatus status) {
         Chat chat = new Chat();
         chat.setId("chat-1");

@@ -27,7 +27,7 @@ public class R2StorageService {
     private static final long MAX_AVATAR_SIZE_BYTES = 5L * 1024 * 1024;
 
     private static final Set<String> ALLOWED_MESSAGE_MEDIA_EXTENSIONS = Set.of(
-            "jpg", "jpeg", "png", "webp", "gif", "mp4", "mov", "mp3", "wav", "ogg", "m4a"
+            "jpg", "jpeg", "png", "webp", "gif", "mp4", "mov", "mp3", "wav", "ogg", "m4a", "webm"
     );
     private static final long MAX_MESSAGE_MEDIA_SIZE_BYTES = 50L * 1024 * 1024;
 

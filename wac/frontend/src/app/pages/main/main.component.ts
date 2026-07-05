@@ -73,6 +73,15 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   private typingActive = false;
   private lastTypingSentAt = 0;
 
+  recordingState: 'idle' | 'recording' | 'preview' | 'sending' = 'idle';
+  recordingElapsedSeconds = 0;
+  recordedPreviewUrl: string | null = null;
+  private static readonly MAX_RECORDING_SECONDS = 300;
+  private mediaRecorder: MediaRecorder | null = null;
+  private recordedChunks: Blob[] = [];
+  private recordedBlob: Blob | null = null;
+  private recordingTimerHandle: ReturnType<typeof setInterval> | null = null;
+
   constructor(
     private chatService: ChatService,
     private messageService: MessageService,
@@ -102,6 +111,12 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     if (this.typingStopTimeout !== null) {
       clearTimeout(this.typingStopTimeout);
+    }
+    if (this.recordingTimerHandle !== null) {
+      clearInterval(this.recordingTimerHandle);
+    }
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stream?.getTracks().forEach(t => t.stop());
     }
     window.removeEventListener('pagehide', this.releaseSessionOnUnload);
   }
@@ -354,7 +369,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (['mp4', 'mov'].includes(extension)) {
       return 'VIDEO';
     }
-    if (['mp3', 'wav', 'ogg', 'm4a'].includes(extension)) {
+    if (['mp3', 'wav', 'ogg', 'm4a', 'webm'].includes(extension)) {
       return 'AUDIO';
     }
     return 'IMAGE';
@@ -405,6 +420,115 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       }
       reader.readAsDataURL(file);
     }
+  }
+
+  async startRecording(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '');
+      this.mediaRecorder = mimeType ? new MediaRecorder(stream, {mimeType}) : new MediaRecorder(stream);
+      this.recordedChunks = [];
+      this.mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          this.recordedChunks.push(e.data);
+        }
+      };
+      this.mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        this.recordedBlob = new Blob(this.recordedChunks, {type: this.mediaRecorder!.mimeType});
+        this.recordedPreviewUrl = URL.createObjectURL(this.recordedBlob);
+        this.ngZone.run(() => this.recordingState = 'preview');
+      };
+      this.mediaRecorder.start();
+      this.recordingState = 'recording';
+      this.recordingElapsedSeconds = 0;
+      this.recordingTimerHandle = setInterval(() => {
+        this.ngZone.run(() => {
+          this.recordingElapsedSeconds++;
+          if (this.recordingElapsedSeconds >= MainComponent.MAX_RECORDING_SECONDS) {
+            this.stopRecording();
+          }
+        });
+      }, 1000);
+    } catch {
+      // permesso negato o device non disponibile: resta in idle, nessun crash
+    }
+  }
+
+  stopRecording(): void {
+    if (this.recordingTimerHandle !== null) {
+      clearInterval(this.recordingTimerHandle);
+      this.recordingTimerHandle = null;
+    }
+    this.mediaRecorder?.stop();
+  }
+
+  cancelRecording(): void {
+    if (this.recordingTimerHandle !== null) {
+      clearInterval(this.recordingTimerHandle);
+      this.recordingTimerHandle = null;
+    }
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.onstop = () => {
+        this.mediaRecorder!.stream?.getTracks().forEach(t => t.stop());
+      };
+      this.mediaRecorder.stop();
+    }
+    this.recordedChunks = [];
+    this.recordingState = 'idle';
+  }
+
+  discardRecording(): void {
+    if (this.recordedPreviewUrl) {
+      URL.revokeObjectURL(this.recordedPreviewUrl);
+    }
+    this.recordedBlob = null;
+    this.recordedPreviewUrl = null;
+    this.recordingState = 'idle';
+  }
+
+  recordingElapsedLabel(): string {
+    const mins = Math.floor(this.recordingElapsedSeconds / 60);
+    const secs = this.recordingElapsedSeconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  sendRecordedVoiceNote(): void {
+    if (!this.recordedBlob) return;
+    this.recordingState = 'sending';
+    const extension = this.recordedBlob.type.includes('mp4') ? 'm4a' : 'webm';
+    const file = new File([this.recordedBlob], `voice-note-${Date.now()}.${extension}`, {type: this.recordedBlob.type});
+    this.messageService.uploadMedia({
+      'chat-id': this.selectedChat.id as string,
+      'media-type': 'AUDIO',
+      body: {file}
+    }).subscribe({
+      next: () => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            const mediaLines = reader.result.toString().split(',')[1];
+            const message: MessageResponse = {
+              senderId: this.getSenderId(),
+              receiverId: this.getReceiverId(),
+              content: this.mediaLabelForType('AUDIO'),
+              type: 'AUDIO',
+              state: 'SENT',
+              media: [mediaLines],
+              createdAt: new Date().toString()
+            };
+            this.chatMessages.push(message);
+          }
+          this.discardRecording();
+        };
+        reader.readAsDataURL(file);
+      },
+      error: () => {
+        this.recordingState = 'preview';
+      }
+    });
   }
 
   confirmAge() {

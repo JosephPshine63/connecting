@@ -152,6 +152,26 @@
   color: #ff5252;
 }
 
+.user-card-blocked-banner {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.chat-request-reject-btn {
+  border: none;
+  border-radius: 24px;
+  padding: 0.4rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover { opacity: 0.85; }
+}
+
 .user-card-report-sent {
   font-size: 0.78rem;
   color: var(--text-secondary);

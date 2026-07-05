@@ -102,7 +102,7 @@ public class MessageService {
         notificationService.sendNotification(recipientId, notification);
     }
 
-    public void uploadMediaMessage(String chatId, MultipartFile file, Authentication authentication) {
+    public void uploadMediaMessage(String chatId, MultipartFile file, MessageType mediaTypeHint, Authentication authentication) {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
         assertParticipant(chat, authentication.getName());
@@ -112,7 +112,7 @@ public class MessageService {
         final String receiverId = getRecipientId(chat, authentication);
 
         final String mediaUrl = fileServiceClient.uploadMessageMedia(file, senderId, bearerToken(authentication));
-        final MessageType mediaType = MediaTypeResolver.fromUrl(mediaUrl);
+        final MessageType mediaType = mediaTypeHint != null ? mediaTypeHint : MediaTypeResolver.fromUrl(mediaUrl);
 
         Message message = new Message();
         message.setReceiverId(receiverId);

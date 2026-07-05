@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -43,6 +44,12 @@ public class ModerationController {
                 .map(moderationMapper::toBlockedUserResponse)
                 .toList();
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/blocked-by-me")
+    public ResponseEntity<Map<String, Boolean>> isBlockedByMe(@PathVariable String id, Authentication authentication) {
+        boolean blocked = moderationService.isBlockedByMe(authentication.getName(), id);
+        return ResponseEntity.ok(Map.of("blocked", blocked));
     }
 
     @PostMapping("/{id}/report")

@@ -27,6 +27,19 @@ class MagicByteValidatorTest {
     }
 
     @Test
+    void validate_acceptsRealWebmBytes() {
+        byte[] webm = {(byte) 0x1A, 0x45, (byte) 0xDF, (byte) 0xA3, 0x01, 0x02, 0x03, 0x04};
+        MagicByteValidator.validate("webm", webm);
+    }
+
+    @Test
+    void validate_rejectsContentClaimingToBeWebmWithWrongBytes() {
+        byte[] fake = "not-a-webm-file".getBytes();
+        assertThatThrownBy(() -> MagicByteValidator.validate("webm", fake))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
     void validate_rejectsHtmlContentClaimingToBeJpg() {
         byte[] html = "<script>alert(1)</script>".getBytes();
         assertThatThrownBy(() -> MagicByteValidator.validate("jpg", html))

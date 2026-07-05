@@ -39,7 +39,12 @@
       }
 
       <div class="user-card-moderation-actions">
-        <button class="user-card-block-btn" (click)="openBlockConfirm()">Blocca utente</button>
+        @if (blocked) {
+          <span class="user-card-blocked-banner">Hai bloccato questo utente</span>
+          <button class="chat-request-reject-btn" (click)="unblockUser()">Sblocca</button>
+        } @else {
+          <button class="user-card-block-btn" (click)="openBlockConfirm()">Blocca utente</button>
+        }
         @if (reportSent) {
           <span class="user-card-report-sent">Segnalazione inviata</span>
         } @else {
