@@ -289,6 +289,20 @@
   flex-direction: column;
 }
 
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+
+  .nav-icon-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+
+    &:hover { background: none; }
+  }
+}
+
 .chat-header-name {
   font-size: 0.95em;
   font-weight: 600;

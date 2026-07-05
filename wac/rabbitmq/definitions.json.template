@@ -3,7 +3,8 @@
   "users": [
     {"name": "${RABBITMQ_USER}", "password": "${RABBITMQ_PASSWORD}", "tags": "administrator"},
     {"name": "${RABBITMQ_BACKEND_USER}", "password": "${RABBITMQ_BACKEND_PASSWORD}", "tags": ""},
-    {"name": "${RABBITMQ_NOTIFICATION_USER}", "password": "${RABBITMQ_NOTIFICATION_PASSWORD}", "tags": ""}
+    {"name": "${RABBITMQ_NOTIFICATION_USER}", "password": "${RABBITMQ_NOTIFICATION_PASSWORD}", "tags": ""},
+    {"name": "${RABBITMQ_CALL_USER}", "password": "${RABBITMQ_CALL_PASSWORD}", "tags": ""}
   ],
   "vhosts": [
     {"name": "/"}
@@ -11,6 +12,7 @@
   "permissions": [
     {"user": "${RABBITMQ_USER}", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"},
     {"user": "${RABBITMQ_BACKEND_USER}", "vhost": "/", "configure": "^wacchat\\.notifications(\\.queue)?$", "write": "^wacchat\\.notifications(\\.queue)?$", "read": "^wacchat\\.notifications$"},
-    {"user": "${RABBITMQ_NOTIFICATION_USER}", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"}
+    {"user": "${RABBITMQ_NOTIFICATION_USER}", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"},
+    {"user": "${RABBITMQ_CALL_USER}", "vhost": "/", "configure": "^wacchat\\.calls(\\.queue)?$", "write": "^wacchat\\.calls(\\.queue)?$", "read": "^wacchat\\.calls$"}
   ]
 }

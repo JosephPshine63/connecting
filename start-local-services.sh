@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Starts the 5 non-Docker services (backend, file-service, notification-service,
-# api-gateway, frontend) in the background, each logging to logs/<name>.log.
+# Starts the 6 non-Docker services (backend, file-service, notification-service,
+# call-service, api-gateway, frontend) in the background, each logging to
+# logs/<name>.log.
 # Run deploy-local.sh first to bring up Postgres/Keycloak/RabbitMQ.
 #
 # Usage:
@@ -25,6 +26,7 @@ declare -A HEALTH_URLS=(
   [backend]="http://localhost:8082/actuator/health"
   [file-service]="http://localhost:8083/actuator/health"
   [notification-service]="http://localhost:8084/actuator/health"
+  [call-service]="http://localhost:8085/actuator/health"
   [api-gateway]="http://localhost:8081/actuator/health"
   [frontend]="http://localhost:4200"
 )
@@ -35,6 +37,7 @@ declare -A SERVICE_PORTS=(
   [backend]=8082
   [file-service]=8083
   [notification-service]=8084
+  [call-service]=8085
   [api-gateway]=8081
   [frontend]=4200
 )
@@ -74,6 +77,7 @@ SERVICES=(
   "backend:wac/backend:./mvnw spring-boot:run"
   "file-service:wac/file-service:./mvnw spring-boot:run"
   "notification-service:wac/notification-service:./mvnw spring-boot:run"
+  "call-service:wac/call-service:./mvnw spring-boot:run"
   "api-gateway:wac/api-gateway:./mvnw spring-boot:run"
   "frontend:wac/frontend:npm start"
 )

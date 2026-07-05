@@ -1,0 +1,51 @@
+@if (callState === 'incoming') {
+  <div class="call-overlay">
+    <div class="call-box">
+      <div class="call-avatar">
+        @if (peerAvatarUrl) {
+          <img [src]="peerAvatarUrl" alt="">
+        } @else {
+          <span>{{ (peerName || '?').charAt(0).toUpperCase() }}</span>
+        }
+      </div>
+      <h2 class="call-peer-name">{{ peerName }}</h2>
+      <p class="call-status-text">Chiamata {{ callType === 'VIDEO' ? 'video' : 'vocale' }} in arrivo…</p>
+      <div class="call-actions">
+        <button class="call-btn call-btn-reject" (click)="rejected.emit()" title="Rifiuta">
+          <i class="fa-solid fa-phone-slash"></i>
+        </button>
+        <button class="call-btn call-btn-accept" (click)="accepted.emit()" title="Accetta">
+          <i class="fa-solid fa-phone"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+} @else if (callState === 'outgoing' || callState === 'in-call') {
+  <div class="call-overlay in-call-overlay">
+    <div class="call-box in-call-box">
+      @if (callType === 'VIDEO') {
+        <video #remoteVideo class="remote-video" autoplay playsinline></video>
+        <video #localVideo class="local-video" autoplay playsinline muted></video>
+      } @else {
+        <audio #remoteAudio autoplay></audio>
+        <div class="call-avatar large">
+          @if (peerAvatarUrl) {
+            <img [src]="peerAvatarUrl" alt="">
+          } @else {
+            <span>{{ (peerName || '?').charAt(0).toUpperCase() }}</span>
+          }
+        </div>
+      }
+      <h2 class="call-peer-name">{{ peerName }}</h2>
+      <p class="call-status-text">{{ callState === 'outgoing' ? 'Chiamata in corso…' : elapsedLabel }}</p>
+      <div class="call-actions">
+        <button class="call-btn" (click)="toggleMute()" title="Muto">
+          <i class="fa-solid" [class.fa-microphone]="!muted" [class.fa-microphone-slash]="muted"></i>
+        </button>
+        <button class="call-btn call-btn-reject" (click)="hungUp.emit()" title="Riaggancia">
+          <i class="fa-solid fa-phone-slash"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+}

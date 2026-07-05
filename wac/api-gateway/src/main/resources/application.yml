@@ -40,6 +40,12 @@ spring:
           predicates:
             - Path=/ws/**
           order: 0
+        - id: call-service
+          uri: ${CALL_SERVICE_BASE_URL:http://localhost:8085}
+          predicates:
+            # Must be evaluated before backend-api's catch-all /api/** (order 1) below.
+            - Path=/api/v1/calls/**
+          order: 0
         - id: backend-api
           uri: ${BACKEND_BASE_URL:http://localhost:8082}
           predicates:

@@ -51,6 +51,17 @@
   @if (showSettings) {
     <app-settings (closed)="showSettings = false"></app-settings>
   }
+  @if (callState !== 'idle') {
+    <app-call
+      [callState]="callState"
+      [peerName]="activeCallPeerName"
+      [peerAvatarUrl]="activeCallPeerAvatarUrl"
+      [callType]="activeCallType"
+      (accepted)="acceptCall()"
+      (rejected)="rejectCall()"
+      (hungUp)="hangUp()"
+    ></app-call>
+  }
 
   <div class="app-shell" [class.has-banner]="showDemoBanner">
     <nav class="nav-rail">
@@ -111,6 +122,14 @@
                 <span class="status-text">Offline</span>
               }
             </div>
+          </div>
+          <div class="chat-header-actions">
+            <button class="nav-icon-btn" [disabled]="!canCall()" (click)="startCall('AUDIO')" title="Chiamata vocale">
+              <i class="fa-solid fa-phone"></i>
+            </button>
+            <button class="nav-icon-btn" [disabled]="!canCall()" (click)="startCall('VIDEO')" title="Videochiamata">
+              <i class="fa-solid fa-video"></i>
+            </button>
           </div>
         </header>
 

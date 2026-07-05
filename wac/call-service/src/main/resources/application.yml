@@ -1,16 +1,16 @@
 server:
-  port: 8084
+  port: 8085
 
 spring:
   banner:
     location: classpath:banner/banner.txt
   application:
-    name: notification-service
+    name: call-service
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_NOTIFICATION_USER:${RABBITMQ_USER:wacchat}}
-    password: ${RABBITMQ_NOTIFICATION_PASSWORD:${RABBITMQ_PASSWORD:wacchat}}
+    username: ${RABBITMQ_CALL_USER:${RABBITMQ_USER:wacchat}}
+    password: ${RABBITMQ_CALL_PASSWORD:${RABBITMQ_PASSWORD:wacchat}}
   security:
     oauth2:
       resourceserver:
@@ -42,16 +42,11 @@ logging:
     level: "%5p [${spring.application.name},%X{traceId:-},%X{spanId:-}]"
 
 application:
-  notification:
-    exchange: wacchat.notifications
-    routing-key: notification
-    queue: wacchat.notifications.queue
-    broker-relay-host: ${RABBITMQ_HOST:localhost}
-    broker-relay-port: ${RABBITMQ_STOMP_PORT:61613}
   call:
     exchange: wacchat.calls
     routing-key: call
     queue: wacchat.calls.queue
+    ring-timeout-seconds: ${CALL_RING_TIMEOUT_SECONDS:45}
   backend:
     base-url: ${BACKEND_BASE_URL:http://localhost:8082}
     internal-api-key: ${BACKEND_INTERNAL_API_KEY:}
@@ -61,7 +56,7 @@ application:
 resilience4j:
   circuitbreaker:
     instances:
-      sessionValidation:
+      chatValidation:
         registerHealthIndicator: true
         slidingWindowSize: 10
         failureRateThreshold: 50
@@ -69,6 +64,6 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 3
   retry:
     instances:
-      sessionValidation:
+      chatValidation:
         maxAttempts: 2
         waitDuration: 300ms

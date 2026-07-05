@@ -8,17 +8,20 @@ IMAGE_FRONTEND="wacchat-frontend"
 IMAGE_FILE_SERVICE="wacchat-file-service"
 IMAGE_API_GATEWAY="wacchat-api-gateway"
 IMAGE_NOTIFICATION_SERVICE="wacchat-notification-service"
+IMAGE_CALL_SERVICE="wacchat-call-service"
 TAG="latest"
 CONTAINER_BACKEND="wacchat-backend"
 CONTAINER_FRONTEND="wacchat-frontend"
 CONTAINER_FILE_SERVICE="wacchat-file-service"
 CONTAINER_API_GATEWAY="wacchat-api-gateway"
 CONTAINER_NOTIFICATION_SERVICE="wacchat-notification-service"
+CONTAINER_CALL_SERVICE="wacchat-call-service"
 PORT_BACKEND=8082
 PORT_FRONTEND=4200
 PORT_FILE_SERVICE=8083
 PORT_API_GATEWAY=8085   # host-side only; container still listens on 8081 internally (Pi-hole owns 8081 on this host)
 PORT_NOTIFICATION_SERVICE=8084
+PORT_CALL_SERVICE=8086  # host-side only; container listens on 8085 internally (avoids clashing with PORT_API_GATEWAY's host mapping)
 COMPOSE_DIR="."
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -29,6 +32,7 @@ FRONTEND_DIR="$SCRIPT_DIR/wac/frontend"
 FILE_SERVICE_DIR="$SCRIPT_DIR/wac/file-service"
 API_GATEWAY_DIR="$SCRIPT_DIR/wac/api-gateway"
 NOTIFICATION_SERVICE_DIR="$SCRIPT_DIR/wac/notification-service"
+CALL_SERVICE_DIR="$SCRIPT_DIR/wac/call-service"
 
 # ─── Auto-generate .env with strong passwords if missing ─────────────────────
 if [[ ! -f "$SCRIPT_DIR/.env" ]]; then
@@ -52,6 +56,8 @@ RABBITMQ_BACKEND_USER=wacchat-backend
 RABBITMQ_BACKEND_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 RABBITMQ_NOTIFICATION_USER=wacchat-notification
 RABBITMQ_NOTIFICATION_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
+RABBITMQ_CALL_USER=wacchat-call
+RABBITMQ_CALL_PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 
 BACKEND_INTERNAL_API_KEY=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
 
@@ -85,9 +91,11 @@ MAIL_PASSWORD="$_pw_orig"
 : "${RABBITMQ_BACKEND_PASSWORD:=$RABBITMQ_PASSWORD}"
 : "${RABBITMQ_NOTIFICATION_USER:=$RABBITMQ_USER}"
 : "${RABBITMQ_NOTIFICATION_PASSWORD:=$RABBITMQ_PASSWORD}"
+: "${RABBITMQ_CALL_USER:=$RABBITMQ_USER}"
+: "${RABBITMQ_CALL_PASSWORD:=$RABBITMQ_PASSWORD}"
 RABBITMQ_DEFS_TEMPLATE="$SCRIPT_DIR/wac/rabbitmq/definitions.json.template"
 RABBITMQ_DEFS_OUTPUT="$SCRIPT_DIR/wac/rabbitmq/definitions.json"
-envsubst '${RABBITMQ_USER} ${RABBITMQ_PASSWORD} ${RABBITMQ_BACKEND_USER} ${RABBITMQ_BACKEND_PASSWORD} ${RABBITMQ_NOTIFICATION_USER} ${RABBITMQ_NOTIFICATION_PASSWORD}' \
+envsubst '${RABBITMQ_USER} ${RABBITMQ_PASSWORD} ${RABBITMQ_BACKEND_USER} ${RABBITMQ_BACKEND_PASSWORD} ${RABBITMQ_NOTIFICATION_USER} ${RABBITMQ_NOTIFICATION_PASSWORD} ${RABBITMQ_CALL_USER} ${RABBITMQ_CALL_PASSWORD}' \
   < "$RABBITMQ_DEFS_TEMPLATE" > "$RABBITMQ_DEFS_OUTPUT"
 
 PUSH=false
@@ -179,6 +187,7 @@ command -v docker compose >/dev/null 2>&1 || \
 [[ -d "$FILE_SERVICE_DIR" ]]            || err "File-service directory not found: $FILE_SERVICE_DIR"
 [[ -d "$API_GATEWAY_DIR" ]]             || err "API gateway directory not found: $API_GATEWAY_DIR"
 [[ -d "$NOTIFICATION_SERVICE_DIR" ]]    || err "Notification-service directory not found: $NOTIFICATION_SERVICE_DIR"
+[[ -d "$CALL_SERVICE_DIR" ]]            || err "Call-service directory not found: $CALL_SERVICE_DIR"
 
 ok "Preflight checks passed"
 
@@ -208,12 +217,14 @@ if [[ -n "$REGISTRY" ]]; then
   FULL_FILE_SERVICE="$REGISTRY/$IMAGE_FILE_SERVICE:$TAG"
   FULL_API_GATEWAY="$REGISTRY/$IMAGE_API_GATEWAY:$TAG"
   FULL_NOTIFICATION_SERVICE="$REGISTRY/$IMAGE_NOTIFICATION_SERVICE:$TAG"
+  FULL_CALL_SERVICE="$REGISTRY/$IMAGE_CALL_SERVICE:$TAG"
 else
   FULL_BACKEND="$IMAGE_BACKEND:$TAG"
   FULL_FRONTEND="$IMAGE_FRONTEND:$TAG"
   FULL_FILE_SERVICE="$IMAGE_FILE_SERVICE:$TAG"
   FULL_API_GATEWAY="$IMAGE_API_GATEWAY:$TAG"
   FULL_NOTIFICATION_SERVICE="$IMAGE_NOTIFICATION_SERVICE:$TAG"
+  FULL_CALL_SERVICE="$IMAGE_CALL_SERVICE:$TAG"
 fi
 
 BUILD_FLAGS="--no-cache"
@@ -311,6 +322,14 @@ docker build $BUILD_FLAGS \
   "$WAC_DIR"
 ok "Notification-service image built: $FULL_NOTIFICATION_SERVICE"
 
+# ─── 5e. Build call-service image ────────────────────────────────────────────
+log "Building call-service image: $FULL_CALL_SERVICE ..."
+docker build $BUILD_FLAGS \
+  -t "$FULL_CALL_SERVICE" \
+  -f "$CALL_SERVICE_DIR/Dockerfile" \
+  "$WAC_DIR"
+ok "Call-service image built: $FULL_CALL_SERVICE"
+
 # ─── 3. Build frontend image ─────────────────────────────────────────────────
 log "Building frontend image: $FULL_FRONTEND ..."
 docker build $BUILD_FLAGS \
@@ -328,11 +347,12 @@ if $PUSH; then
   docker push "$FULL_FILE_SERVICE"
   docker push "$FULL_API_GATEWAY"
   docker push "$FULL_NOTIFICATION_SERVICE"
+  docker push "$FULL_CALL_SERVICE"
   ok "Images pushed to registry"
 fi
 
 # ─── 5. Stop and remove existing app containers ──────────────────────────────
-for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND" "$CONTAINER_FILE_SERVICE" "$CONTAINER_API_GATEWAY" "$CONTAINER_NOTIFICATION_SERVICE"; do
+for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND" "$CONTAINER_FILE_SERVICE" "$CONTAINER_API_GATEWAY" "$CONTAINER_NOTIFICATION_SERVICE" "$CONTAINER_CALL_SERVICE"; do
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
     log "Stopping and removing container: $name"
     docker stop "$name" 2>/dev/null || true
@@ -410,7 +430,26 @@ docker run -d \
   "$FULL_NOTIFICATION_SERVICE"
 ok "Notification-service container started"
 
-# ─── 6d. Run api-gateway container ───────────────────────────────────────────
+# ─── 6d. Run call-service container ──────────────────────────────────────────
+log "Starting call-service container on port $PORT_CALL_SERVICE ..."
+docker run -d \
+  --name "$CONTAINER_CALL_SERVICE" \
+  --network "wacchat_wacchat" \
+  -p "127.0.0.1:$PORT_CALL_SERVICE:8085" \
+  -e KEYCLOAK_ISSUER_URI="https://auth.wacchat.win/realms/wacchat" \
+  -e RABBITMQ_HOST="wacchat-rabbitmq" \
+  -e RABBITMQ_CALL_USER="$RABBITMQ_CALL_USER" \
+  -e RABBITMQ_CALL_PASSWORD="$RABBITMQ_CALL_PASSWORD" \
+  -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
+  -e BACKEND_INTERNAL_API_KEY="${BACKEND_INTERNAL_API_KEY:-}" \
+  -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
+  -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
+  -e TRACING_SAMPLING_PROBABILITY="${TRACING_SAMPLING_PROBABILITY:-1.0}" \
+  --restart unless-stopped \
+  "$FULL_CALL_SERVICE"
+ok "Call-service container started"
+
+# ─── 6e. Run api-gateway container ───────────────────────────────────────────
 log "Starting api-gateway container on port $PORT_API_GATEWAY ..."
 docker run -d \
   --name "$CONTAINER_API_GATEWAY" \
@@ -419,6 +458,7 @@ docker run -d \
   -e BACKEND_BASE_URL="http://wacchat-backend:$PORT_BACKEND" \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:$PORT_FILE_SERVICE" \
   -e NOTIFICATION_SERVICE_BASE_URL="http://wacchat-notification-service:$PORT_NOTIFICATION_SERVICE" \
+  -e CALL_SERVICE_BASE_URL="http://wacchat-call-service:8085" \
   -e OTLP_TRACING_ENDPOINT="http://wacchat-tempo:4318/v1/traces" \
   -e LOKI_URL="http://wacchat-loki:3100/loki/api/v1/push" \
   -e TRACING_SAMPLING_PROBABILITY="${TRACING_SAMPLING_PROBABILITY:-1.0}" \
@@ -507,6 +547,29 @@ else
   echo "  docker logs $CONTAINER_NOTIFICATION_SERVICE"
 fi
 
+# ─── 8d. Call-service health check ───────────────────────────────────────────
+log "Waiting for call-service to be ready..."
+CALL_HEALTH_URL="http://localhost:$PORT_CALL_SERVICE/actuator/health"
+
+call_healthy=false
+for i in $(seq 1 $MAX_RETRIES); do
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" "$CALL_HEALTH_URL" 2>/dev/null || echo "000")
+  if [[ "$http_code" == "200" ]]; then
+    call_healthy=true
+    break
+  fi
+  echo "  Attempt $i/$MAX_RETRIES — HTTP $http_code (retrying in ${RETRY_INTERVAL}s...)"
+  sleep $RETRY_INTERVAL
+done
+
+if $call_healthy; then
+  ok "Call-service is healthy at $CALL_HEALTH_URL"
+else
+  echo ""
+  log "Call-service health check timed out after $((MAX_RETRIES * RETRY_INTERVAL))s — check container logs:"
+  echo "  docker logs $CONTAINER_CALL_SERVICE"
+fi
+
 # ─── Summary ─────────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -517,6 +580,7 @@ echo " Backend             : http://localhost:$PORT_BACKEND"
 echo " Frontend            : http://localhost:$PORT_FRONTEND"
 echo " File-service        : http://localhost:$PORT_FILE_SERVICE"
 echo " Notification-service: http://localhost:$PORT_NOTIFICATION_SERVICE"
+echo " Call-service        : http://localhost:$PORT_CALL_SERVICE"
 echo " Swagger             : http://localhost:$PORT_BACKEND/swagger-ui.html"
 echo " Keycloak            : http://localhost:8180"
 echo " RabbitMQ management : http://localhost:15672"
@@ -529,4 +593,5 @@ echo "   docker logs -f $CONTAINER_BACKEND"
 echo "   docker logs -f $CONTAINER_FRONTEND"
 echo "   docker logs -f $CONTAINER_FILE_SERVICE"
 echo "   docker logs -f $CONTAINER_NOTIFICATION_SERVICE"
+echo "   docker logs -f $CONTAINER_CALL_SERVICE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

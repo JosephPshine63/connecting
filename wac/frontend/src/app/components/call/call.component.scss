@@ -1,0 +1,124 @@
+.call-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-scrim);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+}
+
+.call-box {
+  position: relative;
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.call-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 1.25rem;
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--on-accent);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &.large {
+    width: 140px;
+    height: 140px;
+    font-size: 3rem;
+  }
+}
+
+.call-peer-name {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.call-status-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.call-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.call-btn {
+  border: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+
+  &:hover { opacity: 0.85; }
+}
+
+.call-btn-accept {
+  background: #2ecc71;
+  border-color: #2ecc71;
+  color: #fff;
+}
+
+.call-btn-reject {
+  background: #e74c3c;
+  border-color: #e74c3c;
+  color: #fff;
+}
+
+// In-call video layout — remote fills the box, local is a small picture-in-picture tile.
+.in-call-box {
+  max-width: 480px;
+  padding-top: 1.5rem;
+}
+
+.remote-video {
+  width: 100%;
+  max-height: 320px;
+  border-radius: 12px;
+  background: #000;
+  object-fit: cover;
+  margin-bottom: 1rem;
+}
+
+.local-video {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 90px;
+  height: 68px;
+  border-radius: 8px;
+  background: #000;
+  object-fit: cover;
+  border: 2px solid var(--border);
+}

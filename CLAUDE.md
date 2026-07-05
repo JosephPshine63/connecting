@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ├── docker-compose.local.yml    # Local override — sets KC_HOSTNAME to http://localhost:8180, builds+runs api-gateway as a container
 ├── deploy-local.sh             # Preferred local startup script (sources .env, renders realm template)
 ├── deploy-prod.sh              # Production deploy script (builds images, pushes if --push); Keycloak runs in production `start` mode (docker-compose.local.yml overrides back to `start-dev` for local)
-├── cleanup-images.sh           # Project-scoped Docker image/container cleanup (backend/frontend/file-service/api-gateway/notification-service + observability stack only — leaves postgres/keycloak/rabbitmq untouched) + git pull; replaces the old cleanup.sh which pruned the entire Docker host
+├── cleanup-images.sh           # Project-scoped Docker image/container cleanup (backend/frontend/file-service/api-gateway/notification-service/call-service + observability stack only — leaves postgres/keycloak/rabbitmq untouched) + git pull; replaces the old cleanup.sh which pruned the entire Docker host
 ├── .env.example                # Copy to .env and fill in values
 ├── docker-compose.observability.yml       # Prometheus + Grafana + Loki + Tempo
 ├── docker-compose.observability.local.yml # Local override
@@ -20,7 +20,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
     ├── api-gateway/            # Spring Cloud Gateway — single edge entrypoint (Java 17, Maven)
     ├── file-service/           # Standalone file storage microservice — Cloudflare R2 (Java 17, Maven)
     ├── notification-service/   # Standalone realtime/WebSocket microservice — STOMP over RabbitMQ (Java 17, Maven)
-    ├── shared-security/        # Maven library module — KeycloakJwtAuthenticationConverter, consumed by backend/file-service/notification-service
+    ├── call-service/           # Standalone WebRTC call-signaling microservice — REST intents relayed via RabbitMQ (Java 17, Maven)
+    ├── shared-security/        # Maven library module — KeycloakJwtAuthenticationConverter, consumed by backend/file-service/notification-service/call-service
     ├── rabbitmq/                # enabled_plugins (rabbitmq_management, rabbitmq_stomp), mounted into the RabbitMQ container
     ├── frontend/                # Angular 19 SPA (TypeScript, npm)
     ├── database/                # Reference schema SQL (schema.sql)
@@ -34,7 +35,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 cp .env.example .env            # fill in passwords, Google OAuth, mail credentials
-cd wac/shared-security && ./mvnw install -DskipTests && cd ../..   # one-time: installs the shared-security jar to ~/.m2 so backend/file-service/notification-service resolve it
+cd wac/shared-security && ./mvnw install -DskipTests && cd ../..   # one-time: installs the shared-security jar to ~/.m2 so backend/file-service/notification-service/call-service resolve it
 ```
 
 ### Infrastructure
@@ -50,10 +51,10 @@ Both `deploy-local.sh` and `deploy-prod.sh` share an `ensure_keycloak_db()` boot
 
 To clean up project-local Docker images/containers (not the shared host), run `./cleanup-images.sh` — it prompts for confirmation, removes only this project's app + observability images/containers, then does a `git pull --ff-only` at the end.
 
-Once the infra above is up, `./start-local-services.sh` starts backend, file-service, notification-service, and frontend in the background via `direnv exec` (so each loads `.env` through `.envrc`), logging to `logs/<name>.log`. Note: the script's own `SERVICES` array still lists a 5th entry, `api-gateway` via `./mvnw spring-boot:run` on :8081 — this is stale since `deploy-local.sh` already runs api-gateway as a Docker container on the same port (added in `a2f0f82`); running it will attempt a redundant/conflicting bind on :8081.
+Once the infra above is up, `./start-local-services.sh` starts backend, file-service, notification-service, call-service, and frontend in the background via `direnv exec` (so each loads `.env` through `.envrc`), logging to `logs/<name>.log`. Note: the script's own `SERVICES` array still lists an extra entry, `api-gateway` via `./mvnw spring-boot:run` on :8081 — this is stale since `deploy-local.sh` already runs api-gateway as a Docker container on the same port (added in `a2f0f82`); running it will attempt a redundant/conflicting bind on :8081.
 
 ```bash
-./start-local-services.sh               # start backend, file-service, notification-service, frontend
+./start-local-services.sh               # start backend, file-service, notification-service, call-service, frontend
 ./start-local-services.sh status        # show which are running
 ./start-local-services.sh stop          # stop everything it started
 ```
@@ -92,6 +93,13 @@ cd wac/notification-service
 ./mvnw spring-boot:run          # dev server at http://localhost:8084 — connects to RabbitMQ (localhost:5672 AMQP, :61613 STOMP) and backend:8082
 ```
 
+### Call service
+
+```bash
+cd wac/call-service
+./mvnw spring-boot:run          # dev server at http://localhost:8085 — connects to RabbitMQ (localhost:5672 AMQP) and backend:8082
+```
+
 ### API Gateway
 
 Runs as a Docker container in local dev (started by `deploy-local.sh`, defined in `docker-compose.local.yml`), not via `mvnw`:
@@ -101,9 +109,9 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build a
 docker compose -f docker-compose.yml -f docker-compose.local.yml logs -f api-gateway         # tail logs
 ```
 
-Dev server at `http://localhost:8081` — reaches backend/file-service/notification-service (which still run on the host via `mvnw`) through `host.docker.internal` (`BACKEND_BASE_URL`/`FILE_SERVICE_BASE_URL`/`NOTIFICATION_SERVICE_BASE_URL` overridden in `docker-compose.local.yml`; `extra_hosts: host.docker.internal:host-gateway` makes this resolve on Linux). Traces/logs go to the `wacchat-tempo`/`wacchat-loki` containers by service name since api-gateway shares their Docker network.
+Dev server at `http://localhost:8081` — reaches backend/file-service/notification-service/call-service (which still run on the host via `mvnw`) through `host.docker.internal` (`BACKEND_BASE_URL`/`FILE_SERVICE_BASE_URL`/`NOTIFICATION_SERVICE_BASE_URL`/`CALL_SERVICE_BASE_URL` overridden in `docker-compose.local.yml`; `extra_hosts: host.docker.internal:host-gateway` makes this resolve on Linux). Traces/logs go to the `wacchat-tempo`/`wacchat-loki` containers by service name since api-gateway shares their Docker network.
 
-The frontend never calls backend, file-service, or notification-service directly — it always goes through the gateway (`proxy.conf.json` in dev, `nginx.conf` in prod).
+The frontend never calls backend, file-service, notification-service, or call-service directly — it always goes through the gateway (`proxy.conf.json` in dev, `nginx.conf` in prod).
 
 ### Frontend
 
@@ -131,6 +139,7 @@ cd wac/frontend && npm run api-gen
 
 | Predicate | Target |
 |-----------|--------|
+| `/api/v1/calls/**` | `wac/call-service` (`order: 0`, evaluated before the catch-all `/api/**` route below) |
 | `/api/**` | `wac/backend` |
 | `/ws/**` | `wac/notification-service` (WebSocket upgrade, proxied transparently) |
 | `/files/**` | `wac/file-service`, rewritten to `/api/v1/files/**` |
@@ -149,9 +158,21 @@ Two independent RabbitMQ channels are involved:
 
 The single-session lock (`AuthChannelInterceptor`, moved into notification-service) can no longer read `SessionGuard`/`UserRepository` directly (that's backend-only DB logic), so on STOMP `CONNECT` it makes a synchronous call via `SessionValidationClient` (WebClient + Resilience4j `sessionValidation` circuit breaker/retry instance) to backend's internal `POST /api/v1/internal/sessions/validate` (guarded by `InternalAuthFilter`, shared-secret header `X-Internal-Api-Key` / `BACKEND_INTERNAL_API_KEY`). This call **fails open** (treats backend-down as "not conflicting") — the session lock is a UX nicety, not a security boundary, and a lost WS connection is worse than a rare double-session.
 
+### Call service
+
+`wac/call-service` (port 8085) is a standalone Spring Boot module that owns WebRTC call signaling (offer/answer SDP, ICE candidates, invite/answer/end) for 1:1 audio/video calls between two users who already have an `ACCEPTED` chat. It holds no database — all call state (`CallSession`: chatId, callerId, calleeId, callType, RINGING/IN_CALL/ENDED, timestamps) lives in an in-memory `ConcurrentHashMap` (`CallSessionStore`); a restart drops in-flight calls (accepted trade-off, no persistence in v1).
+
+Signaling deliberately does **not** open a second frontend WebSocket connection. The frontend sends REST intents to call-service (`POST /api/v1/calls/{chatId}/invite|answer|ice-candidate|end`, gated by the same JWT resource-server setup as the backend — real auth, unlike notification-service's `permitAll()` since STOMP `CONNECT` handles auth there instead); call-service publishes a `CallSignalEvent(toUserId, CallSignal)` to a dedicated RabbitMQ exchange/queue (`wacchat.calls`/`wacchat.calls.queue`, same 1:1 pattern as `wacchat.notifications`), and notification-service's second `@RabbitListener` (`call.CallSignalListener`) relays it via `convertAndSendToUser(toUserId, "/queue/call", signal)` onto the client's *existing* STOMP connection — the frontend just adds a second `subscribe('/user/queue/call', ...)` inside the same `onConnect` callback that already subscribes to `/queue/chat`. `CallSignal`/`CallSignalEvent`/`CallSignalType` are duplicated verbatim (identical FQCN) between `call-service` and `notification-service`, for the same Jackson `__TypeId__` reason as `Notification`/`NotificationEvent`.
+
+Before accepting an invite, call-service validates that the caller and callee have an `ACCEPTED` chat via a new backend endpoint, `POST /api/v1/internal/chats/validate` (`ChatValidationController`, gated by `InternalAuthFilter` like the other internal endpoints), called through `ChatValidationClient` (WebClient + Resilience4j). Unlike `SessionValidationClient`'s fail-open session lock, `ChatValidationClient`'s fallback **fails closed** (denies the call) if the backend doesn't respond — this check is a real security boundary (don't let someone call a non-accepted or blocking contact), not a UX nicety, so backend-down must not silently let a call through.
+
+Unanswered calls time out server-side: `CallService.sweepRingTimeouts()` (`@Scheduled(fixedDelay = 5000)`) marks any session still `RINGING` past `application.call.ring-timeout-seconds` (default 45s) as MISSED, notifies both peers, and leaves a system chat message. At call end (hangup, reject, or timeout), call-service calls another new backend endpoint, `POST /api/v1/internal/messages/system` (`InternalSystemMessageController`, reusing the existing `SystemMessageSender.saveSystemMessage(...)` — previously only used by `BotService`) to leave a "Chiamata persa" / "Chiamata terminata - durata mm:ss" message in the chat history; this call is best-effort (logged, not retried/blocking) since it's a history enrichment, not part of the call itself.
+
+STUN-only for v1 (public `stun:stun.l.google.com:19302`); no TURN/coturn relay yet (deferred — symmetric NATs/corporate networks may fail to connect until it's added). Frontend: `utils/call/call-api.service.ts` (hand-written `HttpClient` calls — not `ng-openapi-gen` generated, since that pipeline only covers the backend's own OpenAPI spec; same precedent as `utils/username/username.service.ts`) and `utils/webrtc/webrtc-call.service.ts` (`RTCPeerConnection`/`getUserMedia` wrapper) back the call buttons in the chat header and the `components/call` overlay (incoming-call banner, in-call audio/video UI).
+
 ### Observability
 
-Backend, api-gateway, file-service, and notification-service all export traces via OpenTelemetry/Micrometer Tracing (OTLP HTTP) to Tempo, logs via a direct Logback→Loki appender (`logback-spring.xml` in each service, correlated by trace/span id), and metrics via Micrometer/Actuator scraped by Prometheus. Grafana (`http://localhost:3000`, admin/admin unless overridden) has a provisioned dashboard (`observability/grafana/dashboards/wacchat-overview.json`: request rate, p95 latency, error rate, JVM heap per service) plus Prometheus/Loki/Tempo datasources auto-provisioned. `WebClientConfig` in the backend builds `FileServiceClient`'s `WebClient` off the autoconfigured `WebClient.Builder` specifically so trace context propagates from backend → file-service calls (same pattern in notification-service's `WebClientConfig`/`SessionValidationClient` for calls to backend). Locally, services (running on the host) reach Tempo/Loki via `localhost`; `deploy-prod.sh` overrides `OTLP_TRACING_ENDPOINT`/`LOKI_URL` to container DNS names since the services run in Docker there.
+Backend, api-gateway, file-service, notification-service, and call-service all export traces via OpenTelemetry/Micrometer Tracing (OTLP HTTP) to Tempo, logs via a direct Logback→Loki appender (`logback-spring.xml` in each service, correlated by trace/span id), and metrics via Micrometer/Actuator scraped by Prometheus. Grafana (`http://localhost:3000`, admin/admin unless overridden) has a provisioned dashboard (`observability/grafana/dashboards/wacchat-overview.json`: request rate, p95 latency, error rate, JVM heap per service) plus Prometheus/Loki/Tempo datasources auto-provisioned. `WebClientConfig` in the backend builds `FileServiceClient`'s `WebClient` off the autoconfigured `WebClient.Builder` specifically so trace context propagates from backend → file-service calls (same pattern in notification-service's `WebClientConfig`/`SessionValidationClient` and call-service's `WebClientConfig`/`ChatValidationClient`+`InternalMessageClient`, all for calls to backend). Locally, services (running on the host) reach Tempo/Loki via `localhost`; `deploy-prod.sh` overrides `OTLP_TRACING_ENDPOINT`/`LOKI_URL` to container DNS names since the services run in Docker there.
 
 ### Backend domain structure
 
@@ -193,8 +214,8 @@ All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `creat
 
 ### Frontend
 
-- **Single-route SPA** — `app.routes.ts` defines one route (`''` → `MainComponent`). `pages/main` owns the STOMP connection and top-level layout; sub-components are `components/chat-list`, `components/username-setup`, `components/avatar-upload`, `components/user-card`, and `components/session-blocked`.
-- Services under `src/app/services/` are **fully auto-generated** from `src/openapi/openapi.json` via `ng-openapi-gen`. Never hand-edit; run `npm run api-gen` after any backend API change. Exception: `utils/username/username.service.ts` is hand-written and calls `/api/v1/users/me`, `/api/v1/users/username`, and `/api/v1/users/check-username` directly — it is not generated. Avatar upload (`components/avatar-upload`) and the contact profile view (`components/user-card`) use the generated `UserService` instead.
+- **Single-route SPA** — `app.routes.ts` defines one route (`''` → `MainComponent`). `pages/main` owns the STOMP connection and top-level layout; sub-components are `components/chat-list`, `components/username-setup`, `components/avatar-upload`, `components/user-card`, `components/session-blocked`, and `components/call` (incoming-call banner + in-call audio/video UI, see Architecture's Call service section).
+- Services under `src/app/services/` are **fully auto-generated** from `src/openapi/openapi.json` via `ng-openapi-gen`. Never hand-edit; run `npm run api-gen` after any backend API change. Exceptions: `utils/username/username.service.ts` and `utils/call/call-api.service.ts` are hand-written and call the backend/call-service REST endpoints directly (`/api/v1/users/*` and `/api/v1/calls/{chatId}/*` respectively) — neither is generated, since `ng-openapi-gen` only covers the backend's own `/v3/api-docs` spec. Avatar upload (`components/avatar-upload`) and the contact profile view (`components/user-card`) use the generated `UserService` instead.
 - `components/username-setup` is a modal shown on first login when the user has no username. It calls `UsernameService` to validate uniqueness in real time and to set the username before granting access to the main chat UI.
 - **Session lock UI** — `SessionGuardService` (`utils/session/`) holds a `blocked` signal, flipped by `KeycloakHttpInterceptor` when it sees an HTTP 409 with `error.code === 'SESSION_CONFLICT'` (no WebSocket involved). `components/session-blocked` renders a blocking overlay while `blocked()` is true, offering Retry (re-checks `/api/v1/users/me`) or Logout.
 - **Desktop notifications** — `utils/notifications/browser-notification.service.ts` wraps the native `Notification` Web API; `MainComponent` requests permission on init and fires a notification (with click-to-open-chat) when a message/image arrives for a chat that isn't currently open/focused.
@@ -226,18 +247,20 @@ Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT
 | `FILE_SERVICE_INTERNAL_API_KEY` | (empty) |
 | `RABBITMQ_HOST` / `RABBITMQ_PORT` | `localhost` / `5672` |
 | `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | `wacchat` / `wacchat` |
-| `BACKEND_INTERNAL_API_KEY` | (empty — internal session-validation endpoint rejects all calls until set) |
+| `BACKEND_INTERNAL_API_KEY` | (empty — internal session-validation/chat-validation/system-message endpoints reject all calls until set; shared by notification-service and call-service) |
 | `OTLP_TRACING_ENDPOINT` | `http://localhost:4318/v1/traces` |
 | `LOKI_URL` | `http://localhost:3100/loki/api/v1/push` |
 | `TRACING_SAMPLING_PROBABILITY` | `1.0` |
 
-`OTLP_TRACING_ENDPOINT`, `LOKI_URL`, and `TRACING_SAMPLING_PROBABILITY` are shared by backend, api-gateway, file-service, and notification-service (same env vars, same defaults, in each module's `application.yml`). `RABBITMQ_*` are shared by backend and notification-service.
+`OTLP_TRACING_ENDPOINT`, `LOKI_URL`, and `TRACING_SAMPLING_PROBABILITY` are shared by backend, api-gateway, file-service, notification-service, and call-service (same env vars, same defaults, in each module's `application.yml`). `RABBITMQ_*` are shared by backend, notification-service, and call-service.
 
 `wac/file-service/src/main/resources/application.yml` — `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` / `R2_PUBLIC_BASE_URL` (empty — avatar/media upload disabled) and `FILE_SERVICE_INTERNAL_API_KEY` (must match the value backend uses to call it).
 
 `wac/notification-service/src/main/resources/application.yml` — `RABBITMQ_HOST`/`RABBITMQ_PORT`/`RABBITMQ_USER`/`RABBITMQ_PASSWORD` (same defaults as backend), `RABBITMQ_STOMP_PORT` (default `61613`, the broker-relay port — distinct from the AMQP port), `KEYCLOAK_ISSUER_URI` (same default as backend, needed for its own `JwtDecoder`), `BACKEND_BASE_URL` (default `http://localhost:8082`) and `BACKEND_INTERNAL_API_KEY` (must match backend's value) for the session-validation call.
 
-`wac/api-gateway/src/main/resources/application.yml` — `BACKEND_BASE_URL` (default `http://localhost:8082`), `FILE_SERVICE_BASE_URL` (default `http://localhost:8083`), and `NOTIFICATION_SERVICE_BASE_URL` (default `http://localhost:8084`).
+`wac/call-service/src/main/resources/application.yml` — `RABBITMQ_HOST`/`RABBITMQ_PORT` (same defaults as backend), `RABBITMQ_CALL_USER`/`RABBITMQ_CALL_PASSWORD` (falls back to `RABBITMQ_USER`/`RABBITMQ_PASSWORD` if unset), `KEYCLOAK_ISSUER_URI` (same default as backend, needed for its own JWT resource-server config), `BACKEND_BASE_URL` (default `http://localhost:8082`) and `BACKEND_INTERNAL_API_KEY` (must match backend's value) for `ChatValidationClient`/`InternalMessageClient`, and `CALL_RING_TIMEOUT_SECONDS` (default `45`).
+
+`wac/api-gateway/src/main/resources/application.yml` — `BACKEND_BASE_URL` (default `http://localhost:8082`), `FILE_SERVICE_BASE_URL` (default `http://localhost:8083`), `NOTIFICATION_SERVICE_BASE_URL` (default `http://localhost:8084`), and `CALL_SERVICE_BASE_URL` (default `http://localhost:8085`).
 
 `wac/keycloak/realms/wacchat.json` is **generated** from `wacchat.json.template` by `deploy-local.sh` and `deploy-prod.sh` via `envsubst`. Never commit the rendered `.json` file; edit the `.json.template` instead.
 

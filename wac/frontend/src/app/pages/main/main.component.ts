@@ -11,7 +11,11 @@ import SockJS from 'sockjs-client';
 import {FormsModule} from '@angular/forms';
 import {MessageRequest} from '../../services/models/message-request';
 import {Notification} from './models/notification';
+import {CallSignal} from './models/call-signal';
 import {ChatService} from '../../services/services/chat.service';
+import {CallApiService} from '../../utils/call/call-api.service';
+import {WebRtcCallService} from '../../utils/webrtc/webrtc-call.service';
+import {CallComponent} from '../../components/call/call.component';
 import {PickerComponent} from '@ctrl/ngx-emoji-mart';
 import {EmojiData} from '@ctrl/ngx-emoji-mart/ngx-emoji';
 import {UsernameSetupComponent} from '../../components/username-setup/username-setup.component';
@@ -43,7 +47,8 @@ const MAX_PENDING_MESSAGES = 3;
     UserCardComponent,
     AvatarUploadComponent,
     SessionBlockedComponent,
-    SettingsComponent
+    SettingsComponent,
+    CallComponent
   ],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
@@ -82,6 +87,15 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   private recordedBlob: Blob | null = null;
   private recordingTimerHandle: ReturnType<typeof setInterval> | null = null;
 
+  callState: 'idle' | 'incoming' | 'outgoing' | 'in-call' = 'idle';
+  activeCallChatId: string | null = null;
+  activeCallPeerId: string | null = null;
+  activeCallPeerName: string | null = null;
+  activeCallPeerAvatarUrl: string | null = null;
+  activeCallType: 'AUDIO' | 'VIDEO' = 'AUDIO';
+  private pendingOfferSdp: string | null = null;
+  private callSignalSubscription: StompSubscription | null = null;
+
   constructor(
     private chatService: ChatService,
     private messageService: MessageService,
@@ -90,6 +104,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     private ngZone: NgZone,
     protected sessionGuard: SessionGuardService,
     private browserNotifications: BrowserNotificationService,
+    private callApiService: CallApiService,
+    private webRtcCallService: WebRtcCallService,
   ) {
   }
 
@@ -99,6 +115,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   ngOnDestroy(): void {
     this.notificationSubscription?.unsubscribe();
+    this.callSignalSubscription?.unsubscribe();
+    this.webRtcCallService.close();
     if (this.socketClient !== null) {
       this.socketClient.deactivate();
       this.socketClient = null;
@@ -128,6 +146,16 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.refreshCurrentUser();
     this.heartbeatHandle = setInterval(() => this.refreshCurrentUser(), HEARTBEAT_INTERVAL_MS);
     window.addEventListener('pagehide', this.releaseSessionOnUnload);
+    // RTCPeerConnection's onicecandidate fires outside Angular's zone, same as STOMP
+    // callbacks below — wrap in ngZone.run so any state it touches gets change-detected.
+    this.webRtcCallService.localIceCandidate$.subscribe(candidate => {
+      this.ngZone.run(() => {
+        if (!this.activeCallChatId) return;
+        this.callApiService.iceCandidate(
+          this.activeCallChatId, candidate.candidate, candidate.sdpMid, candidate.sdpMLineIndex
+        ).subscribe();
+      });
+    });
   }
 
   // Releases the single-session lock when the tab closes/navigates away, so reopening the app
@@ -613,6 +641,13 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.handleNotification(notification);
           }
         );
+        this.callSignalSubscription = this.socketClient!.subscribe(
+          '/user/queue/call',
+          (message: IMessage) => {
+            const signal: CallSignal = JSON.parse(message.body);
+            this.ngZone.run(() => this.handleCallSignal(signal));
+          }
+        );
       },
       onStompError: (frame) => console.error('WebSocket error:', frame)
     });
@@ -824,5 +859,107 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       return null;
     }
     return htmlInputTarget.files[0];
+  }
+
+  canCall(): boolean {
+    return this.callState === 'idle' && this.selectedChat.status === 'ACCEPTED';
+  }
+
+  async startCall(callType: 'AUDIO' | 'VIDEO'): Promise<void> {
+    if (!this.canCall() || !this.selectedChat.id) return;
+    const chatId = this.selectedChat.id;
+    const peerId = this.getReceiverId();
+    this.activeCallChatId = chatId;
+    this.activeCallPeerId = peerId;
+    this.activeCallPeerName = this.selectedChat.name ?? null;
+    this.activeCallPeerAvatarUrl = this.selectedChat.avatarUrl ?? null;
+    this.activeCallType = callType;
+    this.callState = 'outgoing';
+    try {
+      const sdpOffer = await this.webRtcCallService.startAsCaller(callType);
+      this.callApiService.invite(chatId, peerId, callType, sdpOffer).subscribe({
+        error: () => this.endCallLocally()
+      });
+    } catch {
+      // getUserMedia denied or unavailable: stay out of the call, no crash
+      this.endCallLocally();
+    }
+  }
+
+  acceptCall(): void {
+    if (this.callState !== 'incoming' || !this.activeCallChatId || !this.pendingOfferSdp) return;
+    const chatId = this.activeCallChatId;
+    const offerSdp = this.pendingOfferSdp;
+    this.webRtcCallService.startAsCallee(this.activeCallType, offerSdp).then(sdpAnswer => {
+      this.callApiService.answer(chatId, sdpAnswer).subscribe({
+        next: () => this.ngZone.run(() => this.callState = 'in-call'),
+        error: () => this.ngZone.run(() => this.endCallLocally())
+      });
+    }).catch(() => this.ngZone.run(() => this.endCallLocally()));
+  }
+
+  rejectCall(): void {
+    if (this.callState !== 'incoming' || !this.activeCallChatId) return;
+    this.callApiService.end(this.activeCallChatId, 'REJECT').subscribe();
+    this.endCallLocally();
+  }
+
+  hangUp(): void {
+    if (!this.activeCallChatId) return;
+    this.callApiService.end(this.activeCallChatId, 'HANGUP').subscribe();
+    this.endCallLocally();
+  }
+
+  private handleCallSignal(signal: CallSignal): void {
+    if (!signal?.chatId) return;
+    switch (signal.type) {
+      case 'INVITE':
+        if (this.callState !== 'idle') {
+          // Already on a call: decline immediately rather than leaving the caller ringing forever.
+          this.callApiService.end(signal.chatId, 'REJECT').subscribe();
+          return;
+        }
+        this.activeCallChatId = signal.chatId;
+        this.activeCallPeerId = signal.fromUserId ?? null;
+        this.activeCallType = signal.callType ?? 'AUDIO';
+        this.pendingOfferSdp = signal.sdp ?? null;
+        const peerChat = this.chats.find(c => c.senderId === signal.fromUserId || c.receiverId === signal.fromUserId);
+        this.activeCallPeerName = peerChat?.name ?? null;
+        this.activeCallPeerAvatarUrl = peerChat?.avatarUrl ?? null;
+        this.callState = 'incoming';
+        break;
+      case 'ANSWER':
+        if (this.callState === 'outgoing' && this.activeCallChatId === signal.chatId && signal.sdp) {
+          this.webRtcCallService.completeAsCaller(signal.sdp).then(() => {
+            this.ngZone.run(() => this.callState = 'in-call');
+          });
+        }
+        break;
+      case 'ICE_CANDIDATE':
+        if (this.activeCallChatId === signal.chatId && signal.candidate) {
+          this.webRtcCallService.addRemoteIceCandidate(
+            signal.candidate, signal.candidateSdpMid ?? null, signal.candidateSdpMLineIndex ?? null
+          );
+        }
+        break;
+      case 'END':
+      case 'REJECT':
+      case 'BUSY':
+      case 'MISSED':
+        if (this.activeCallChatId === signal.chatId) {
+          this.endCallLocally();
+        }
+        break;
+    }
+  }
+
+  private endCallLocally(): void {
+    this.webRtcCallService.close();
+    this.callState = 'idle';
+    this.activeCallChatId = null;
+    this.activeCallPeerId = null;
+    this.activeCallPeerName = null;
+    this.activeCallPeerAvatarUrl = null;
+    this.pendingOfferSdp = null;
   }
 }
