@@ -16,7 +16,55 @@ PID_FILE="$SCRIPT_DIR/.local-services.pids"
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()  { echo "[$(date '+%H:%M:%S')] ✓ $*"; }
+warn() { echo "[$(date '+%H:%M:%S')] ⚠ $*" >&2; }
 err() { echo "[$(date '+%H:%M:%S')] ✗ $*" >&2; exit 1; }
+
+# name -> URL polled to decide "healthy". Spring services expose actuator/health;
+# ng serve has none, so any HTTP response on the dev server root counts as up.
+declare -A HEALTH_URLS=(
+  [backend]="http://localhost:8082/actuator/health"
+  [file-service]="http://localhost:8083/actuator/health"
+  [notification-service]="http://localhost:8084/actuator/health"
+  [api-gateway]="http://localhost:8081/actuator/health"
+  [frontend]="http://localhost:4200"
+)
+HEALTH_TIMEOUT=90   # seconds to wait for a single service to become healthy
+HEALTH_INTERVAL=2
+
+declare -A SERVICE_PORTS=(
+  [backend]=8082
+  [file-service]=8083
+  [notification-service]=8084
+  [api-gateway]=8081
+  [frontend]=4200
+)
+
+# Prints the PID bound to $1/tcp (LISTEN), or nothing if the port is free.
+# The `|| true` matters: under `pipefail`, an intermediate grep finding no match
+# (the common, "port is free" case) makes the whole pipeline report failure even
+# though `head -1` itself succeeds — which would silently kill the script via
+# `set -e` at the call site (`existing_pid="$(port_owner_pid ...)"` isn't inside
+# an if/while, so nothing else guards it).
+port_owner_pid() {
+  ss -ltnp 2>/dev/null | grep -E ":$1[[:space:]]" | grep -oP 'pid=\K[0-9]+' | head -1 || true
+}
+
+# Returns 0 once the service responds healthy, 1 on timeout. Never trips `set -e`
+# on transient curl failures while a JVM is still booting.
+wait_for_health() {
+  local name="$1" url="$2" waited=0 body=""
+  while (( waited < HEALTH_TIMEOUT )); do
+    if [[ "$name" == "frontend" ]]; then
+      curl -s -o /dev/null --max-time 2 "$url" && return 0
+    else
+      body="$(curl -s --max-time 2 "$url" 2>/dev/null || true)"
+      [[ "$body" == *'"status":"UP"'* ]] && return 0
+    fi
+    sleep "$HEALTH_INTERVAL"
+    waited=$(( waited + HEALTH_INTERVAL ))
+  done
+  return 1
+}
 
 command -v direnv >/dev/null 2>&1 || err "direnv not found — needed to load .env (see .envrc)"
 [[ -f "$SCRIPT_DIR/.env" ]] || err ".env not found — create it from .env.example"
@@ -34,11 +82,24 @@ start_all() {
   mkdir -p "$LOG_DIR"
   : > "$PID_FILE"
 
+  local skipped=() launched=()
+
   for entry in "${SERVICES[@]}"; do
     local_name="${entry%%:*}"
     rest="${entry#*:}"
     local_dir="${rest%%:*}"
     local_cmd="${rest#*:}"
+
+    port="${SERVICE_PORTS[$local_name]:-}"
+    if [[ -n "$port" ]]; then
+      existing_pid="$(port_owner_pid "$port")"
+      if [[ -n "$existing_pid" ]]; then
+        existing_cmd="$(ps -p "$existing_pid" -o cmd= 2>/dev/null | cut -c1-70 || true)"
+        warn "$local_name: port $port already in use by PID $existing_pid ($existing_cmd) — not starting a duplicate"
+        skipped+=("$local_name")
+        continue
+      fi
+    fi
 
     log "Starting $local_name ..."
     (
@@ -48,12 +109,38 @@ start_all() {
     pid=$!
     echo "$local_name:$pid" >> "$PID_FILE"
     ok "$local_name started (pid $pid, log: logs/$local_name.log)"
+    launched+=("$local_name")
     sleep 1
   done
 
+  local any_failed=0
+  if [[ ${#launched[@]} -gt 0 ]]; then
+    echo ""
+    log "Waiting for services to become healthy (up to ${HEALTH_TIMEOUT}s each)..."
+    for local_name in "${launched[@]}"; do
+      url="${HEALTH_URLS[$local_name]:-}"
+      [[ -z "$url" ]] && continue
+      if wait_for_health "$local_name" "$url"; then
+        ok "$local_name is healthy ($url)"
+      else
+        warn "$local_name did NOT become healthy within ${HEALTH_TIMEOUT}s ($url) — last log lines:"
+        tail -n 20 "$LOG_DIR/$local_name.log" >&2 || true
+        any_failed=1
+      fi
+    done
+  fi
+
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo " All services launching in the background."
+  if [[ ${#skipped[@]} -gt 0 ]]; then
+    echo " ⚠ Skipped (port already held by another process): ${skipped[*]}"
+    echo "   Kill the owning PID shown in the warning above, then re-run to actually start it."
+  fi
+  if [[ "$any_failed" -eq 0 && ${#skipped[@]} -eq 0 ]]; then
+    echo " All services are up and healthy."
+  elif [[ "$any_failed" -ne 0 ]]; then
+    echo " ⚠ One or more freshly-launched services failed their health check — see above."
+  fi
   echo " Tail logs with:  tail -f logs/<service>.log"
   echo " Check status:    ./start-local-services.sh status"
   echo " Stop everything: ./start-local-services.sh stop"
@@ -61,6 +148,8 @@ start_all() {
   echo " Gateway  : http://localhost:8081"
   echo " Frontend : http://localhost:4200"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  [[ "$any_failed" -eq 0 && ${#skipped[@]} -eq 0 ]] || exit 1
 }
 
 stop_all() {
