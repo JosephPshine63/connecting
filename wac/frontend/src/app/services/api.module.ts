@@ -7,6 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { ApiConfiguration, ApiConfigurationParams } from './api-configuration';
 
 import { UserService } from './services/user.service';
+import { ModerationService } from './services/moderation.service';
 import { MessageService } from './services/message.service';
 import { SessionValidationControllerService } from './services/session-validation-controller.service';
 import { ChatService } from './services/chat.service';
@@ -20,6 +21,7 @@ import { ChatService } from './services/chat.service';
   declarations: [],
   providers: [
     UserService,
+    ModerationService,
     MessageService,
     SessionValidationControllerService,
     ChatService,

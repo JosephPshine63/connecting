@@ -394,6 +394,17 @@
   display: block;
 }
 
+.bubble-video {
+  max-width: 260px;
+  border-radius: 12px;
+  display: block;
+}
+
+.bubble-audio {
+  max-width: 260px;
+  display: block;
+}
+
 .bubble-meta {
   font-size: 0.68em;
   color: var(--text-muted);

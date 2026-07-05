@@ -181,6 +181,14 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectedCardUserId = null;
   }
 
+  onUserBlocked(blockedUserId: string): void {
+    const blockedChat = this.chats.find(c => c.senderId === blockedUserId || c.receiverId === blockedUserId);
+    this.chats = this.chats.filter(c => c.senderId !== blockedUserId && c.receiverId !== blockedUserId);
+    if (blockedChat && this.selectedChat.id === blockedChat.id) {
+      this.selectedChat = {};
+    }
+  }
+
   onAvatarChanged(avatarUrl: string | undefined): void {
     if (this.currentUser) {
       this.currentUser = { ...this.currentUser, avatarUrl };
@@ -341,9 +349,33 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     return media.startsWith('http') ? media : 'data:image/jpg;base64,' + media;
   }
 
+  private mediaTypeFromFileName(fileName: string): 'IMAGE' | 'VIDEO' | 'AUDIO' {
+    const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
+    if (['mp4', 'mov'].includes(extension)) {
+      return 'VIDEO';
+    }
+    if (['mp3', 'wav', 'ogg', 'm4a'].includes(extension)) {
+      return 'AUDIO';
+    }
+    return 'IMAGE';
+  }
+
+  private mediaLabelForType(type: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | undefined): string {
+    switch (type) {
+      case 'VIDEO': return '🎥 Video';
+      case 'AUDIO': return '🎤 Messaggio vocale';
+      default: return '📷 Foto';
+    }
+  }
+
+  private isMediaNotificationType(type: Notification['type']): boolean {
+    return type === 'IMAGE' || type === 'VIDEO' || type === 'AUDIO';
+  }
+
   uploadMedia(target: EventTarget | null) {
     const file = this.extractFileFromTarget(target);
     if (file !== null) {
+      const mediaType = this.mediaTypeFromFileName(file.name);
       const reader = new FileReader();
       reader.onload = () => {
         if (reader.result) {
@@ -360,8 +392,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
               const message: MessageResponse = {
                 senderId: this.getSenderId(),
                 receiverId: this.getReceiverId(),
-                content: 'Attachment',
-                type: 'IMAGE',
+                content: this.mediaLabelForType(mediaType),
+                type: mediaType,
                 state: 'SENT',
                 media: [mediaLines],
                 createdAt: new Date().toString()
@@ -486,42 +518,38 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.handleChatRequestRejected(notification);
         return;
       }
-      if (notification.type === 'MESSAGE' || notification.type === 'IMAGE') {
+      if (notification.type === 'MESSAGE' || this.isMediaNotificationType(notification.type)) {
         this.maybeShowDesktopNotification(notification);
       }
       if (notification.chatId === this.peerTypingChatId) {
         this.stopPeerTyping();
       }
       if (this.selectedChat && this.selectedChat.id === notification.chatId) {
-        switch (notification.type) {
-          case 'MESSAGE':
-          case 'IMAGE':
-            const message: MessageResponse = {
-              senderId: notification.senderId,
-              receiverId: notification.receiverId,
-              content: notification.content,
-              type: notification.messageType,
-              media: notification.media,
-              createdAt: new Date().toString()
-            };
-            if (notification.type === 'IMAGE') {
-              this.selectedChat.lastMessage = 'Attachment';
-            } else {
-              this.selectedChat.lastMessage = notification.content;
-            }
-            this.chatMessages.push(message);
-            break;
-          case 'SEEN':
-            this.chatMessages.forEach(m => m.state = 'SEEN');
-            break;
+        if (notification.type === 'MESSAGE' || this.isMediaNotificationType(notification.type)) {
+          const message: MessageResponse = {
+            senderId: notification.senderId,
+            receiverId: notification.receiverId,
+            content: notification.content,
+            type: notification.messageType,
+            media: notification.media,
+            createdAt: new Date().toString()
+          };
+          if (this.isMediaNotificationType(notification.type)) {
+            this.selectedChat.lastMessage = this.mediaLabelForType(notification.messageType);
+          } else {
+            this.selectedChat.lastMessage = notification.content;
+          }
+          this.chatMessages.push(message);
+        } else if (notification.type === 'SEEN') {
+          this.chatMessages.forEach(m => m.state = 'SEEN');
         }
       } else {
         const destChat = this.chats.find(c => c.id === notification.chatId);
         if (destChat && notification.type !== 'SEEN') {
           if (notification.type === 'MESSAGE') {
             destChat.lastMessage = notification.content;
-          } else if (notification.type === 'IMAGE') {
-            destChat.lastMessage = 'Attachment';
+          } else if (this.isMediaNotificationType(notification.type)) {
+            destChat.lastMessage = this.mediaLabelForType(notification.messageType);
           }
           destChat.lastMessageTime = new Date().toString();
           destChat.unreadCount! += 1;
@@ -546,7 +574,9 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (chatIsOpenAndFocused) return;
 
     const title = notification.chatName || 'Nuovo messaggio';
-    const body = notification.type === 'IMAGE' ? 'Ti ha inviato un allegato' : (notification.content || '');
+    const body = this.isMediaNotificationType(notification.type)
+      ? `Ti ha inviato ${this.mediaLabelForType(notification.messageType).toLowerCase()}`
+      : (notification.content || '');
     const chatId = notification.chatId;
     this.browserNotifications.notify(title, body, () => {
       this.ngZone.run(() => {

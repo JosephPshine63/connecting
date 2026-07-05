@@ -10,6 +10,7 @@ public class ChatMapper {
                 .name(chat.getChatName(senderId))
                 .unreadCount(chat.getUnreadMessages(senderId))
                 .lastMessage(chat.getLastMessage())
+                .lastMessageType(chat.getLastMessageType())
                 .lastMessageTime(chat.getLastMessageTime())
                 .isRecipientOnline(chat.getRecipient().isUserOnline())
                 .senderId(chat.getSender().getId())
@@ -17,6 +18,7 @@ public class ChatMapper {
                 .avatarUrl(chat.getChatAvatarUrl(senderId))
                 .status(chat.getStatus())
                 .pendingMessageCount(chat.getPendingMessageCount())
+                .favorite(chat.isFavorite(senderId))
                 .build();
     }
 }

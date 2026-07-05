@@ -37,6 +37,51 @@
       } @else {
         <button class="user-card-request-btn" (click)="sendChatRequest()">Invia richiesta di chat</button>
       }
+
+      <div class="user-card-moderation-actions">
+        <button class="user-card-block-btn" (click)="openBlockConfirm()">Blocca utente</button>
+        @if (reportSent) {
+          <span class="user-card-report-sent">Segnalazione inviata</span>
+        } @else {
+          <button class="user-card-report-btn" (click)="openReportConfirm()">Segnala utente</button>
+        }
+      </div>
     }
   </div>
+
+  @if (confirmBlock) {
+    <div class="user-card-confirm-overlay" (click)="cancelBlock(); $event.stopPropagation()">
+      <div class="user-card-confirm-box" (click)="$event.stopPropagation()">
+        <p>Vuoi bloccare {{ displayName() }}? Non potrete più scrivervi.</p>
+        <div class="user-card-confirm-buttons">
+          <button class="confirm-btn confirm-btn-yes" (click)="blockUser()">Sì, blocca</button>
+          <button class="confirm-btn confirm-btn-no" (click)="cancelBlock()">Annulla</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (confirmReport) {
+    <div class="user-card-confirm-overlay" (click)="cancelReport(); $event.stopPropagation()">
+      <div class="user-card-confirm-box" (click)="$event.stopPropagation()">
+        <p>Segnala {{ displayName() }}</p>
+        <select class="user-card-report-reason" [(ngModel)]="reportReason">
+          <option value="SPAM">Spam</option>
+          <option value="HARASSMENT">Molestie</option>
+          <option value="INAPPROPRIATE_CONTENT">Contenuto inappropriato</option>
+          <option value="FAKE_PROFILE">Profilo falso</option>
+          <option value="OTHER">Altro</option>
+        </select>
+        <textarea
+          class="user-card-report-details"
+          placeholder="Dettagli aggiuntivi (opzionale)"
+          [(ngModel)]="reportDetails"
+        ></textarea>
+        <div class="user-card-confirm-buttons">
+          <button class="confirm-btn confirm-btn-yes" (click)="submitReport()">Invia segnalazione</button>
+          <button class="confirm-btn confirm-btn-no" (click)="cancelReport()">Annulla</button>
+        </div>
+      </div>
+    </div>
+  }
 </div>

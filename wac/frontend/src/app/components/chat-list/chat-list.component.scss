@@ -167,6 +167,21 @@
   text-overflow: ellipsis;
 }
 
+.favorite-star-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75em;
+  cursor: pointer;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+
+  &:hover { color: var(--text-secondary); }
+
+  &.active { color: #f5b90d; }
+}
+
 .item-time {
   font-size: 0.7em;
   color: var(--text-muted);

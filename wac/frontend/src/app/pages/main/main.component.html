@@ -38,6 +38,7 @@
       [userId]="selectedCardUserId"
       (closed)="closeUserCard()"
       (chatRequested)="onChatRequested($event)"
+      (userBlocked)="onUserBlocked($event)"
     ></app-user-card>
   }
   @if (showAvatarUpload) {
@@ -119,6 +120,10 @@
               <div class="message-bubble self">
                 @if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
+                } @else if (message.type === 'VIDEO') {
+                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0])"></video>
+                } @else if (message.type === 'AUDIO') {
+                  <audio controls class="bubble-audio" [src]="mediaSrc(message.media![0])"></audio>
                 } @else if (message.media) {
                   <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="">
                 }
@@ -136,6 +141,10 @@
               <div class="message-bubble friend">
                 @if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
+                } @else if (message.type === 'VIDEO') {
+                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0])"></video>
+                } @else if (message.type === 'AUDIO') {
+                  <audio controls class="bubble-audio" [src]="mediaSrc(message.media![0])"></audio>
                 } @else if (message.media) {
                   <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="">
                 }
@@ -173,7 +182,7 @@
               #inputFile
               type="file"
               [hidden]="true"
-              accept=".jpg,.jpeg,.png,.svg,.mp4,.mov,.mp3"
+              accept=".jpg,.jpeg,.png,.webp,.gif,.svg,.mp4,.mov,.mp3,.wav,.ogg,.m4a"
               (change)="uploadMedia($event.target)"
             >
             <div class="emoji-wrapper">

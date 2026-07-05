@@ -1,30 +1,41 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { UserService } from '../../services/services/user.service';
 import { UserResponse } from '../../services/models/user-response';
 import { ChatService } from '../../services/services/chat.service';
 import { ChatResponse } from '../../services/models/chat-response';
+import { ModerationService } from '../../services/services/moderation.service';
+import { UserReportRequest } from '../../services/models/user-report-request';
 import { KeycloakService } from '../../utils/keycloak/keycloak.service';
 
 @Component({
   selector: 'app-user-card',
   templateUrl: './user-card.component.html',
   styleUrl: './user-card.component.scss',
-  imports: [DatePipe]
+  imports: [DatePipe, FormsModule]
 })
 export class UserCardComponent implements OnChanges {
 
   @Input() userId: string | null = null;
   @Output() closed = new EventEmitter<void>();
   @Output() chatRequested = new EventEmitter<ChatResponse>();
+  @Output() userBlocked = new EventEmitter<string>();
 
   user: UserResponse | null = null;
   loading = false;
   requestSent = false;
 
+  confirmBlock = false;
+  confirmReport = false;
+  reportSent = false;
+  reportReason: UserReportRequest['reason'] = 'SPAM';
+  reportDetails = '';
+
   constructor(
     private userService: UserService,
     private chatService: ChatService,
+    private moderationService: ModerationService,
     private keycloakService: KeycloakService
   ) {}
 
@@ -33,6 +44,11 @@ export class UserCardComponent implements OnChanges {
       this.loading = true;
       this.user = null;
       this.requestSent = false;
+      this.confirmBlock = false;
+      this.confirmReport = false;
+      this.reportSent = false;
+      this.reportReason = 'SPAM';
+      this.reportDetails = '';
       this.userService.getUserById({ id: this.userId }).subscribe({
         next: user => { this.user = user; this.loading = false; },
         error: () => { this.loading = false; }
@@ -71,5 +87,48 @@ export class UserCardComponent implements OnChanges {
   initial(): string {
     const source = this.user?.username || this.user?.firstName || '?';
     return source.charAt(0).toUpperCase();
+  }
+
+  openBlockConfirm(): void {
+    this.confirmBlock = true;
+  }
+
+  cancelBlock(): void {
+    this.confirmBlock = false;
+  }
+
+  blockUser(): void {
+    if (!this.user?.id) return;
+    this.moderationService.blockUser({ id: this.user.id }).subscribe({
+      next: () => {
+        this.confirmBlock = false;
+        this.userBlocked.emit(this.user!.id);
+        this.close();
+      }
+    });
+  }
+
+  openReportConfirm(): void {
+    this.confirmReport = true;
+  }
+
+  cancelReport(): void {
+    this.confirmReport = false;
+  }
+
+  submitReport(): void {
+    if (!this.user?.id) return;
+    this.moderationService.reportUser({
+      id: this.user.id,
+      body: {
+        reason: this.reportReason,
+        details: this.reportDetails || undefined
+      }
+    }).subscribe({
+      next: () => {
+        this.confirmReport = false;
+        this.reportSent = true;
+      }
+    });
   }
 }

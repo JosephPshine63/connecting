@@ -16,13 +16,41 @@
     <input type="text" class="search-input" placeholder="Cerca…" aria-label="Cerca">
   </div>
   <div class="filter-pills">
-    <span class="filter-pill active">All</span>
-    <span class="filter-pill">Non letti</span>
-    <span class="filter-pill">Preferiti</span>
+    <span class="filter-pill" [class.active]="activeFilter === 'all'" (click)="setFilter('all')">Tutte</span>
+    <span class="filter-pill" [class.active]="activeFilter === 'unread'" (click)="setFilter('unread')">Non letti</span>
+    <span class="filter-pill" [class.active]="activeFilter === 'favorites'" (click)="setFilter('favorites')">Preferiti</span>
+    <span class="filter-pill" [class.active]="activeFilter === 'blocked'" (click)="setFilter('blocked')">Bloccati</span>
   </div>
 </div>
 
 <div class="chat-items">
+  @if (activeFilter === 'blocked') {
+    @if (blockedUsers.length) {
+      @for (blocked of blockedUsers; track blocked) {
+        <div class="chat-item">
+          <div class="item-avatar">
+            @if (blocked.avatarUrl) {
+              <img [src]="blocked.avatarUrl" alt="">
+            } @else {
+              {{ (blocked.username || '?').charAt(0).toUpperCase() }}
+            }
+          </div>
+          <div class="item-body">
+            <div class="item-top">
+              <span class="item-name">{{ blocked.username ? '@' + blocked.username : blocked.id }}</span>
+            </div>
+            <div class="item-bottom chat-request-buttons">
+              <button class="chat-request-reject-btn" (click)="unblockUser(blocked, $event)">Sblocca</button>
+            </div>
+          </div>
+        </div>
+      }
+    } @else {
+      <div class="empty-list">
+        <p>Nessun utente bloccato.</p>
+      </div>
+    }
+  } @else {
   @if (!searchNewContact && incomingRequests().length) {
     <div class="chat-requests-section">
       <span class="chat-requests-title">Richieste in arrivo ({{ incomingRequests().length }})</span>
@@ -61,6 +89,9 @@
         <div class="item-body">
           <div class="item-top">
             <span class="item-name">{{ chat.name }}</span>
+            <button class="favorite-star-btn" [class.active]="chat.favorite" (click)="toggleFavorite(chat, $event)" title="Preferito">
+              <i class="fa-solid fa-star"></i>
+            </button>
             @if (isPendingOutgoing(chat)) {
               <span class="item-time pending-badge">In attesa</span>
             } @else {
@@ -71,9 +102,6 @@
           </div>
           <div class="item-bottom">
             <span class="item-preview">
-              @if (chat.lastMessage === 'Attachment') {
-                <i class="fas fa-image"></i>&nbsp;
-              }
               {{ wrapMessage(chat.lastMessage) }}
             </span>
             @if (chat.unreadCount && chat.unreadCount > 0) {
@@ -111,5 +139,6 @@
     <div class="empty-list">
       <p>Nessuna chat ancora…</p>
     </div>
+  }
   }
 </div>

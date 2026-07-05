@@ -4,6 +4,7 @@ import dev.pioruocco.wacchat.bot.BotService;
 import dev.pioruocco.wacchat.chat.Chat;
 import dev.pioruocco.wacchat.chat.ChatRepository;
 import dev.pioruocco.wacchat.file.FileServiceClient;
+import dev.pioruocco.wacchat.moderation.ModerationService;
 import dev.pioruocco.wacchat.notification.Notification;
 import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.notification.NotificationType;
@@ -31,10 +32,13 @@ public class UserService {
     private final ChatRepository chatRepository;
     private final NotificationService notificationService;
     private final BotService botService;
+    private final ModerationService moderationService;
 
     public List<UserResponse> finAllUsersExceptSelf(Authentication connectedUser) {
+        Set<String> blockedIds = Set.copyOf(moderationService.getBlockedIds(connectedUser.getName()));
         return userRepository.findAllUsersExceptSelf(connectedUser.getName())
                 .stream()
+                .filter(user -> !blockedIds.contains(user.getId()))
                 .map(userMapper::toUserResponse)
                 .toList();
     }

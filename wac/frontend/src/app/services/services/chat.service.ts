@@ -21,6 +21,8 @@ import { GetChatsByReceiver$Params } from '../fn/chat/get-chats-by-receiver';
 import { rejectChat } from '../fn/chat/reject-chat';
 import { RejectChat$Params } from '../fn/chat/reject-chat';
 import { StringResponse } from '../models/string-response';
+import { toggleFavorite } from '../fn/chat/toggle-favorite';
+import { ToggleFavorite$Params } from '../fn/chat/toggle-favorite';
 
 @Injectable({ providedIn: 'root' })
 export class ChatService extends BaseService {
@@ -100,6 +102,39 @@ export class ChatService extends BaseService {
   rejectChat(params: RejectChat$Params, context?: HttpContext): Observable<void> {
     return this.rejectChat$Response(params, context).pipe(
       map((r: StrictHttpResponse<void>): void => r.body)
+    );
+  }
+
+  /** Path part for operation `toggleFavorite()` */
+  static readonly ToggleFavoritePath = '/api/v1/chats/{chatId}/favorite';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `toggleFavorite()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  toggleFavorite$Response(params: ToggleFavorite$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+[key: string]: boolean;
+}>> {
+    return toggleFavorite(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `toggleFavorite$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  toggleFavorite(params: ToggleFavorite$Params, context?: HttpContext): Observable<{
+[key: string]: boolean;
+}> {
+    return this.toggleFavorite$Response(params, context).pipe(
+      map((r: StrictHttpResponse<{
+[key: string]: boolean;
+}>): {
+[key: string]: boolean;
+} => r.body)
     );
   }
 

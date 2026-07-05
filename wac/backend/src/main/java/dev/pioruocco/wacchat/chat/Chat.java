@@ -6,6 +6,7 @@ import dev.pioruocco.wacchat.message.Message;
 import dev.pioruocco.wacchat.message.MessageState;
 import dev.pioruocco.wacchat.message.MessageType;
 import dev.pioruocco.wacchat.user.User;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -57,6 +58,10 @@ public class Chat extends BaseAuditingEntity {
     @Enumerated(EnumType.STRING)
     private ChatStatus status;
     private int pendingMessageCount;
+    @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    private boolean senderFavorite;
+    @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    private boolean recipientFavorite;
 
     @Transient
     public String getChatName(String senderId) {
@@ -93,12 +98,27 @@ public class Chat extends BaseAuditingEntity {
     @Transient
     public String getLastMessage() {
         if (messages != null && !messages.isEmpty()) {
-            if (messages.get(0).getType() != MessageType.TEXT) {
-                return "Attachment";
-            }
-            return messages.get(0).getContent();
+            return switch (messages.get(0).getType()) {
+                case TEXT -> messages.get(0).getContent();
+                case IMAGE -> "📷 Foto";
+                case VIDEO -> "🎥 Video";
+                case AUDIO -> "🎤 Messaggio vocale";
+            };
         }
         return null; // No messages available
+    }
+
+    @Transient
+    public boolean isFavorite(String viewerId) {
+        return sender.getId().equals(viewerId) ? senderFavorite : recipientFavorite;
+    }
+
+    @Transient
+    public MessageType getLastMessageType() {
+        if (messages != null && !messages.isEmpty()) {
+            return messages.get(0).getType();
+        }
+        return null;
     }
 
     @Transient

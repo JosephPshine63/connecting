@@ -1,5 +1,7 @@
 package dev.pioruocco.wacchat.chat;
 
+import dev.pioruocco.wacchat.moderation.ModerationService;
+import dev.pioruocco.wacchat.moderation.UserBlockedException;
 import dev.pioruocco.wacchat.notification.Notification;
 import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.notification.NotificationType;
@@ -23,6 +25,7 @@ public class ChatService {
     private final UserRepository userRepository;
     private final ChatMapper mapper;
     private final NotificationService notificationService;
+    private final ModerationService moderationService;
 
     @Transactional(readOnly = true)
     public List<ChatResponse> getChatsByReceiverId(Authentication currentUser) {
@@ -34,6 +37,9 @@ public class ChatService {
     }
 
     public String createChat(String senderId, String receiverId) {
+        if (moderationService.isBlocked(senderId, receiverId)) {
+            throw new UserBlockedException(senderId, receiverId);
+        }
         return getOrCreateChat(senderId, receiverId, ChatStatus.PENDING).getId();
     }
 
@@ -122,6 +128,26 @@ public class ChatService {
                 .receiverId(chat.getRecipient().getId())
                 .chatName(chat.getTargetChatName(requesterId))
                 .build());
+    }
+
+    public boolean toggleFavorite(String chatId, String currentUserId) {
+        Chat chat = findChatOrThrow(chatId);
+        assertParticipant(chat, currentUserId);
+        boolean isSender = chat.getSender().getId().equals(currentUserId);
+        boolean newValue = isSender ? !chat.isSenderFavorite() : !chat.isRecipientFavorite();
+        if (isSender) {
+            chat.setSenderFavorite(newValue);
+        } else {
+            chat.setRecipientFavorite(newValue);
+        }
+        chatRepository.save(chat);
+        return newValue;
+    }
+
+    private void assertParticipant(Chat chat, String userId) {
+        if (!chat.getSender().getId().equals(userId) && !chat.getRecipient().getId().equals(userId)) {
+            throw new AccessDeniedException("You are not a participant in this chat");
+        }
     }
 
     private Chat findChatOrThrow(String chatId) {

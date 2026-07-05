@@ -10,6 +10,7 @@ import dev.pioruocco.wacchat.chat.ChatRequestLimitExceededException;
 import dev.pioruocco.wacchat.chat.ChatStatus;
 import dev.pioruocco.wacchat.file.FileServiceClient;
 import dev.pioruocco.wacchat.file.FileUtils;
+import dev.pioruocco.wacchat.moderation.ModerationService;
 import dev.pioruocco.wacchat.notification.Notification;
 import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.notification.NotificationType;
@@ -34,6 +35,7 @@ public class MessageService {
     private final NotificationService notificationService;
     private final FileServiceClient fileServiceClient;
     private final BotService botService;
+    private final ModerationService moderationService;
 
     public void saveMessage(MessageRequest messageRequest, Authentication authentication) {
         Chat chat = chatRepository.findById(messageRequest.getChatId())
@@ -110,21 +112,23 @@ public class MessageService {
         final String receiverId = getRecipientId(chat, authentication);
 
         final String mediaUrl = fileServiceClient.uploadMessageMedia(file, senderId, bearerToken(authentication));
+        final MessageType mediaType = MediaTypeResolver.fromUrl(mediaUrl);
+
         Message message = new Message();
         message.setReceiverId(receiverId);
         message.setSenderId(senderId);
         message.setState(MessageState.SENT);
-        message.setType(MessageType.IMAGE);
+        message.setType(mediaType);
         message.setMediaFilePath(mediaUrl);
         message.setChat(chat);
         messageRepository.save(message);
 
         Notification notification = Notification.builder()
                 .chatId(chat.getId())
-                .type(NotificationType.IMAGE)
+                .type(toNotificationType(mediaType))
                 .senderId(senderId)
                 .receiverId(receiverId)
-                .messageType(MessageType.IMAGE)
+                .messageType(mediaType)
                 .media(FileUtils.resolveMedia(mediaUrl))
                 .build();
 
@@ -135,6 +139,15 @@ public class MessageService {
         return ((Jwt) authentication.getPrincipal()).getTokenValue();
     }
 
+    private static NotificationType toNotificationType(MessageType messageType) {
+        return switch (messageType) {
+            case IMAGE -> NotificationType.IMAGE;
+            case VIDEO -> NotificationType.VIDEO;
+            case AUDIO -> NotificationType.AUDIO;
+            case TEXT -> NotificationType.MESSAGE;
+        };
+    }
+
     private void assertParticipant(Chat chat, String userId) {
         if (!chat.getSender().getId().equals(userId) && !chat.getRecipient().getId().equals(userId)) {
             throw new AccessDeniedException("You are not a participant in this chat");
@@ -142,6 +155,9 @@ public class MessageService {
     }
 
     private void assertCanSendMessage(Chat chat, String senderId) {
+        if (moderationService.isBlocked(chat.getSender().getId(), chat.getRecipient().getId())) {
+            throw new ChatNotAcceptedException(chat.getId());
+        }
         if (chat.getStatus() == ChatStatus.ACCEPTED) {
             return;
         }

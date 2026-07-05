@@ -1,5 +1,7 @@
 package dev.pioruocco.wacchat.chat;
 
+import dev.pioruocco.wacchat.moderation.ModerationService;
+import dev.pioruocco.wacchat.moderation.UserBlockedException;
 import dev.pioruocco.wacchat.notification.Notification;
 import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.notification.NotificationType;
@@ -37,16 +39,28 @@ class ChatServiceTest {
     private UserRepository userRepository;
     @Mock
     private NotificationService notificationService;
+    @Mock
+    private ModerationService moderationService;
 
     private ChatService chatService;
 
     @BeforeEach
     void setUp() {
-        chatService = new ChatService(chatRepository, userRepository, new ChatMapper(), notificationService);
+        chatService = new ChatService(chatRepository, userRepository, new ChatMapper(), notificationService, moderationService);
+    }
+
+    @Test
+    void createChat_blockedPair_throwsUserBlockedException() {
+        when(moderationService.isBlocked(SENDER_ID, RECEIVER_ID)).thenReturn(true);
+
+        assertThatThrownBy(() -> chatService.createChat(SENDER_ID, RECEIVER_ID))
+                .isInstanceOf(UserBlockedException.class);
+        verify(chatRepository, never()).save(any());
     }
 
     @Test
     void createChat_newPair_startsPendingAndNotifiesReceiver() {
+        when(moderationService.isBlocked(SENDER_ID, RECEIVER_ID)).thenReturn(false);
         when(chatRepository.findChatByReceiverAndSender(SENDER_ID, RECEIVER_ID)).thenReturn(Optional.empty());
         when(userRepository.findByPublicId(SENDER_ID)).thenReturn(Optional.of(user(SENDER_ID)));
         when(userRepository.findByPublicId(RECEIVER_ID)).thenReturn(Optional.of(user(RECEIVER_ID)));
@@ -82,6 +96,7 @@ class ChatServiceTest {
 
     @Test
     void createChat_existingPendingChat_isIdempotentAndDoesNotRenotify() {
+        when(moderationService.isBlocked(SENDER_ID, RECEIVER_ID)).thenReturn(false);
         Chat existing = chat(SENDER_ID, RECEIVER_ID, ChatStatus.PENDING, 1);
         when(chatRepository.findChatByReceiverAndSender(SENDER_ID, RECEIVER_ID)).thenReturn(Optional.of(existing));
 
@@ -94,6 +109,7 @@ class ChatServiceTest {
 
     @Test
     void createChat_existingRejectedChat_revivesAsNewPendingRequest() {
+        when(moderationService.isBlocked(RECEIVER_ID, SENDER_ID)).thenReturn(false);
         Chat existing = chat(SENDER_ID, RECEIVER_ID, ChatStatus.REJECTED, 3);
         when(chatRepository.findChatByReceiverAndSender(RECEIVER_ID, SENDER_ID)).thenReturn(Optional.of(existing));
         when(userRepository.findByPublicId(RECEIVER_ID)).thenReturn(Optional.of(user(RECEIVER_ID)));
@@ -157,6 +173,42 @@ class ChatServiceTest {
         ArgumentCaptor<Notification> notification = ArgumentCaptor.forClass(Notification.class);
         verify(notificationService, times(1)).sendNotification(eq(SENDER_ID), notification.capture());
         assertThat(notification.getValue().getType()).isEqualTo(NotificationType.CHAT_REQUEST_REJECTED);
+    }
+
+    @Test
+    void toggleFavorite_bySender_flipsSenderFavoriteOnly() {
+        Chat chat = chat(SENDER_ID, RECEIVER_ID, ChatStatus.ACCEPTED, 0);
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+
+        boolean result = chatService.toggleFavorite(chat.getId(), SENDER_ID);
+
+        assertThat(result).isTrue();
+        assertThat(chat.isSenderFavorite()).isTrue();
+        assertThat(chat.isRecipientFavorite()).isFalse();
+        verify(chatRepository).save(chat);
+    }
+
+    @Test
+    void toggleFavorite_byRecipient_flipsRecipientFavoriteOnly() {
+        Chat chat = chat(SENDER_ID, RECEIVER_ID, ChatStatus.ACCEPTED, 0);
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+
+        chatService.toggleFavorite(chat.getId(), RECEIVER_ID);
+        boolean result = chatService.toggleFavorite(chat.getId(), RECEIVER_ID);
+
+        assertThat(result).isFalse();
+        assertThat(chat.isRecipientFavorite()).isFalse();
+        assertThat(chat.isSenderFavorite()).isFalse();
+    }
+
+    @Test
+    void toggleFavorite_byNonParticipant_throwsAccessDenied() {
+        Chat chat = chat(SENDER_ID, RECEIVER_ID, ChatStatus.ACCEPTED, 0);
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+
+        assertThatThrownBy(() -> chatService.toggleFavorite(chat.getId(), "someone-else"))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(chatRepository, never()).save(any());
     }
 
     @Test

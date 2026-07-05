@@ -121,3 +121,113 @@
   font-size: 0.85rem;
   color: var(--text-secondary);
 }
+
+.user-card-moderation-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.user-card-block-btn,
+.user-card-report-btn {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 0.4rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+
+  &:hover {
+    background: var(--bg-glass-hover);
+    color: var(--text-primary);
+  }
+}
+
+.user-card-block-btn:hover {
+  color: #ff5252;
+}
+
+.user-card-report-sent {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.user-card-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-scrim);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.user-card-confirm-box {
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  color: var(--text-primary);
+
+  p {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+.user-card-report-reason,
+.user-card-report-details {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.user-card-report-details {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.user-card-confirm-buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.confirm-btn {
+  border: none;
+  border-radius: 24px;
+  padding: 0.5rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover { opacity: 0.85; }
+}
+
+.confirm-btn-yes {
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+}
+
+.confirm-btn-no {
+  color: var(--text-secondary);
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+}

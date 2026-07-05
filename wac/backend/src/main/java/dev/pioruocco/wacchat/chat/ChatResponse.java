@@ -1,5 +1,6 @@
 package dev.pioruocco.wacchat.chat;
 
+import dev.pioruocco.wacchat.message.MessageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class ChatResponse {
     private String name;
     private long unreadCount;
     private String lastMessage;
+    private MessageType lastMessageType;
     private LocalDateTime lastMessageTime;
     private boolean isRecipientOnline;
     private String senderId;
@@ -26,4 +28,5 @@ public class ChatResponse {
     private String avatarUrl;
     private ChatStatus status;
     private int pendingMessageCount;
+    private boolean favorite;
 }

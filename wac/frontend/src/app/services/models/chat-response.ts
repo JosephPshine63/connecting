@@ -4,9 +4,11 @@
 
 export interface ChatResponse {
   avatarUrl?: string;
+  favorite?: boolean;
   id?: string;
   lastMessage?: string;
   lastMessageTime?: string;
+  lastMessageType?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO';
   name?: string;
   pendingMessageCount?: number;
   receiverId?: string;

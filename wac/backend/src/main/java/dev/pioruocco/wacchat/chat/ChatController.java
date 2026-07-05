@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/chats")
@@ -56,5 +57,14 @@ public class ChatController {
     ) {
         chatService.rejectChat(chatId, authentication.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{chatId}/favorite")
+    public ResponseEntity<Map<String, Boolean>> toggleFavorite(
+            @PathVariable String chatId,
+            Authentication authentication
+    ) {
+        boolean favorite = chatService.toggleFavorite(chatId, authentication.getName());
+        return ResponseEntity.ok(Map.of("favorite", favorite));
     }
 }
