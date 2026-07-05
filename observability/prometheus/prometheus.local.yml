@@ -20,3 +20,15 @@ scrape_configs:
     static_configs:
       - targets: ['host.docker.internal:8083']
         labels: { service: file-service }
+
+  - job_name: 'notification-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8084']
+        labels: { service: notification-service }
+
+  - job_name: 'call-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8085']
+        labels: { service: call-service }
