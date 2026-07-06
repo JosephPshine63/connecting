@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-const APP_ICON = '/wacchat-logo.png';
+const APP_ICON = '/favicon.png';
 
 @Injectable({ providedIn: 'root' })
 export class BrowserNotificationService {

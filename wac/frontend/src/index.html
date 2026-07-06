@@ -5,8 +5,10 @@
     (function () {
       try {
         var t = localStorage.getItem('appTheme');
+        var validThemes = ['pio-light', 'pio-dark', 'blue', 'light', 'dark',
+          'green', 'indigo', 'magenta', 'crimson', 'earth'];
         document.documentElement.setAttribute('data-theme',
-          (t === 'pio-light' || t === 'pio-dark' || t === 'blue' || t === 'light' || t === 'dark') ? t : 'pio-light');
+          validThemes.indexOf(t) !== -1 ? t : 'pio-light');
       } catch (e) {}
     })();
   </script>
@@ -14,7 +16,8 @@
   <title>WacChat</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="wacchat-logo.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Arvo:wght@400;700&display=swap" rel="stylesheet">
