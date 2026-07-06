@@ -117,7 +117,8 @@
 <div class="wac-disclaimer">
   <span>&#9888;</span>
   App dimostrativa per uso personale &mdash; non inserire dati personali reali.
-  Gli account vengono eliminati automaticamente dopo 21&nbsp;giorni dalla creazione.
+  Gli account inattivi vengono eliminati automaticamente dopo 14&nbsp;giorni.
+  <a href="${url.resourcesPath}/privacy.html" target="_blank" rel="noopener">Privacy e termini</a>
 </div>
 
 <script>

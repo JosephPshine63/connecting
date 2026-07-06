@@ -317,6 +317,15 @@ html, body {
   color: rgba(255, 193, 7, 0.6);
   margin-right: 0.3rem;
 }
+.wac-disclaimer a {
+  color: #00E4E3;
+  text-decoration: underline;
+  margin-left: 0.3rem;
+  white-space: nowrap;
+}
+.wac-disclaimer a:hover {
+  color: #A060FF;
+}
 
 /* =====================================================================
    IDP LINK (first-broker-login) pages

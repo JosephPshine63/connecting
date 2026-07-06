@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy e Termini — WacChat</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    background: #0d0f14;
+    color: #e8eaed;
+  }
+
+  .wac-wrap {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  .wac-card {
+    background: rgba(30, 30, 46, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 2.5rem 2.5rem 2rem;
+    max-width: 720px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .wac-logo {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #A060FF, #00E4E3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .wac-subtitle {
+    text-align: center;
+    color: #9a9ca3;
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+
+  h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #e8eaed;
+    margin-top: 1.75rem;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  h2:first-of-type { margin-top: 0; }
+
+  p, li {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #c4c6cc;
+  }
+
+  p { margin-bottom: 0.75rem; }
+
+  ul { margin: 0 0 0.75rem 1.25rem; }
+
+  li { margin-bottom: 0.35rem; }
+
+  strong { color: #e8eaed; }
+
+  a { color: #00E4E3; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wac-contact {
+    display: inline-block;
+    margin-top: 0.25rem;
+    font-weight: 500;
+  }
+
+  .wac-back-link {
+    display: block;
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 0.85rem;
+  }
+
+  .wac-updated {
+    text-align: center;
+    color: #6b6d73;
+    font-size: 0.75rem;
+    margin-top: 1.5rem;
+  }
+</style>
+</head>
+<body>
+<div class="wac-wrap">
+  <div class="wac-card">
+    <div class="wac-logo">WacChat</div>
+    <div class="wac-subtitle">Informativa privacy &amp; termini di utilizzo</div>
+
+    <h2>1. Titolare del trattamento</h2>
+    <p>
+      Il titolare del trattamento dei dati è <strong>Giuseppe Pio Ruocco</strong>,
+      sviluppatore indipendente del progetto. Per qualsiasi richiesta relativa ai
+      tuoi dati o a questa informativa puoi scrivere a
+      <a class="wac-contact" href="mailto:dev.pioruocco@gmail.com">dev.pioruocco@gmail.com</a>.
+    </p>
+
+    <h2>2. Natura del progetto</h2>
+    <p>
+      WacChat è un progetto sviluppato a scopo personale/dimostrativo (portfolio),
+      non un servizio commerciale. È tuttavia accessibile pubblicamente e utilizzato
+      con account e dati reali, quindi questa informativa vale a tutti gli effetti.
+    </p>
+
+    <h2>3. Dati raccolti</h2>
+    <ul>
+      <li>Dati account: email, nome, username, foto profilo (facoltativa)</li>
+      <li>Contenuti generati dall'utente: messaggi di testo, immagini/audio inviati in chat</li>
+      <li>Dati tecnici: timestamp di ultimo accesso, identificativo di sessione</li>
+    </ul>
+
+    <h2>4. Finalità e base giuridica</h2>
+    <p>
+      I dati sono trattati per fornire il servizio di messaggistica richiesto
+      volontariamente dall'utente al momento della registrazione (esecuzione di un
+      rapporto contrattuale/servizio richiesto dall'interessato), oltre che per
+      finalità tecniche di sicurezza (es. prevenzione di sessioni multiple in
+      conflitto, log applicativi a scopo diagnostico).
+    </p>
+
+    <h2>5. Soggetti terzi che trattano i dati (sub-responsabili)</h2>
+    <p>Per funzionare, WacChat si appoggia ai seguenti servizi terzi:</p>
+    <ul>
+      <li><strong>Keycloak</strong> — gestione di login e account (self-hosted, sotto il controllo diretto del titolare)</li>
+      <li><strong>Google (Accedi con Google)</strong> — login social opzionale, se scelto dall'utente</li>
+      <li><strong>Google Gemini API</strong> — solo per i messaggi scritti nella chat con l'assistente virtuale "Arno"; i messaggi scambiati con altri utenti reali non vengono mai inviati a servizi di intelligenza artificiale</li>
+      <li><strong>Cloudflare R2</strong> — archiviazione di immagini/media e foto profilo caricate in chat</li>
+      <li><strong>Resend</strong> — invio di email transazionali (verifica account, reset password)</li>
+      <li><strong>Provider di hosting</strong> — infrastruttura server su cui gira l'applicazione</li>
+    </ul>
+    <p>
+      Alcuni di questi servizi (Google, Cloudflare, Resend) hanno sede o infrastrutture
+      fuori dall'Unione Europea; il trasferimento dei dati verso questi fornitori
+      avviene nell'ambito delle garanzie previste dai rispettivi programmi di
+      conformità (es. clausole contrattuali standard).
+    </p>
+
+    <h2>6. Conservazione dei dati</h2>
+    <p>
+      Gli account inattivi da più di <strong>14 giorni</strong> vengono cancellati
+      automaticamente, insieme a tutte le chat, i messaggi e i media associati
+      all'utente. Non conserviamo backup dei dati oltre questo periodo.
+    </p>
+
+    <h2>7. I tuoi diritti</h2>
+    <p>
+      In qualsiasi momento puoi richiedere l'accesso, la rettifica, la cancellazione
+      o l'esportazione dei tuoi dati, oppure opporti al trattamento, scrivendo a
+      <a href="mailto:dev.pioruocco@gmail.com">dev.pioruocco@gmail.com</a>. Puoi
+      inoltre cancellare autonomamente i tuoi dati semplicemente smettendo di
+      utilizzare l'account: verrà rimosso automaticamente dopo il periodo di
+      inattività indicato al punto 6.
+    </p>
+
+    <h2>8. Dati salvati sul tuo dispositivo</h2>
+    <p>
+      WacChat non utilizza cookie di tracciamento o di terze parti. Alcune
+      informazioni non sensibili vengono salvate localmente nel tuo browser
+      (localStorage/sessionStorage) solo per il funzionamento dell'app: tema grafico
+      scelto, bozze di messaggi non ancora inviati, elenco chat silenziate, filtro di
+      ricerca chat, conferma di maggiore età, e un identificativo casuale della
+      scheda del browser usato per la sessione. Nessuno di questi dati viene
+      condiviso con terze parti.
+    </p>
+
+    <h2>9. Età minima</h2>
+    <p>
+      L'accesso all'app richiede la conferma di essere maggiorenne. Si tratta di una
+      dichiarazione dell'utente, non di una verifica tecnica dell'età.
+    </p>
+
+    <h2>10. Termini di utilizzo essenziali</h2>
+    <ul>
+      <li>Il servizio è fornito "così com'è", senza garanzie di disponibilità, continuità o assenza di errori.</li>
+      <li>Non inserire dati personali sensibili o informazioni che non vorresti fossero perse: il servizio è un progetto dimostrativo e i dati possono essere cancellati secondo la policy di retention indicata sopra.</li>
+      <li>Ogni utente è responsabile dei contenuti che invia; è vietato l'uso del servizio per contenuti illeciti, offensivi o lesivi di diritti altrui.</li>
+      <li>Il titolare si riserva il diritto di sospendere o rimuovere account che violano queste condizioni.</li>
+    </ul>
+
+    <a class="wac-back-link" href="javascript:history.length > 1 ? history.back() : window.close()">&larr; Torna indietro</a>
+    <div class="wac-updated">Ultimo aggiornamento: 6 luglio 2026</div>
+  </div>
+</div>
+</body>
+</html>
