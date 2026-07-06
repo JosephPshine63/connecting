@@ -43,4 +43,23 @@ public class AdminChatService {
         systemMessageSender.saveSystemMessage(
                 chatId, adminUserId, realUserId, WELCOME_MESSAGE, MessageType.TEXT);
     }
+
+    /** Lazy fallback for users who completed username-setup before this feature existed
+     *  (createChatWithWelcomeMessage only fires once, at that trigger point) — called from
+     *  the frontend's "Segnala un bug" button so it works retroactively for any account.
+     *  Idempotent: reuses an existing chat instead of re-sending the welcome message.
+     *  Returns null if the feature is disabled (ADMIN_USER_ID unset) or the caller IS the
+     *  admin account, so the controller can respond 404 instead of chatting with itself. */
+    public String getOrCreateChatId(String realUserId) {
+        if (!isEnabled() || adminUserId.equals(realUserId)) {
+            return null;
+        }
+        boolean alreadyExists = chatService.chatExistsBetween(realUserId, adminUserId);
+        String chatId = chatService.createSystemChat(realUserId, adminUserId);
+        if (!alreadyExists) {
+            systemMessageSender.saveSystemMessage(
+                    chatId, adminUserId, realUserId, WELCOME_MESSAGE, MessageType.TEXT);
+        }
+        return chatId;
+    }
 }

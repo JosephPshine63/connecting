@@ -47,6 +47,16 @@ public class ChatService {
         return getOrCreateChat(senderId, receiverId, ChatStatus.ACCEPTED).getId();
     }
 
+    @Transactional(readOnly = true)
+    public boolean chatExistsBetween(String userId, String otherId) {
+        return chatRepository.findChatByReceiverAndSender(userId, otherId).isPresent();
+    }
+
+    @Transactional(readOnly = true)
+    public ChatResponse getChatResponseById(String chatId, String currentUserId) {
+        return mapper.toChatResponse(findChatOrThrow(chatId), currentUserId);
+    }
+
     public void acceptChat(String chatId, String currentUserId) {
         Chat chat = findChatOrThrow(chatId);
         assertRecipient(chat, currentUserId);

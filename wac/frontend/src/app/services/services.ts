@@ -5,6 +5,7 @@
 export { UserService } from './services/user.service';
 export { MessageService } from './services/message.service';
 export { ModerationService } from './services/moderation.service';
+export { SupportService } from './services/support.service';
 export { SessionValidationControllerService } from './services/session-validation-controller.service';
 export { InternalSystemMessageControllerService } from './services/internal-system-message-controller.service';
 export { ChatValidationControllerService } from './services/chat-validation-controller.service';

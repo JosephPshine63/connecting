@@ -1,4 +1,7 @@
 import {AfterViewChecked, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {HttpContext} from '@angular/common/http';
+import {SILENT_ERROR} from '../../utils/http/error-log.interceptor';
+import {SupportService} from '../../services/services/support.service';
 import {ChatListComponent} from '../../components/chat-list/chat-list.component';
 import {KeycloakService} from '../../utils/keycloak/keycloak.service';
 import {ChatResponse} from '../../services/models/chat-response';
@@ -146,6 +149,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     private webRtcCallService: WebRtcCallService,
     private draftService: DraftService,
     private muteService: MuteService,
+    private supportService: SupportService,
   ) {
   }
 
@@ -309,10 +313,30 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   onReportBug(): void {
     const adminChat = this.chats.find(c => c.adminChat);
-    if (!adminChat) {
+    if (adminChat) {
+      this.openReportBugChat(adminChat);
       return;
     }
-    this.chatSelected(adminChat);
+    // No admin chat locally yet — either this account onboarded before the
+    // feature existed (lazily backfilled here) or it's genuinely disabled
+    // (ADMIN_USER_ID unset backend-side), in which case this 404s.
+    const context = new HttpContext().set(SILENT_ERROR, true);
+    this.supportService.getOrCreateReportBugChat(undefined, context).subscribe({
+      next: chat => {
+        if (chat.id && !this.chats.some(c => c.id === chat.id)) {
+          this.chats = [chat, ...this.chats];
+        }
+        this.openReportBugChat(chat);
+      },
+      error: () => {
+        this.showSettings = false;
+        alert('La segnalazione bug non è al momento disponibile su questo ambiente.');
+      }
+    });
+  }
+
+  private openReportBugChat(chat: ChatResponse): void {
+    this.chatSelected(chat);
     this.messageContent = 'Segnalazione bug: ';
     this.showSettings = false;
   }
