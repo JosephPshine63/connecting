@@ -1,5 +1,6 @@
 package dev.pioruocco.wacchat.user;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -15,5 +16,6 @@ public class UserRequest {
     @NotBlank
     @Size(min = 3, max = 20, message = "Lo username deve avere tra 3 e 20 caratteri")
     @Pattern(regexp = "^[a-z0-9_.-]+$", message = "Solo lettere minuscole, numeri, underscore, trattini e punti")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private String username;
 }

@@ -1,5 +1,6 @@
 package dev.pioruocco.wacchat.message;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -18,6 +19,7 @@ public class MessageRequest {
 
     @NotBlank
     @Size(max = 4096)
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private String content;
 
     @NotNull
