@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Starts the 6 non-Docker services (backend, file-service, notification-service,
-# call-service, api-gateway, frontend) in the background, each logging to
-# logs/<name>.log.
+# call-service, api-gateway, frontend), each in its own terminal window running
+# the real foreground command — so you see live output/errors directly instead
+# of them being buried in logs/<name>.log (still tee'd there too, for `tail -f`).
 # Run deploy-local.sh first to bring up Postgres/Keycloak/RabbitMQ.
 #
 # Usage:
-#   ./start-local-services.sh          # start all services
+#   ./start-local-services.sh          # start all services (opens one terminal window each)
 #   ./start-local-services.sh stop     # stop all services started by this script
 #   ./start-local-services.sh status   # show which services are running
 
@@ -72,6 +73,48 @@ wait_for_health() {
 command -v direnv >/dev/null 2>&1 || err "direnv not found — needed to load .env (see .envrc)"
 [[ -f "$SCRIPT_DIR/.env" ]] || err ".env not found — create it from .env.example"
 
+# Picks a terminal emulator: $TERMINAL if set, else the first of these found
+# on PATH. Prints the binary name on stdout, fails if none exist.
+pick_terminal() {
+  local candidates=("${TERMINAL:-}" konsole tilix gnome-terminal xterm x-terminal-emulator)
+  for t in "${candidates[@]}"; do
+    [[ -z "$t" ]] && continue
+    if command -v "$t" >/dev/null 2>&1; then
+      echo "$t"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Opens a new terminal window titled $1, running $3 (a shell command string)
+# from working directory $2 via emulator $4. Prints the PID of the launched
+# window process to stdout, needed by stop_all()/status_all() for tracking.
+#
+# Backgrounding the emulator and capturing "$!" only gives a real, killable
+# window PID if the emulator forks a standalone process per invocation rather
+# than handing off to an already-running single-instance/D-Bus server (which
+# would make "$!" a short-lived launcher PID instead) — verified empirically
+# for konsole in this env; gnome-terminal is given --wait specifically because
+# it's a known offender here, but an untested emulator could still misbehave.
+launch_in_terminal() {
+  local title="$1" workdir="$2" body="$3" bin="$4"
+  local wrapped="set -o pipefail; printf '\033]0;%s\007' '$title'; cd '$workdir' && { $body; }; ec=\$?; echo; echo \"[$title] exited with code \$ec — press Enter to close this window\"; read -r _"
+  # Redirected to /dev/null: the terminal emulator's own startup chatter (e.g.
+  # konsole's locale warning) would otherwise inherit this function's stdout —
+  # which, called as "pid=\$(launch_in_terminal ...)", is a pipe being read by
+  # command substitution. Since the backgrounded emulator keeps that fd open
+  # for its entire lifetime, the substitution would block until the window is
+  # closed instead of returning immediately after echoing the PID below.
+  case "$(basename "$bin")" in
+    konsole)        konsole -e bash -c "$wrapped" >/dev/null 2>&1 & ;;
+    tilix)          tilix -e bash -c "$wrapped" >/dev/null 2>&1 & ;;
+    gnome-terminal) gnome-terminal --wait --title="$title" -- bash -c "$wrapped" >/dev/null 2>&1 & ;;
+    *)              "$bin" -T "$title" -e bash -c "$wrapped" >/dev/null 2>&1 & ;;
+  esac
+  echo $!
+}
+
 # name:dir:command
 SERVICES=(
   "backend:wac/backend:./mvnw spring-boot:run"
@@ -85,6 +128,10 @@ SERVICES=(
 start_all() {
   mkdir -p "$LOG_DIR"
   : > "$PID_FILE"
+
+  local term_bin
+  term_bin="$(pick_terminal)" || err "No terminal emulator found (tried \$TERMINAL, konsole, tilix, gnome-terminal, xterm, x-terminal-emulator) — install one or set \$TERMINAL"
+  log "Using terminal emulator: $term_bin"
 
   local skipped=() launched=()
 
@@ -105,12 +152,9 @@ start_all() {
       fi
     fi
 
-    log "Starting $local_name ..."
-    (
-      cd "$SCRIPT_DIR/$local_dir"
-      exec direnv exec "$SCRIPT_DIR/$local_dir" $local_cmd
-    ) > "$LOG_DIR/$local_name.log" 2>&1 &
-    pid=$!
+    log "Starting $local_name in a new terminal window ..."
+    body="direnv exec '$SCRIPT_DIR/$local_dir' $local_cmd 2>&1 | tee '$LOG_DIR/$local_name.log'"
+    pid="$(launch_in_terminal "$local_name" "$SCRIPT_DIR/$local_dir" "$body" "$term_bin")"
     echo "$local_name:$pid" >> "$PID_FILE"
     ok "$local_name started (pid $pid, log: logs/$local_name.log)"
     launched+=("$local_name")
