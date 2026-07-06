@@ -11,6 +11,8 @@ CREATE TABLE chat
     pending_message_count  INTEGER                     NOT NULL DEFAULT 0,
     sender_favorite        BOOLEAN                     NOT NULL DEFAULT FALSE,
     recipient_favorite     BOOLEAN                     NOT NULL DEFAULT FALSE,
+    sender_archived        BOOLEAN                     NOT NULL DEFAULT FALSE,
+    recipient_archived     BOOLEAN                     NOT NULL DEFAULT FALSE,
     CONSTRAINT pk_chat PRIMARY KEY (id)
 );
 
@@ -51,6 +53,8 @@ CREATE TABLE users
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_id VARCHAR(255);
 -- ALTER TABLE chat ADD COLUMN IF NOT EXISTS sender_favorite BOOLEAN NOT NULL DEFAULT FALSE;
 -- ALTER TABLE chat ADD COLUMN IF NOT EXISTS recipient_favorite BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE chat ADD COLUMN IF NOT EXISTS sender_archived BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE chat ADD COLUMN IF NOT EXISTS recipient_archived BOOLEAN NOT NULL DEFAULT FALSE;
 
 ALTER TABLE chat
     ADD CONSTRAINT FK_CHAT_ON_RECIPIENT FOREIGN KEY (recipient_id) REFERENCES users (id);

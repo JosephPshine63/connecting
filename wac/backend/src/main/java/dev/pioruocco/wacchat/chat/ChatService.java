@@ -144,6 +144,20 @@ public class ChatService {
         return newValue;
     }
 
+    public boolean toggleArchive(String chatId, String currentUserId) {
+        Chat chat = findChatOrThrow(chatId);
+        assertParticipant(chat, currentUserId);
+        boolean isSender = chat.getSender().getId().equals(currentUserId);
+        boolean newValue = isSender ? !chat.isSenderArchived() : !chat.isRecipientArchived();
+        if (isSender) {
+            chat.setSenderArchived(newValue);
+        } else {
+            chat.setRecipientArchived(newValue);
+        }
+        chatRepository.save(chat);
+        return newValue;
+    }
+
     private void assertParticipant(Chat chat, String userId) {
         if (!chat.getSender().getId().equals(userId) && !chat.getRecipient().getId().equals(userId)) {
             throw new AccessDeniedException("You are not a participant in this chat");

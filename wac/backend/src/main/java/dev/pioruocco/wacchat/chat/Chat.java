@@ -62,6 +62,10 @@ public class Chat extends BaseAuditingEntity {
     private boolean senderFavorite;
     @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     private boolean recipientFavorite;
+    @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    private boolean senderArchived;
+    @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    private boolean recipientArchived;
 
     @Transient
     public String getChatName(String senderId) {
@@ -111,6 +115,11 @@ public class Chat extends BaseAuditingEntity {
     @Transient
     public boolean isFavorite(String viewerId) {
         return sender.getId().equals(viewerId) ? senderFavorite : recipientFavorite;
+    }
+
+    @Transient
+    public boolean isArchived(String viewerId) {
+        return sender.getId().equals(viewerId) ? senderArchived : recipientArchived;
     }
 
     @Transient

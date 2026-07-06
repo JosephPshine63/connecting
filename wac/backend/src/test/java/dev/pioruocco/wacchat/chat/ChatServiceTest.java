@@ -212,6 +212,42 @@ class ChatServiceTest {
     }
 
     @Test
+    void toggleArchive_setsArchivedForSenderOnly() {
+        Chat chat = chat(SENDER_ID, RECEIVER_ID, ChatStatus.ACCEPTED, 0);
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+
+        boolean result = chatService.toggleArchive(chat.getId(), SENDER_ID);
+
+        assertThat(result).isTrue();
+        assertThat(chat.isSenderArchived()).isTrue();
+        assertThat(chat.isRecipientArchived()).isFalse();
+        verify(chatRepository).save(chat);
+    }
+
+    @Test
+    void toggleArchive_byRecipient_flipsRecipientArchivedOnly() {
+        Chat chat = chat(SENDER_ID, RECEIVER_ID, ChatStatus.ACCEPTED, 0);
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+
+        chatService.toggleArchive(chat.getId(), RECEIVER_ID);
+        boolean result = chatService.toggleArchive(chat.getId(), RECEIVER_ID);
+
+        assertThat(result).isFalse();
+        assertThat(chat.isRecipientArchived()).isFalse();
+        assertThat(chat.isSenderArchived()).isFalse();
+    }
+
+    @Test
+    void toggleArchive_nonParticipant_throwsAccessDenied() {
+        Chat chat = chat(SENDER_ID, RECEIVER_ID, ChatStatus.ACCEPTED, 0);
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+
+        assertThatThrownBy(() -> chatService.toggleArchive(chat.getId(), "someone-else"))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(chatRepository, never()).save(any());
+    }
+
+    @Test
     void acceptChat_unknownChat_throwsEntityNotFound() {
         when(chatRepository.findById("missing")).thenReturn(Optional.empty());
 

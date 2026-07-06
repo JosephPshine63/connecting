@@ -67,4 +67,13 @@ public class ChatController {
         boolean favorite = chatService.toggleFavorite(chatId, authentication.getName());
         return ResponseEntity.ok(Map.of("favorite", favorite));
     }
+
+    @PatchMapping("/{chatId}/archive")
+    public ResponseEntity<Map<String, Boolean>> toggleArchive(
+            @PathVariable String chatId,
+            Authentication authentication
+    ) {
+        boolean archived = chatService.toggleArchive(chatId, authentication.getName());
+        return ResponseEntity.ok(Map.of("archived", archived));
+    }
 }

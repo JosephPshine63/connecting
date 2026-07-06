@@ -29,4 +29,5 @@ public class ChatResponse {
     private ChatStatus status;
     private int pendingMessageCount;
     private boolean favorite;
+    private boolean archived;
 }

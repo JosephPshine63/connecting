@@ -19,6 +19,7 @@ public class ChatMapper {
                 .status(chat.getStatus())
                 .pendingMessageCount(chat.getPendingMessageCount())
                 .favorite(chat.isFavorite(senderId))
+                .archived(chat.isArchived(senderId))
                 .build();
     }
 }
