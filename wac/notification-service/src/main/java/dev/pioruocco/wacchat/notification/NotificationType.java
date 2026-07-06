@@ -11,6 +11,10 @@ public enum NotificationType {
     CHAT_REQUEST,
     CHAT_REQUEST_ACCEPTED,
     CHAT_REQUEST_REJECTED,
+    MESSAGE_EDITED,
+    MESSAGE_DELETED,
+    REACTION_ADDED,
+    REACTION_REMOVED,
 
     /** Produced and consumed entirely within notification-service (see ws.TypingController) —
      *  never published by the backend, so unlike the other constants above it does not need

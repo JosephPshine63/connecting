@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQuery;
@@ -24,7 +25,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "messages")
+@Table(name = "messages", indexes = @Index(name = "idx_messages_chat_id_created_date", columnList = "chat_id, created_date"))
 @NamedQuery(name = MessageConstants.FIND_MESSAGES_BY_CHAT_ID,
             query = "SELECT m FROM Message m WHERE m.chat.id = :chatId ORDER BY m.createdDate"
 )
@@ -51,5 +52,11 @@ public class Message extends BaseAuditingEntity {
     @Column(name = "receiver_id", nullable = false)
     private String receiverId;
     private String mediaFilePath;
+    @Column(name = "reply_to_id")
+    private Long replyToId;
+    @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    private boolean forwarded;
+    @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    private boolean deleted;
 
 }

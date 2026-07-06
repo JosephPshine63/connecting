@@ -1,7 +1,6 @@
 package dev.pioruocco.wacchat.message;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,19 +13,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class MessageRequest {
+public class EditMessageRequest {
 
     @NotBlank
     @Size(max = 4096)
     private String content;
-
-    @NotNull
-    private MessageType type;
-
-    @NotNull
-    private String chatId;
-
-    private Long replyToId;
-
-    private Boolean forwarded;
 }

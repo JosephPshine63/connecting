@@ -24,4 +24,9 @@ public class MessageResponse {
     private String receiverId;
     private LocalDateTime createdAt;
     private List<String> media;
+    private Long replyToId;
+    private boolean forwarded;
+    private LocalDateTime editedAt;
+    private boolean deleted;
+    private List<ReactionSummaryResponse> reactions;
 }

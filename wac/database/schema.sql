@@ -28,6 +28,9 @@ CREATE TABLE messages
     sender_id          VARCHAR(255)                NOT NULL,
     receiver_id        VARCHAR(255)                NOT NULL,
     media_file_path    VARCHAR(255),
+    reply_to_id        BIGINT,
+    forwarded          BOOLEAN                     NOT NULL DEFAULT FALSE,
+    deleted            BOOLEAN                     NOT NULL DEFAULT FALSE,
     CONSTRAINT pk_messages PRIMARY KEY (id)
 );
 
@@ -53,8 +56,13 @@ CREATE TABLE users
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_id VARCHAR(255);
 -- ALTER TABLE chat ADD COLUMN IF NOT EXISTS sender_favorite BOOLEAN NOT NULL DEFAULT FALSE;
 -- ALTER TABLE chat ADD COLUMN IF NOT EXISTS recipient_favorite BOOLEAN NOT NULL DEFAULT FALSE;
+-- CREATE INDEX IF NOT EXISTS idx_messages_chat_id_created_date ON messages (chat_id, created_date);
 -- ALTER TABLE chat ADD COLUMN IF NOT EXISTS sender_archived BOOLEAN NOT NULL DEFAULT FALSE;
 -- ALTER TABLE chat ADD COLUMN IF NOT EXISTS recipient_archived BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id BIGINT;
+-- ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE messages ADD CONSTRAINT FK_MESSAGES_ON_REPLY_TO FOREIGN KEY (reply_to_id) REFERENCES messages (id);
+-- ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE;
 
 ALTER TABLE chat
     ADD CONSTRAINT FK_CHAT_ON_RECIPIENT FOREIGN KEY (recipient_id) REFERENCES users (id);
@@ -64,6 +72,11 @@ ALTER TABLE chat
 
 ALTER TABLE messages
     ADD CONSTRAINT FK_MESSAGES_ON_CHAT FOREIGN KEY (chat_id) REFERENCES chat (id);
+
+ALTER TABLE messages
+    ADD CONSTRAINT FK_MESSAGES_ON_REPLY_TO FOREIGN KEY (reply_to_id) REFERENCES messages (id);
+
+CREATE INDEX IF NOT EXISTS idx_messages_chat_id_created_date ON messages (chat_id, created_date);
 
 -- New tables (blocked_users, user_reports) — for existing databases, run the
 -- CREATE TABLE IF NOT EXISTS + FK ALTER TABLE statements below manually once;
@@ -108,3 +121,20 @@ ALTER TABLE user_reports
     ADD CONSTRAINT FK_USER_REPORTS_ON_REPORTER FOREIGN KEY (reporter_id) REFERENCES users (id);
 ALTER TABLE user_reports
     ADD CONSTRAINT FK_USER_REPORTS_ON_REPORTED FOREIGN KEY (reported_id) REFERENCES users (id);
+
+CREATE SEQUENCE IF NOT EXISTS message_reactions_seq START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE IF NOT EXISTS message_reactions
+(
+    id                 BIGINT                      NOT NULL,
+    created_date       TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    last_modified_date TIMESTAMP WITHOUT TIME ZONE,
+    message_id         BIGINT                      NOT NULL,
+    user_id            VARCHAR(255)                NOT NULL,
+    emoji              VARCHAR(32)                 NOT NULL,
+    CONSTRAINT pk_message_reactions PRIMARY KEY (id),
+    CONSTRAINT uk_message_reactions_user_per_message UNIQUE (message_id, user_id)
+);
+
+ALTER TABLE message_reactions
+    ADD CONSTRAINT FK_MESSAGE_REACTIONS_ON_MESSAGE FOREIGN KEY (message_id) REFERENCES messages (id);

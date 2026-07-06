@@ -25,4 +25,8 @@ public class Notification {
     private NotificationType type;
     private List<String> media;
     private String avatarUrl;
+    private Long messageId;
+    private Long replyToId;
+    private boolean forwarded;
+    private String reactionEmoji;
 }

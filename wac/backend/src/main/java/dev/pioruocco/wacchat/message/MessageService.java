@@ -24,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,8 +39,9 @@ public class MessageService {
     private final FileServiceClient fileServiceClient;
     private final BotService botService;
     private final ModerationService moderationService;
+    private final MessageReactionRepository messageReactionRepository;
 
-    public void saveMessage(MessageRequest messageRequest, Authentication authentication) {
+    public MessageResponse saveMessage(MessageRequest messageRequest, Authentication authentication) {
         Chat chat = chatRepository.findById(messageRequest.getChatId())
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
 
@@ -46,6 +50,16 @@ public class MessageService {
         assertCanSendMessage(chat, senderId);
         final String receiverId = resolveReceiverId(chat, senderId);
 
+        Long replyToId = messageRequest.getReplyToId();
+        if (replyToId != null) {
+            Message repliedTo = messageRepository.findById(replyToId)
+                    .orElseThrow(() -> new InvalidReplyException(replyToId));
+            if (!repliedTo.getChat().getId().equals(chat.getId())) {
+                throw new InvalidReplyException(replyToId);
+            }
+        }
+        boolean forwarded = Boolean.TRUE.equals(messageRequest.getForwarded());
+
         Message message = new Message();
         message.setContent(messageRequest.getContent());
         message.setChat(chat);
@@ -53,6 +67,8 @@ public class MessageService {
         message.setReceiverId(receiverId);
         message.setType(messageRequest.getType());
         message.setState(MessageState.SENT);
+        message.setReplyToId(replyToId);
+        message.setForwarded(forwarded);
 
         messageRepository.save(message);
 
@@ -64,6 +80,9 @@ public class MessageService {
                 .receiverId(receiverId)
                 .type(NotificationType.MESSAGE)
                 .chatName(chat.getTargetChatName(senderId))
+                .messageId(message.getId())
+                .replyToId(replyToId)
+                .forwarded(forwarded)
                 .build();
 
         notificationService.sendNotification(receiverId, notification);
@@ -71,15 +90,75 @@ public class MessageService {
         if (BotConstants.ARNO_USER_ID.equals(receiverId) && messageRequest.getType() == MessageType.TEXT) {
             botService.generateAndSendReply(chat.getId(), senderId);
         }
+
+        return mapper.toMessageResponse(message, senderId, List.of());
+    }
+
+    public MessageResponse editMessage(Long messageId, EditMessageRequest request, Authentication authentication) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new EntityNotFoundException("Message not found"));
+        assertOwnMessage(message, authentication.getName());
+        if (message.isDeleted()) {
+            throw new NonEditableMessageException(messageId);
+        }
+        if (message.getType() != MessageType.TEXT) {
+            throw new NonEditableMessageException(messageId);
+        }
+
+        message.setContent(request.getContent());
+        messageRepository.save(message);
+
+        Notification notification = Notification.builder()
+                .chatId(message.getChat().getId())
+                .type(NotificationType.MESSAGE_EDITED)
+                .senderId(message.getSenderId())
+                .receiverId(message.getReceiverId())
+                .content(request.getContent())
+                .messageId(message.getId())
+                .build();
+        notificationService.sendNotification(message.getReceiverId(), notification);
+
+        return mapper.toMessageResponse(message, authentication.getName(), messageReactionRepository.findByMessageId(messageId));
+    }
+
+    public void deleteMessage(Long messageId, Authentication authentication) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new EntityNotFoundException("Message not found"));
+        assertOwnMessage(message, authentication.getName());
+
+        message.setDeleted(true);
+        messageRepository.save(message);
+
+        Notification notification = Notification.builder()
+                .chatId(message.getChat().getId())
+                .type(NotificationType.MESSAGE_DELETED)
+                .senderId(message.getSenderId())
+                .receiverId(message.getReceiverId())
+                .messageId(message.getId())
+                .build();
+        notificationService.sendNotification(message.getReceiverId(), notification);
+    }
+
+    private void assertOwnMessage(Message message, String userId) {
+        if (!message.getSenderId().equals(userId)) {
+            throw new AccessDeniedException("You can only modify your own messages");
+        }
     }
 
     public List<MessageResponse> findChatMessages(String chatId, Authentication authentication) {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
-        assertParticipant(chat, authentication.getName());
-        return messageRepository.findMessagesByChatId(chatId)
+        final String viewerId = authentication.getName();
+        assertParticipant(chat, viewerId);
+
+        List<Message> messages = messageRepository.findMessagesByChatId(chatId);
+        List<Long> messageIds = messages.stream().map(Message::getId).toList();
+        Map<Long, List<MessageReaction>> reactionsByMessageId = messageReactionRepository.findByMessageIdIn(messageIds)
                 .stream()
-                .map(mapper::toMessageResponse)
+                .collect(Collectors.groupingBy(MessageReaction::getMessageId));
+
+        return messages.stream()
+                .map(message -> mapper.toMessageResponse(message, viewerId, reactionsByMessageId.getOrDefault(message.getId(), List.of())))
                 .toList();
     }
 
@@ -102,7 +181,7 @@ public class MessageService {
         notificationService.sendNotification(recipientId, notification);
     }
 
-    public void uploadMediaMessage(String chatId, MultipartFile file, MessageType mediaTypeHint, Authentication authentication) {
+    public MessageResponse uploadMediaMessage(String chatId, MultipartFile file, MessageType mediaTypeHint, Authentication authentication) {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
         assertParticipant(chat, authentication.getName());
@@ -130,9 +209,55 @@ public class MessageService {
                 .receiverId(receiverId)
                 .messageType(mediaType)
                 .media(FileUtils.resolveMedia(mediaUrl))
+                .messageId(message.getId())
                 .build();
 
         notificationService.sendNotification(receiverId, notification);
+
+        return mapper.toMessageResponse(message, senderId, List.of());
+    }
+
+    public MessageResponse toggleReaction(Long messageId, String emoji, Authentication authentication) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new EntityNotFoundException("Message not found"));
+        final String userId = authentication.getName();
+        assertParticipant(message.getChat(), userId);
+
+        Optional<MessageReaction> existing = messageReactionRepository.findByMessageIdAndUserId(messageId, userId);
+        NotificationType eventType;
+        if (existing.isPresent() && existing.get().getEmoji().equals(emoji)) {
+            messageReactionRepository.delete(existing.get());
+            eventType = NotificationType.REACTION_REMOVED;
+        } else if (existing.isPresent()) {
+            MessageReaction reaction = existing.get();
+            reaction.setEmoji(emoji);
+            messageReactionRepository.save(reaction);
+            eventType = NotificationType.REACTION_ADDED;
+        } else {
+            MessageReaction reaction = new MessageReaction();
+            reaction.setMessageId(messageId);
+            reaction.setUserId(userId);
+            reaction.setEmoji(emoji);
+            messageReactionRepository.save(reaction);
+            eventType = NotificationType.REACTION_ADDED;
+        }
+
+        Chat chat = message.getChat();
+        String otherParticipant = chat.getSender().getId().equals(userId)
+                ? chat.getRecipient().getId()
+                : chat.getSender().getId();
+
+        Notification notification = Notification.builder()
+                .chatId(chat.getId())
+                .type(eventType)
+                .senderId(userId)
+                .receiverId(otherParticipant)
+                .messageId(messageId)
+                .reactionEmoji(emoji)
+                .build();
+        notificationService.sendNotification(otherParticipant, notification);
+
+        return mapper.toMessageResponse(message, userId, messageReactionRepository.findByMessageId(messageId));
     }
 
     private static String bearerToken(Authentication authentication) {
