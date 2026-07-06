@@ -2,20 +2,22 @@ import {Component, input, InputSignal, output} from '@angular/core';
 import {ChatService} from '../../services/services/chat.service';
 import {ChatResponse} from '../../services/models/chat-response';
 import {DatePipe} from '@angular/common';
+import {FormsModule} from '@angular/forms';
 import {UserService} from '../../services/services/user.service';
 import {UserResponse} from '../../services/models/user-response';
 import {KeycloakService} from '../../utils/keycloak/keycloak.service';
 import {MessageService} from '../../services/services/message.service';
 import {ModerationService} from '../../services/services/moderation.service';
 import {BlockedUserResponse} from '../../services/models/blocked-user-response';
-
-type ChatFilter = 'all' | 'unread' | 'favorites' | 'blocked';
+import {ChatFilter, ChatFilterService} from '../../utils/chat-filter/chat-filter.service';
+import {MuteService} from '../../utils/mute/mute.service';
 
 @Component({
   selector: 'app-chat-list',
   templateUrl: './chat-list.component.html',
   imports: [
-    DatePipe
+    DatePipe,
+    FormsModule
   ],
   styleUrl: './chat-list.component.scss'
 })
@@ -28,15 +30,21 @@ export class ChatListComponent {
   chatAccepted = output<ChatResponse>();
   chatRejected = output<ChatResponse>();
 
-  activeFilter: ChatFilter = 'all';
+  searchQuery = '';
   blockedUsers: Array<BlockedUserResponse> = [];
 
   constructor(
     private chatService: ChatService,
     private userService: UserService,
     private moderationService: ModerationService,
-    private keycloakService: KeycloakService
+    private keycloakService: KeycloakService,
+    private chatFilterService: ChatFilterService,
+    private muteService: MuteService
   ) {
+  }
+
+  get activeFilter(): ChatFilter {
+    return this.chatFilterService.filter();
   }
 
   searchContact() {
@@ -84,18 +92,29 @@ export class ChatListComponent {
   visibleChats(): ChatResponse[] {
     const me = this.keycloakService.userId;
     const base = this.chats().filter(c => !(c.status === 'PENDING' && c.receiverId === me));
+    let filtered: ChatResponse[];
     switch (this.activeFilter) {
       case 'unread':
-        return base.filter(c => c.unreadCount && c.unreadCount > 0);
+        filtered = base.filter(c => c.unreadCount && c.unreadCount > 0 && !c.archived);
+        break;
       case 'favorites':
-        return base.filter(c => c.favorite);
+        filtered = base.filter(c => c.favorite && !c.archived);
+        break;
+      case 'archived':
+        filtered = base.filter(c => c.archived);
+        break;
       default:
-        return base;
+        filtered = base.filter(c => !c.archived);
     }
+    const query = this.searchQuery.trim().toLowerCase();
+    if (!query) {
+      return filtered;
+    }
+    return filtered.filter(c => c.name?.toLowerCase().includes(query));
   }
 
   setFilter(filter: ChatFilter): void {
-    this.activeFilter = filter;
+    this.chatFilterService.setFilter(filter);
     if (filter === 'blocked') {
       this.moderationService.getBlockedUsers().subscribe({
         next: (users) => this.blockedUsers = users
@@ -121,6 +140,26 @@ export class ChatListComponent {
         chat.favorite = res['favorite'];
       }
     });
+  }
+
+  toggleArchive(chat: ChatResponse, event: Event): void {
+    event.stopPropagation();
+    if (!chat.id) return;
+    this.chatService.toggleArchive({ chatId: chat.id }).subscribe({
+      next: (res) => {
+        chat.archived = res['archived'];
+      }
+    });
+  }
+
+  isMuted(chat: ChatResponse): boolean {
+    return this.muteService.isMuted(chat.id);
+  }
+
+  toggleMute(chat: ChatResponse, event: Event): void {
+    event.stopPropagation();
+    if (!chat.id) return;
+    this.muteService.toggleMute(chat.id);
   }
 
   isPendingOutgoing(chat: ChatResponse): boolean {

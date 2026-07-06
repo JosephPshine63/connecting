@@ -13,13 +13,14 @@
   </div>
   <div class="search-box">
     <i class="fas fa-search search-icon"></i>
-    <input type="text" class="search-input" placeholder="Cerca…" aria-label="Cerca">
+    <input type="text" class="search-input" placeholder="Cerca…" aria-label="Cerca" [(ngModel)]="searchQuery">
   </div>
   <div class="filter-pills">
     <span class="filter-pill" [class.active]="activeFilter === 'all'" (click)="setFilter('all')">Tutte</span>
     <span class="filter-pill" [class.active]="activeFilter === 'unread'" (click)="setFilter('unread')">Non letti</span>
     <span class="filter-pill" [class.active]="activeFilter === 'favorites'" (click)="setFilter('favorites')">Preferiti</span>
     <span class="filter-pill" [class.active]="activeFilter === 'blocked'" (click)="setFilter('blocked')">Bloccati</span>
+    <span class="filter-pill" [class.active]="activeFilter === 'archived'" (click)="setFilter('archived')">Archiviate</span>
   </div>
 </div>
 
@@ -91,6 +92,12 @@
             <span class="item-name">{{ chat.name }}</span>
             <button class="favorite-star-btn" [class.active]="chat.favorite" (click)="toggleFavorite(chat, $event)" title="Preferito">
               <i class="fa-solid fa-star"></i>
+            </button>
+            <button class="mute-bell-btn" [class.active]="isMuted(chat)" (click)="toggleMute(chat, $event)" title="Silenzia notifiche">
+              <i class="fa-solid" [class.fa-bell-slash]="isMuted(chat)" [class.fa-bell]="!isMuted(chat)"></i>
+            </button>
+            <button class="archive-btn" [class.active]="chat.archived" (click)="toggleArchive(chat, $event)" title="Archivia">
+              <i class="fa-solid fa-box-archive"></i>
             </button>
             @if (isPendingOutgoing(chat)) {
               <span class="item-time pending-badge">In attesa</span>
