@@ -14,8 +14,15 @@ import org.springframework.context.annotation.Configuration;
  * channel that CallSignalListener relays to /queue/call, mirroring how
  * NotificationListener relays wacchat.notifications to /queue/chat. Both channels share
  * the single jsonMessageConverter bean already declared in notification.RabbitConfig.
+ *
+ * Explicitly named to avoid colliding with notification.RabbitConfig's default
+ * component-scan bean name ("rabbitConfig") — both classes share this simple name since
+ * this one is a verbatim copy of call-service's own RabbitConfig, and only Jackson
+ * __TypeId__-resolved DTOs (CallSignal/CallSignalEvent/CallSignalType) need FQCN parity
+ * across the two modules; plain @Configuration classes don't, so it's safe to rename
+ * the bean here without touching call-service's copy.
  */
-@Configuration
+@Configuration("callRabbitConfig")
 public class RabbitConfig {
 
     @Value("${application.call.exchange}")
