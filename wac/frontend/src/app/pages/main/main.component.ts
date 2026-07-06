@@ -26,6 +26,12 @@ import {SessionBlockedComponent} from '../../components/session-blocked/session-
 import {SessionGuardService} from '../../utils/session/session-guard.service';
 import {BrowserNotificationService} from '../../utils/notifications/browser-notification.service';
 import {SettingsComponent} from '../../components/settings/settings.component';
+import {MediaLightboxComponent} from '../../components/media-lightbox/media-lightbox.component';
+import {DraftService} from '../../utils/draft/draft.service';
+import {MuteService} from '../../utils/mute/mute.service';
+import {MessageActionsMenuComponent} from '../../components/message-actions-menu/message-actions-menu.component';
+import {ReplyPreviewBarComponent} from '../../components/reply-preview-bar/reply-preview-bar.component';
+import {ForwardPickerComponent} from '../../components/forward-picker/forward-picker.component';
 
 const HEARTBEAT_INTERVAL_MS = 60000;
 const ARNO_USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -33,6 +39,7 @@ const ARNO_TYPING_TIMEOUT_MS = 20000;
 const PEER_TYPING_SAFETY_TIMEOUT_MS = 8000;
 const TYPING_STOP_DEBOUNCE_MS = 2000;
 const TYPING_SEND_THROTTLE_MS = 3000;
+const SCROLL_THRESHOLD_PX = 100;
 // Must match ChatConstants.MAX_PENDING_MESSAGES in the backend.
 const MAX_PENDING_MESSAGES = 3;
 
@@ -48,7 +55,11 @@ const MAX_PENDING_MESSAGES = 3;
     AvatarUploadComponent,
     SessionBlockedComponent,
     SettingsComponent,
-    CallComponent
+    CallComponent,
+    MediaLightboxComponent,
+    MessageActionsMenuComponent,
+    ReplyPreviewBarComponent,
+    ForwardPickerComponent
   ],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
@@ -87,6 +98,23 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   private recordedBlob: Blob | null = null;
   private recordingTimerHandle: ReturnType<typeof setInterval> | null = null;
 
+  lightboxMedia: { url: string; type: 'IMAGE' | 'VIDEO' } | null = null;
+
+  activeMessageMenuId: number | null = null;
+  replyingToMessage: MessageResponse | null = null;
+  forwardingMessage: MessageResponse | null = null;
+  editingMessage: MessageResponse | null = null;
+  editContent = '';
+  reactingToMessageId: number | null = null;
+
+  showMessageSearch = false;
+  messageSearchQuery = '';
+  searchMatchIndices: number[] = [];
+  currentSearchMatchIndex = -1;
+
+  isScrolledUp = false;
+  private forceScrollOnNextCheck = false;
+
   callState: 'idle' | 'incoming' | 'outgoing' | 'in-call' = 'idle';
   activeCallChatId: string | null = null;
   activeCallPeerId: string | null = null;
@@ -106,6 +134,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     private browserNotifications: BrowserNotificationService,
     private callApiService: CallApiService,
     private webRtcCallService: WebRtcCallService,
+    private draftService: DraftService,
+    private muteService: MuteService,
   ) {
   }
 
@@ -245,7 +275,21 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (!this.chats.find(c => c.id === chatResponse.id)) {
       this.chats.unshift(chatResponse);
     }
+    this.showMessageSearch = false;
+    this.messageSearchQuery = '';
+    this.searchMatchIndices = [];
+    this.currentSearchMatchIndex = -1;
+    this.activeMessageMenuId = null;
+    this.replyingToMessage = null;
+    this.editingMessage = null;
+    this.reactingToMessageId = null;
+    if (this.selectedChat.id) {
+      this.draftService.setDraft(this.selectedChat.id, this.messageContent);
+    }
     this.selectedChat = chatResponse;
+    this.messageContent = this.draftService.getDraft(chatResponse.id as string);
+    this.isScrolledUp = false;
+    this.forceScrollOnNextCheck = true;
     this.getAllChatMessages(chatResponse.id as string);
     this.setMessagesToSeen();
     this.selectedChat.unreadCount = 0;
@@ -257,26 +301,36 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   sendMessage() {
     if (this.messageContent) {
+      const replyToId = this.replyingToMessage?.id;
       const messageRequest: MessageRequest = {
         chatId: this.selectedChat.id as string,
         content: this.messageContent,
         type: 'TEXT',
+        replyToId
       };
       this.messageService.saveMessage({
         body: messageRequest
       }).subscribe({
-        next: () => {
+        next: (response) => {
           const message: MessageResponse = {
+            id: response.id,
             senderId: this.getSenderId(),
             receiverId: this.getReceiverId(),
             content: this.messageContent,
             type: 'TEXT',
             state: 'SENT',
+            replyToId,
             createdAt: new Date().toString()
           };
           this.selectedChat.lastMessage = this.messageContent;
           this.chatMessages.push(message);
+          this.isScrolledUp = false;
+          this.forceScrollOnNextCheck = true;
           this.messageContent = '';
+          this.replyingToMessage = null;
+          if (this.selectedChat.id) {
+            this.draftService.clearDraft(this.selectedChat.id);
+          }
           this.showEmojis = false;
           if (this.isChatPending() && this.isRequester()) {
             this.selectedChat.pendingMessageCount = (this.selectedChat.pendingMessageCount ?? 0) + 1;
@@ -392,6 +446,144 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     return media.startsWith('http') ? media : 'data:image/jpg;base64,' + media;
   }
 
+  openLightbox(message: MessageResponse): void {
+    if (!message.media?.[0] || (message.type !== 'IMAGE' && message.type !== 'VIDEO')) return;
+    this.lightboxMedia = { url: this.mediaSrc(message.media[0]), type: message.type };
+  }
+
+  closeLightbox(): void {
+    this.lightboxMedia = null;
+  }
+
+  toggleMessageMenu(id: number | undefined): void {
+    if (id === undefined) return;
+    this.activeMessageMenuId = this.activeMessageMenuId === id ? null : id;
+  }
+
+  findMessageById(id: number | undefined): MessageResponse | undefined {
+    if (id === undefined) return undefined;
+    return this.chatMessages.find(m => m.id === id);
+  }
+
+  startReply(message: MessageResponse): void {
+    this.replyingToMessage = message;
+  }
+
+  cancelReply(): void {
+    this.replyingToMessage = null;
+  }
+
+  startForward(message: MessageResponse): void {
+    this.forwardingMessage = message;
+  }
+
+  cancelForward(): void {
+    this.forwardingMessage = null;
+  }
+
+  confirmForward(targetChat: ChatResponse): void {
+    const message = this.forwardingMessage;
+    if (!message || !targetChat.id || message.type !== 'TEXT') {
+      this.forwardingMessage = null;
+      return;
+    }
+    const messageRequest: MessageRequest = {
+      chatId: targetChat.id,
+      content: message.content ?? '',
+      type: 'TEXT',
+      forwarded: true
+    };
+    this.messageService.saveMessage({ body: messageRequest }).subscribe({
+      next: (response) => {
+        targetChat.lastMessage = messageRequest.content;
+        targetChat.lastMessageTime = new Date().toString();
+        if (this.selectedChat.id === targetChat.id) {
+          this.chatMessages.push({
+            id: response.id,
+            senderId: this.getSenderId(targetChat),
+            receiverId: this.getReceiverId(targetChat),
+            content: messageRequest.content,
+            type: 'TEXT',
+            state: 'SENT',
+            forwarded: true,
+            createdAt: new Date().toString()
+          });
+          this.isScrolledUp = false;
+          this.forceScrollOnNextCheck = true;
+        }
+      }
+    });
+    this.forwardingMessage = null;
+  }
+
+  copyMessageText(message: MessageResponse): void {
+    if (message.type !== 'TEXT' || !message.content) return;
+    navigator.clipboard?.writeText(message.content).catch(() => undefined);
+  }
+
+  startEdit(message: MessageResponse): void {
+    if (message.type !== 'TEXT') return;
+    this.editingMessage = message;
+    this.editContent = message.content ?? '';
+  }
+
+  cancelEdit(): void {
+    this.editingMessage = null;
+    this.editContent = '';
+  }
+
+  openReactionPicker(messageId: number | undefined): void {
+    if (messageId === undefined) return;
+    this.reactingToMessageId = this.reactingToMessageId === messageId ? null : messageId;
+  }
+
+  onReactionSelected(message: MessageResponse, emojiSelected: any): void {
+    this.reactingToMessageId = null;
+    if (!message.id) return;
+    const emoji: EmojiData = emojiSelected.emoji;
+    if (!emoji.native) return;
+    const messageId = message.id;
+    this.messageService.toggleReaction({
+      messageId,
+      body: { emoji: emoji.native }
+    }).subscribe({
+      next: (response) => {
+        const target = this.findMessageById(messageId);
+        if (target) {
+          target.reactions = response.reactions;
+        }
+      }
+    });
+  }
+
+  confirmDelete(message: MessageResponse): void {
+    if (!message.id || message.deleted) return;
+    if (!window.confirm('Eliminare questo messaggio?')) return;
+    const messageId = message.id;
+    message.deleted = true;
+    message.content = undefined;
+    message.media = undefined;
+    this.messageService.deleteMessage({ messageId }).subscribe();
+  }
+
+  confirmEdit(): void {
+    const messageId = this.editingMessage?.id;
+    if (messageId === undefined || !this.editContent.trim()) return;
+    this.messageService.editMessage({
+      messageId,
+      body: { content: this.editContent }
+    }).subscribe({
+      next: (response) => {
+        const target = this.findMessageById(messageId);
+        if (target) {
+          target.content = response.content;
+          target.editedAt = response.editedAt;
+        }
+        this.cancelEdit();
+      }
+    });
+  }
+
   private mediaTypeFromFileName(fileName: string): 'IMAGE' | 'VIDEO' | 'AUDIO' {
     const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
     if (['mp4', 'mov'].includes(extension)) {
@@ -431,8 +623,9 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
               file: file
             }
           }).subscribe({
-            next: () => {
+            next: (response) => {
               const message: MessageResponse = {
+                id: response.id,
                 senderId: this.getSenderId(),
                 receiverId: this.getReceiverId(),
                 content: this.mediaLabelForType(mediaType),
@@ -442,6 +635,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
                 createdAt: new Date().toString()
               };
               this.chatMessages.push(message);
+              this.isScrolledUp = false;
+              this.forceScrollOnNextCheck = true;
             }
           });
         }
@@ -533,12 +728,13 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       'media-type': 'AUDIO',
       body: {file}
     }).subscribe({
-      next: () => {
+      next: (response) => {
         const reader = new FileReader();
         reader.onload = () => {
           if (reader.result) {
             const mediaLines = reader.result.toString().split(',')[1];
             const message: MessageResponse = {
+              id: response.id,
               senderId: this.getSenderId(),
               receiverId: this.getReceiverId(),
               content: this.mediaLabelForType('AUDIO'),
@@ -548,6 +744,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
               createdAt: new Date().toString()
             };
             this.chatMessages.push(message);
+            this.isScrolledUp = false;
+            this.forceScrollOnNextCheck = true;
           }
           this.discardRecording();
         };
@@ -677,6 +875,18 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.handleChatRequestRejected(notification);
         return;
       }
+      if (notification.type === 'MESSAGE_EDITED') {
+        this.handleMessageEdited(notification);
+        return;
+      }
+      if (notification.type === 'MESSAGE_DELETED') {
+        this.handleMessageDeleted(notification);
+        return;
+      }
+      if (notification.type === 'REACTION_ADDED' || notification.type === 'REACTION_REMOVED') {
+        this.handleReactionEvent(notification, notification.type === 'REACTION_ADDED');
+        return;
+      }
       if (notification.type === 'MESSAGE' || this.isMediaNotificationType(notification.type)) {
         this.maybeShowDesktopNotification(notification);
       }
@@ -686,11 +896,14 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       if (this.selectedChat && this.selectedChat.id === notification.chatId) {
         if (notification.type === 'MESSAGE' || this.isMediaNotificationType(notification.type)) {
           const message: MessageResponse = {
+            id: notification.messageId,
             senderId: notification.senderId,
             receiverId: notification.receiverId,
             content: notification.content,
             type: notification.messageType,
             media: notification.media,
+            replyToId: notification.replyToId,
+            forwarded: notification.forwarded,
             createdAt: new Date().toString()
           };
           if (this.isMediaNotificationType(notification.type)) {
@@ -729,6 +942,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private maybeShowDesktopNotification(notification: Notification): void {
+    if (this.muteService.isMuted(notification.chatId)) return;
     const chatIsOpenAndFocused = document.hasFocus() && this.selectedChat?.id === notification.chatId;
     if (chatIsOpenAndFocused) return;
 
@@ -789,6 +1003,53 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
+  private handleMessageEdited(notification: Notification): void {
+    const target = this.chatMessages.find(m => m.id === notification.messageId);
+    if (target) {
+      target.content = notification.content;
+      target.editedAt = new Date().toString();
+    }
+  }
+
+  private handleMessageDeleted(notification: Notification): void {
+    const target = this.chatMessages.find(m => m.id === notification.messageId);
+    if (target) {
+      target.deleted = true;
+      target.content = undefined;
+      target.media = undefined;
+    }
+  }
+
+  // Delta-patches the aggregate reaction counts from a peer's WS event, without a full
+  // reload. The pusher is always the *other* participant relative to whoever reacted, so
+  // reactedByMe is never flipped here — only count. Known limitation: when the reactor
+  // switches from one emoji to another, the backend sends a single REACTION_ADDED for the
+  // new emoji only (no matching REMOVED for the old one, since aggregate summaries carry no
+  // per-user breakdown to the peer) — the old emoji's count can look stale here until the
+  // chat is reloaded (findChatMessages always recomputes reactions from the DB, so a reload
+  // self-heals it).
+  private handleReactionEvent(notification: Notification, added: boolean): void {
+    const target = this.chatMessages.find(m => m.id === notification.messageId);
+    if (!target || !notification.reactionEmoji) return;
+    const reactions = target.reactions ? target.reactions.map(r => ({ ...r })) : [];
+    const index = reactions.findIndex(r => r.emoji === notification.reactionEmoji);
+    if (added) {
+      if (index >= 0) {
+        reactions[index].count = (reactions[index].count ?? 0) + 1;
+      } else {
+        reactions.push({ emoji: notification.reactionEmoji, count: 1, reactedByMe: false });
+      }
+    } else if (index >= 0) {
+      const newCount = (reactions[index].count ?? 1) - 1;
+      if (newCount <= 0) {
+        reactions.splice(index, 1);
+      } else {
+        reactions[index].count = newCount;
+      }
+    }
+    target.reactions = reactions;
+  }
+
   private handleChatRequestRejected(notification: Notification): void {
     this.chats = this.chats.filter(c => c.id !== notification.chatId);
     if (this.selectedChat?.id === notification.chatId) {
@@ -822,6 +1083,10 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
+  goBack(): void {
+    this.selectedChat = {};
+  }
+
   rejectSelectedChat(): void {
     const chatId = this.selectedChat.id;
     this.chatService.rejectChat({ chatId: chatId as string }).subscribe({
@@ -832,25 +1097,127 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
-  private getSenderId(): string {
-    if (this.selectedChat.senderId === this.keycloakService.userId) {
-      return this.selectedChat.senderId as string;
+  private getSenderId(chat: ChatResponse = this.selectedChat): string {
+    if (chat.senderId === this.keycloakService.userId) {
+      return chat.senderId as string;
     }
-    return this.selectedChat.receiverId as string;
+    return chat.receiverId as string;
   }
 
-  getReceiverId(): string {
-    if (this.selectedChat.senderId === this.keycloakService.userId) {
-      return this.selectedChat.receiverId as string;
+  getReceiverId(chat: ChatResponse = this.selectedChat): string {
+    if (chat.senderId === this.keycloakService.userId) {
+      return chat.receiverId as string;
     }
-    return this.selectedChat.senderId as string;
+    return chat.senderId as string;
   }
 
   private scrollToBottom() {
-    if (this.scrollableDiv) {
-      const div = this.scrollableDiv.nativeElement;
-      div.scrollTop = div.scrollHeight;
+    // Skip while an in-conversation search has an active match: a scroll-to-match
+    // (see jumpToNextMatch/jumpToPreviousMatch) would otherwise be undone on the very
+    // next change-detection cycle (e.g. the next keystroke), since this method runs
+    // unconditionally on every ngAfterViewChecked.
+    if (this.showMessageSearch && this.searchMatchIndices.length > 0) {
+      return;
     }
+    if (!this.scrollableDiv) return;
+    // Once the user has scrolled up to read history, don't yank them back to the
+    // bottom on every change-detection cycle (e.g. the typing-indicator animating) —
+    // except right after their own message send, which forces the scroll regardless.
+    if (this.isScrolledUp && !this.forceScrollOnNextCheck) {
+      return;
+    }
+    const div = this.scrollableDiv.nativeElement;
+    div.scrollTop = div.scrollHeight;
+    this.forceScrollOnNextCheck = false;
+  }
+
+  onMessagesScroll(): void {
+    if (!this.scrollableDiv) return;
+    const div = this.scrollableDiv.nativeElement;
+    const distanceFromBottom = div.scrollHeight - div.scrollTop - div.clientHeight;
+    this.isScrolledUp = distanceFromBottom > SCROLL_THRESHOLD_PX;
+  }
+
+  jumpToLatest(): void {
+    this.isScrolledUp = false;
+    this.forceScrollOnNextCheck = true;
+    this.scrollToBottom();
+  }
+
+  private isSameDay(a: Date, b: Date): boolean {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  shouldShowDateSeparator(index: number): boolean {
+    if (index === 0) return true;
+    const current = this.chatMessages[index]?.createdAt;
+    const previous = this.chatMessages[index - 1]?.createdAt;
+    if (!current || !previous) return false;
+    return !this.isSameDay(new Date(current), new Date(previous));
+  }
+
+  dateSeparatorLabel(index: number): string {
+    const dateStr = this.chatMessages[index]?.createdAt;
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const today = new Date();
+    if (this.isSameDay(date, today)) return 'Oggi';
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (this.isSameDay(date, yesterday)) return 'Ieri';
+    return new DatePipe('it-IT').transform(date, 'd MMMM yyyy') ?? '';
+  }
+
+  toggleMessageSearch(): void {
+    this.showMessageSearch = !this.showMessageSearch;
+    if (!this.showMessageSearch) {
+      this.messageSearchQuery = '';
+      this.searchMatchIndices = [];
+      this.currentSearchMatchIndex = -1;
+    }
+  }
+
+  onMessageSearchInput(): void {
+    const query = this.messageSearchQuery.trim().toLowerCase();
+    if (!query) {
+      this.searchMatchIndices = [];
+      this.currentSearchMatchIndex = -1;
+      return;
+    }
+    this.searchMatchIndices = this.chatMessages
+      .map((message, index) => ({message, index}))
+      .filter(({message}) => message.type === 'TEXT' && (message.content ?? '').toLowerCase().includes(query))
+      .map(({index}) => index);
+    this.currentSearchMatchIndex = this.searchMatchIndices.length > 0 ? 0 : -1;
+    this.scrollToCurrentMatch();
+  }
+
+  jumpToNextMatch(): void {
+    if (this.searchMatchIndices.length === 0) return;
+    this.currentSearchMatchIndex = (this.currentSearchMatchIndex + 1) % this.searchMatchIndices.length;
+    this.scrollToCurrentMatch();
+  }
+
+  jumpToPreviousMatch(): void {
+    if (this.searchMatchIndices.length === 0) return;
+    this.currentSearchMatchIndex =
+      (this.currentSearchMatchIndex - 1 + this.searchMatchIndices.length) % this.searchMatchIndices.length;
+    this.scrollToCurrentMatch();
+  }
+
+  isMessageSearchMatch(index: number): boolean {
+    return this.searchMatchIndices.includes(index);
+  }
+
+  isCurrentSearchMatch(index: number): boolean {
+    return this.searchMatchIndices[this.currentSearchMatchIndex] === index;
+  }
+
+  private scrollToCurrentMatch(): void {
+    if (this.currentSearchMatchIndex < 0 || !this.scrollableDiv) return;
+    const messageIndex = this.searchMatchIndices[this.currentSearchMatchIndex];
+    const el = this.scrollableDiv.nativeElement.querySelector(`[data-msg-index="${messageIndex}"]`);
+    el?.scrollIntoView({behavior: 'smooth', block: 'center'});
   }
 
   private extractFileFromTarget(target: EventTarget | null): File | null {

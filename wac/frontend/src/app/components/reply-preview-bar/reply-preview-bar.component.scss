@@ -1,0 +1,43 @@
+.reply-preview-bar {
+  height: 44px;
+  min-height: 44px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.reply-preview-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.reply-preview-icon {
+  color: var(--accent);
+  font-size: 0.8em;
+  flex-shrink: 0;
+}
+
+.reply-preview-text {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-preview-cancel {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover { color: var(--text-primary); }
+}

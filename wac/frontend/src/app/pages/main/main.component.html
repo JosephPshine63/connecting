@@ -62,8 +62,21 @@
       (hungUp)="hangUp()"
     ></app-call>
   }
+  <app-media-lightbox
+    [mediaUrl]="lightboxMedia?.url ?? null"
+    [mediaType]="lightboxMedia?.type ?? 'IMAGE'"
+    (closed)="closeLightbox()"
+  ></app-media-lightbox>
 
-  <div class="app-shell" [class.has-banner]="showDemoBanner">
+  @if (forwardingMessage) {
+    <app-forward-picker
+      [chats]="chats"
+      (closed)="cancelForward()"
+      (chatChosen)="confirmForward($event)"
+    ></app-forward-picker>
+  }
+
+  <div class="app-shell" [class.has-banner]="showDemoBanner" [class.mobile-show-chat]="!!selectedChat.id">
     <nav class="nav-rail">
       <div class="nav-logo">
         <i class="fa-solid fa-message"></i>
@@ -104,6 +117,9 @@
     <main class="chat-area">
       @if (selectedChat.id) {
         <header class="chat-header">
+          <button class="back-btn" (click)="goBack()" title="Indietro" aria-label="Torna alla lista chat">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
           <div class="chat-header-avatar" (click)="openUserCard(getReceiverId())">
             @if (selectedChat.avatarUrl) {
               <img [src]="selectedChat.avatarUrl" alt="">
@@ -124,6 +140,9 @@
             </div>
           </div>
           <div class="chat-header-actions">
+            <button class="nav-icon-btn" (click)="toggleMessageSearch()" title="Cerca nella chat">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
             <button class="nav-icon-btn" [disabled]="!canCall()" (click)="startCall('AUDIO')" title="Chiamata vocale">
               <i class="fa-solid fa-phone"></i>
             </button>
@@ -133,21 +152,80 @@
           </div>
         </header>
 
-        <div #scrollableDiv class="messages-area">
-          @for (message of chatMessages; track message) {
+        @if (showMessageSearch) {
+          <div class="message-search-bar">
+            <input
+              type="text"
+              class="message-search-input"
+              placeholder="Cerca nella conversazione…"
+              [(ngModel)]="messageSearchQuery"
+              (input)="onMessageSearchInput()"
+            >
+            @if (messageSearchQuery.trim()) {
+              <span class="message-search-count">
+                {{ searchMatchIndices.length > 0 ? (currentSearchMatchIndex + 1) + '/' + searchMatchIndices.length : '0/0' }}
+              </span>
+            }
+            <button class="input-icon-btn" [disabled]="searchMatchIndices.length === 0" (click)="jumpToPreviousMatch()" title="Precedente">
+              <i class="fa-solid fa-chevron-up"></i>
+            </button>
+            <button class="input-icon-btn" [disabled]="searchMatchIndices.length === 0" (click)="jumpToNextMatch()" title="Successivo">
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <button class="input-icon-btn" (click)="toggleMessageSearch()" title="Chiudi ricerca">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        }
+
+        <div #scrollableDiv class="messages-area" (scroll)="onMessagesScroll()">
+          @for (message of chatMessages; track message; let i = $index) {
+            @if (shouldShowDateSeparator(i)) {
+              <div class="date-separator">{{ dateSeparatorLabel(i) }}</div>
+            }
             @if (isSelfMessage(message)) {
-              <div class="message-bubble self">
-                @if (message.type === 'TEXT') {
+              <div class="message-bubble self" [attr.data-msg-index]="i"
+                   [class.search-match]="isMessageSearchMatch(i)"
+                   [class.search-match-current]="isCurrentSearchMatch(i)">
+                @if (!message.deleted) {
+                  <app-message-actions-menu
+                    [open]="activeMessageMenuId === message.id"
+                    [canForward]="message.type === 'TEXT'"
+                    [canCopy]="message.type === 'TEXT'"
+                    [canEdit]="message.type === 'TEXT'"
+                    [canDelete]="true"
+                    (toggle)="toggleMessageMenu(message.id)"
+                    (closeRequested)="activeMessageMenuId = null"
+                    (replyRequested)="startReply(message)"
+                    (forwardRequested)="startForward(message)"
+                    (copyRequested)="copyMessageText(message)"
+                    (editRequested)="startEdit(message)"
+                    (deleteRequested)="confirmDelete(message)"
+                    (reactRequested)="openReactionPicker(message.id)"
+                  ></app-message-actions-menu>
+                }
+                @if (message.replyToId) {
+                  <div class="reply-quote-snippet">{{ findMessageById(message.replyToId)?.content || 'Messaggio' }}</div>
+                }
+                @if (message.forwarded) {
+                  <span class="forwarded-badge"><i class="fa-solid fa-share"></i> Inoltrato</span>
+                }
+                @if (message.deleted) {
+                  <span class="bubble-text deleted-placeholder"><i class="fa-solid fa-ban"></i> Messaggio eliminato</span>
+                } @else if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
                 } @else if (message.type === 'VIDEO') {
-                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0])"></video>
+                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0])" (dblclick)="openLightbox(message)"></video>
                 } @else if (message.type === 'AUDIO') {
                   <audio controls class="bubble-audio" [src]="mediaSrc(message.media![0])"></audio>
                 } @else if (message.media) {
-                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="">
+                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="" (click)="openLightbox(message)">
                 }
                 <span class="bubble-meta">
                   {{ message.createdAt | date:'HH:mm' }}&nbsp;
+                  @if (message.editedAt) {
+                    <span class="edited-label">(modificato)</span>
+                  }
                   @if (message.state === 'SENT') {
                     <i class="fas fa-check check-icon"></i>
                   } @else {
@@ -155,19 +233,79 @@
                     <i class="fas fa-check check-icon seen double"></i>
                   }
                 </span>
+                @if (message.reactions?.length) {
+                  <div class="reaction-pills">
+                    @for (r of message.reactions; track r.emoji) {
+                      <span class="reaction-pill" [class.reacted-by-me]="r.reactedByMe" (click)="onReactionSelected(message, {emoji: {native: r.emoji}})">
+                        {{ r.emoji }} {{ r.count }}
+                      </span>
+                    }
+                  </div>
+                }
+                @if (reactingToMessageId === message.id) {
+                  <emoji-mart
+                    [set]="'google'"
+                    class="reaction-emoji-picker"
+                    (emojiClick)="onReactionSelected(message, $event)"
+                  ></emoji-mart>
+                }
               </div>
             } @else {
-              <div class="message-bubble friend">
-                @if (message.type === 'TEXT') {
+              <div class="message-bubble friend" [attr.data-msg-index]="i"
+                   [class.search-match]="isMessageSearchMatch(i)"
+                   [class.search-match-current]="isCurrentSearchMatch(i)">
+                @if (!message.deleted) {
+                  <app-message-actions-menu
+                    [open]="activeMessageMenuId === message.id"
+                    [canForward]="message.type === 'TEXT'"
+                    [canCopy]="message.type === 'TEXT'"
+                    (toggle)="toggleMessageMenu(message.id)"
+                    (closeRequested)="activeMessageMenuId = null"
+                    (replyRequested)="startReply(message)"
+                    (forwardRequested)="startForward(message)"
+                    (copyRequested)="copyMessageText(message)"
+                    (reactRequested)="openReactionPicker(message.id)"
+                  ></app-message-actions-menu>
+                }
+                @if (message.replyToId) {
+                  <div class="reply-quote-snippet">{{ findMessageById(message.replyToId)?.content || 'Messaggio' }}</div>
+                }
+                @if (message.forwarded) {
+                  <span class="forwarded-badge"><i class="fa-solid fa-share"></i> Inoltrato</span>
+                }
+                @if (message.deleted) {
+                  <span class="bubble-text deleted-placeholder"><i class="fa-solid fa-ban"></i> Messaggio eliminato</span>
+                } @else if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
                 } @else if (message.type === 'VIDEO') {
-                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0])"></video>
+                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0])" (dblclick)="openLightbox(message)"></video>
                 } @else if (message.type === 'AUDIO') {
                   <audio controls class="bubble-audio" [src]="mediaSrc(message.media![0])"></audio>
                 } @else if (message.media) {
-                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="">
+                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="" (click)="openLightbox(message)">
                 }
-                <span class="bubble-meta">{{ message.createdAt | date:'HH:mm' }}</span>
+                <span class="bubble-meta">
+                  {{ message.createdAt | date:'HH:mm' }}
+                  @if (message.editedAt) {
+                    <span class="edited-label">(modificato)</span>
+                  }
+                </span>
+                @if (message.reactions?.length) {
+                  <div class="reaction-pills">
+                    @for (r of message.reactions; track r.emoji) {
+                      <span class="reaction-pill" [class.reacted-by-me]="r.reactedByMe" (click)="onReactionSelected(message, {emoji: {native: r.emoji}})">
+                        {{ r.emoji }} {{ r.count }}
+                      </span>
+                    }
+                  </div>
+                }
+                @if (reactingToMessageId === message.id) {
+                  <emoji-mart
+                    [set]="'google'"
+                    class="reaction-emoji-picker"
+                    (emojiClick)="onReactionSelected(message, $event)"
+                  ></emoji-mart>
+                }
               </div>
             }
           }
@@ -179,6 +317,15 @@
             </div>
           }
         </div>
+        @if (isScrolledUp) {
+          <button class="jump-to-latest-btn" (click)="jumpToLatest()">
+            <i class="fa-solid fa-arrow-down"></i> Nuovi messaggi
+          </button>
+        }
+
+        @if (replyingToMessage) {
+          <app-reply-preview-bar [message]="replyingToMessage" (cancelled)="cancelReply()"></app-reply-preview-bar>
+        }
 
         @if (isChatRejected()) {
           <div class="chat-request-banner">
@@ -211,6 +358,22 @@
             </button>
             <button class="send-btn" [disabled]="recordingState === 'sending'" (click)="sendRecordedVoiceNote()" title="Invia">
               <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+        } @else if (editingMessage) {
+          <div class="input-bar edit-bar">
+            <input
+              type="text"
+              class="message-input"
+              placeholder="Modifica il messaggio…"
+              [(ngModel)]="editContent"
+              (keydown.enter)="confirmEdit()"
+            >
+            <button class="recording-cancel-btn" (click)="cancelEdit()" title="Annulla modifica">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+            <button class="send-btn" [disabled]="!editContent.trim()" (click)="confirmEdit()" title="Salva">
+              <i class="fa-solid fa-check"></i>
             </button>
           </div>
         } @else {

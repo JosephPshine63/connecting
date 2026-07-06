@@ -1,0 +1,66 @@
+.message-actions-menu {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 5;
+}
+
+.message-actions-btn {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.7em;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+
+  &:hover, &.menu-open {
+    color: var(--text-primary);
+  }
+}
+
+.message-bubble:hover .message-actions-btn,
+.message-actions-btn.menu-open {
+  opacity: 1;
+}
+
+.message-actions-dropdown {
+  position: absolute;
+  top: 26px;
+  right: 0;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  overflow: hidden;
+
+  button {
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 0.8em;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &:hover {
+      background: var(--bg-glass-hover);
+    }
+
+    &.danger {
+      color: #e5484d;
+    }
+  }
+}

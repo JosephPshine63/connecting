@@ -1,0 +1,11 @@
+@if (message) {
+  <div class="reply-preview-bar">
+    <div class="reply-preview-content">
+      <i class="fa-solid fa-reply reply-preview-icon"></i>
+      <span class="reply-preview-text">{{ previewText() }}</span>
+    </div>
+    <button class="reply-preview-cancel" (click)="cancel()" title="Annulla risposta">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+}

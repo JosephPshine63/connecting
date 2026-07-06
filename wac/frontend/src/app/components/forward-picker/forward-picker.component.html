@@ -1,0 +1,26 @@
+<div class="forward-picker-overlay" (click)="close()">
+  <div class="forward-picker-box" (click)="$event.stopPropagation()">
+    <button class="forward-picker-close" (click)="close()" aria-label="Chiudi">
+      <i class="fas fa-xmark"></i>
+    </button>
+
+    <h2 class="forward-picker-title">Inoltra a…</h2>
+
+    <div class="forward-picker-list">
+      @for (chat of chats; track chat) {
+        <div class="forward-picker-item" (click)="choose(chat)">
+          <div class="forward-picker-avatar">
+            @if (chat.avatarUrl) {
+              <img [src]="chat.avatarUrl" alt="">
+            } @else {
+              {{ chat.name?.charAt(0)?.toUpperCase() }}
+            }
+          </div>
+          <span class="forward-picker-name">{{ chat.name }}</span>
+        </div>
+      } @empty {
+        <p class="forward-picker-empty">Nessuna chat disponibile.</p>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,36 @@
+@if (mediaUrl) {
+  <div class="lightbox-overlay" (click)="close()">
+    <button class="lightbox-close" (click)="close(); $event.stopPropagation()" title="Chiudi" aria-label="Chiudi">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    @if (mediaType === 'IMAGE') {
+      <div class="lightbox-toolbar" (click)="$event.stopPropagation()">
+        <button class="lightbox-tool-btn" (click)="zoomOut()" title="Riduci">
+          <i class="fa-solid fa-magnifying-glass-minus"></i>
+        </button>
+        <button class="lightbox-tool-btn" (click)="zoomIn()" title="Ingrandisci">
+          <i class="fa-solid fa-magnifying-glass-plus"></i>
+        </button>
+      </div>
+      <img
+        class="lightbox-image"
+        [src]="mediaUrl"
+        [style.transform]="imageTransform()"
+        [class.zoomed]="zoomLevel > 1"
+        alt=""
+        (click)="$event.stopPropagation()"
+        (wheel)="onWheel($event)"
+        (mousedown)="onDragStart($event)"
+      >
+    } @else {
+      <video
+        class="lightbox-video"
+        [src]="mediaUrl"
+        controls
+        autoplay
+        (click)="$event.stopPropagation()"
+      ></video>
+    }
+  </div>
+}
