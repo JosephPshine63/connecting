@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -30,6 +31,25 @@ public class R2StorageService {
             "jpg", "jpeg", "png", "webp", "gif", "mp4", "mov", "mp3", "wav", "ogg", "m4a", "webm"
     );
     private static final long MAX_MESSAGE_MEDIA_SIZE_BYTES = 50L * 1024 * 1024;
+
+    // Server-side canonical MIME per extension — never trust the client-supplied
+    // multipart Content-Type, which is independent of the actual bytes and would
+    // otherwise let a magic-byte-valid "polyglot" file be served back publicly
+    // with an attacker-chosen Content-Type (e.g. text/html).
+    private static final Map<String, String> EXTENSION_TO_CONTENT_TYPE = Map.ofEntries(
+            Map.entry("jpg", "image/jpeg"),
+            Map.entry("jpeg", "image/jpeg"),
+            Map.entry("png", "image/png"),
+            Map.entry("gif", "image/gif"),
+            Map.entry("webp", "image/webp"),
+            Map.entry("mp4", "video/mp4"),
+            Map.entry("mov", "video/quicktime"),
+            Map.entry("webm", "video/webm"),
+            Map.entry("mp3", "audio/mpeg"),
+            Map.entry("wav", "audio/wav"),
+            Map.entry("ogg", "audio/ogg"),
+            Map.entry("m4a", "audio/mp4")
+    );
 
     private final S3Client r2Client;
 
@@ -91,7 +111,7 @@ public class R2StorageService {
                     PutObjectRequest.builder()
                             .bucket(bucketName)
                             .key(key)
-                            .contentType(file.getContentType())
+                            .contentType(EXTENSION_TO_CONTENT_TYPE.getOrDefault(extension, "application/octet-stream"))
                             .build(),
                     RequestBody.fromBytes(content));
         } catch (S3Exception e) {

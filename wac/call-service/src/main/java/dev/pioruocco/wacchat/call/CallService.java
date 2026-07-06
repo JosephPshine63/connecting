@@ -41,14 +41,20 @@ public class CallService {
     }
 
     public void answer(String chatId, String calleeId, String sdpAnswer) {
-        CallSession session = requireSession(chatId);
-        session.setState(CallSessionState.IN_CALL);
-        session.setAnsweredAt(Instant.now());
+        CallSession session = requireParticipant(chatId, calleeId);
+        if (!session.getCalleeId().equals(calleeId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No active call for this chat");
+        }
+        if (!sessionStore.markAnsweredIfRinging(chatId, Instant.now())) {
+            // Lost the race against sweepRingTimeouts() (or a duplicate answer) — the
+            // session is no longer RINGING, so this answer is stale.
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Call is no longer ringing");
+        }
         publish(session.peerOf(calleeId), new CallSignal(chatId, calleeId, CallSignalType.ANSWER, session.getCallType(), sdpAnswer, null, null, null));
     }
 
     public void iceCandidate(String chatId, String fromUserId, String candidate, String sdpMid, Integer sdpMLineIndex) {
-        CallSession session = requireSession(chatId);
+        CallSession session = requireParticipant(chatId, fromUserId);
         publish(session.peerOf(fromUserId),
                 new CallSignal(chatId, fromUserId, CallSignalType.ICE_CANDIDATE, session.getCallType(), null, candidate, sdpMid, sdpMLineIndex));
     }
@@ -57,6 +63,9 @@ public class CallService {
         CallSession session = sessionStore.get(chatId).orElse(null);
         if (session == null) {
             return;
+        }
+        if (!session.isParticipant(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No active call for this chat");
         }
         sessionStore.remove(chatId);
         CallSignalType signalType = "REJECT".equals(reason) ? CallSignalType.REJECT : CallSignalType.END;
@@ -67,16 +76,15 @@ public class CallService {
     @Scheduled(fixedDelay = 5000)
     void sweepRingTimeouts() {
         Instant cutoff = Instant.now().minus(Duration.ofSeconds(ringTimeoutSeconds));
-        for (CallSession session : List.copyOf(sessionStore.allSessions())) {
-            if (session.getState() == CallSessionState.RINGING && session.getRingingSince().isBefore(cutoff)) {
-                sessionStore.remove(session.getChatId());
+        for (CallSession candidate : List.copyOf(sessionStore.allSessions())) {
+            sessionStore.removeIfStillRingingPast(candidate.getChatId(), cutoff).ifPresent(session -> {
                 log.info("Ring timeout for chat {}, marking MISSED", session.getChatId());
                 CallSignal missed = new CallSignal(session.getChatId(), session.getCallerId(), CallSignalType.MISSED,
                         session.getCallType(), null, null, null, null);
                 publish(session.getCallerId(), missed);
                 publish(session.getCalleeId(), missed);
                 leaveSystemMessage(session);
-            }
+            });
         }
     }
 
@@ -99,6 +107,14 @@ public class CallService {
     private CallSession requireSession(String chatId) {
         return sessionStore.get(chatId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No active call for this chat"));
+    }
+
+    private CallSession requireParticipant(String chatId, String userId) {
+        CallSession session = requireSession(chatId);
+        if (!session.isParticipant(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No active call for this chat");
+        }
+        return session;
     }
 
     private void publish(String toUserId, CallSignal signal) {

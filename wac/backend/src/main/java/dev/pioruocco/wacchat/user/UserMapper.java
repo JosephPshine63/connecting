@@ -41,4 +41,13 @@ public class UserMapper {
                 .avatarUrl(user.getAvatarUrl())
                 .build();
     }
+
+    // Email is also the Keycloak login identifier, so it must never be exposed in
+    // views of "other users" (contact lists, profile lookups) — only in the
+    // authenticated user's own /me response, where toUserResponse is still used.
+    public UserResponse toPublicUserResponse(User user) {
+        UserResponse response = toUserResponse(user);
+        response.setEmail(null);
+        return response;
+    }
 }

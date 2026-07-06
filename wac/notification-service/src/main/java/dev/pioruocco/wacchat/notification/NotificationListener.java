@@ -15,7 +15,7 @@ public class NotificationListener {
 
     @RabbitListener(queues = "${application.notification.queue}")
     public void onNotificationEvent(NotificationEvent event) {
-        log.info("Pushing notification to {} with payload {}", event.userId(), event.notification());
+        log.info("Pushing notification to {}: type={} chatId={}", event.userId(), event.notification().getType(), event.notification().getChatId());
         // Destination must resolve (after the /user/{id} prefix is stripped) to something
         // starting with /queue or /topic — those are the only prefixes registered with
         // enableStompBrokerRelay in WebSocketConfig, and RabbitMQ's STOMP plugin only

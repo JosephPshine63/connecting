@@ -15,7 +15,7 @@ public class CallSignalListener {
 
     @RabbitListener(queues = "${application.call.queue}")
     public void onCallSignalEvent(CallSignalEvent event) {
-        log.info("Pushing call signal to {} with payload {}", event.toUserId(), event.signal());
+        log.info("Pushing call signal to {}: type={} chatId={}", event.toUserId(), event.signal().type(), event.signal().chatId());
         // Same /queue prefix requirement as NotificationListener — enableStompBrokerRelay
         // in WebSocketConfig only forwards /topic and /queue destinations.
         messagingTemplate.convertAndSendToUser(event.toUserId(), "/queue/call", event.signal());

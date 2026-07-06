@@ -34,4 +34,8 @@ public class CallSession {
     public String peerOf(String userId) {
         return callerId.equals(userId) ? calleeId : callerId;
     }
+
+    public boolean isParticipant(String userId) {
+        return callerId.equals(userId) || calleeId.equals(userId);
+    }
 }

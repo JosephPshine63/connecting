@@ -52,6 +52,19 @@ spring:
             - Path=/api/**
           order: 1
 
+application:
+  rate-limit:
+    call-paths:
+      - /api/v1/calls/**
+    sensitive-paths:
+      - /api/v1/users/check-username
+      - /api/v1/users/*/report
+      - /api/v1/users/*/block
+      - /files/**
+    call-capacity: 30
+    sensitive-capacity: 10
+    window-seconds: 10
+
 management:
   endpoints:
     web:

@@ -39,7 +39,7 @@ public class UserService {
         return userRepository.findAllUsersExceptSelf(connectedUser.getName())
                 .stream()
                 .filter(user -> !blockedIds.contains(user.getId()))
-                .map(userMapper::toUserResponse)
+                .map(userMapper::toPublicUserResponse)
                 .toList();
     }
 
@@ -103,7 +103,7 @@ public class UserService {
 
     public UserResponse findUserById(String id) {
         return userRepository.findByPublicId(id)
-                .map(userMapper::toUserResponse)
+                .map(userMapper::toPublicUserResponse)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 

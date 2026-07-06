@@ -102,6 +102,79 @@ class CallServiceTest {
     }
 
     @Test
+    void answer_callerAttemptsToAnswerOwnCall_throwsNotFound() {
+        when(chatValidationClient.isAccepted(CALLER_ID, CALLEE_ID)).thenReturn(true);
+        callService.invite(CHAT_ID, CALLER_ID, CALLEE_ID, "AUDIO", "sdp-offer");
+
+        assertThatThrownBy(() -> callService.answer(CHAT_ID, CALLER_ID, "sdp-answer"))
+                .isInstanceOf(ResponseStatusException.class);
+
+        assertThat(sessionStore.get(CHAT_ID).get().getState()).isEqualTo(CallSessionState.RINGING);
+    }
+
+    @Test
+    void answer_thirdPartyUser_throwsNotFoundAndSessionUnchanged() {
+        when(chatValidationClient.isAccepted(CALLER_ID, CALLEE_ID)).thenReturn(true);
+        callService.invite(CHAT_ID, CALLER_ID, CALLEE_ID, "AUDIO", "sdp-offer");
+
+        assertThatThrownBy(() -> callService.answer(CHAT_ID, "stranger-1", "sdp-answer"))
+                .isInstanceOf(ResponseStatusException.class);
+
+        assertThat(sessionStore.get(CHAT_ID).get().getState()).isEqualTo(CallSessionState.RINGING);
+        verify(rabbitTemplate, times(1)).convertAndSend(eq("wacchat.calls"), eq("call"), any(CallSignalEvent.class));
+    }
+
+    @Test
+    void iceCandidate_thirdPartyUser_throwsNotFound() {
+        when(chatValidationClient.isAccepted(CALLER_ID, CALLEE_ID)).thenReturn(true);
+        callService.invite(CHAT_ID, CALLER_ID, CALLEE_ID, "AUDIO", "sdp-offer");
+
+        assertThatThrownBy(() -> callService.iceCandidate(CHAT_ID, "stranger-1", "candidate", "0", 0))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void end_thirdPartyUser_throwsNotFoundAndSessionSurvives() {
+        when(chatValidationClient.isAccepted(CALLER_ID, CALLEE_ID)).thenReturn(true);
+        callService.invite(CHAT_ID, CALLER_ID, CALLEE_ID, "AUDIO", "sdp-offer");
+
+        assertThatThrownBy(() -> callService.end(CHAT_ID, "stranger-1", "HANGUP"))
+                .isInstanceOf(ResponseStatusException.class);
+
+        assertThat(sessionStore.get(CHAT_ID)).isPresent();
+    }
+
+    @Test
+    void answer_calledTwice_secondCallThrowsConflictInsteadOfSilentlyReAnswering() {
+        when(chatValidationClient.isAccepted(CALLER_ID, CALLEE_ID)).thenReturn(true);
+        callService.invite(CHAT_ID, CALLER_ID, CALLEE_ID, "AUDIO", "sdp-offer");
+        callService.answer(CHAT_ID, CALLEE_ID, "sdp-answer");
+
+        assertThatThrownBy(() -> callService.answer(CHAT_ID, CALLEE_ID, "sdp-answer-2"))
+                .isInstanceOf(ResponseStatusException.class);
+
+        // Only the original invite + first answer, not a second ANSWER event.
+        verify(rabbitTemplate, times(2)).convertAndSend(eq("wacchat.calls"), eq("call"), any(CallSignalEvent.class));
+    }
+
+    @Test
+    void sweepRingTimeouts_sessionAlreadyAnsweredConcurrently_doesNotOverrideAnsweredSession() {
+        when(chatValidationClient.isAccepted(CALLER_ID, CALLEE_ID)).thenReturn(true);
+        callService.invite(CHAT_ID, CALLER_ID, CALLEE_ID, "AUDIO", "sdp-offer");
+        callService.answer(CHAT_ID, CALLEE_ID, "sdp-answer");
+        // Backdate as if the ring had been open long enough to be swept — simulates the
+        // sweep and answer() racing right at the timeout boundary.
+        ReflectionTestUtils.setField(sessionStore.get(CHAT_ID).orElseThrow(), "ringingSince",
+                Instant.now().minus(Duration.ofSeconds(46)));
+
+        callService.sweepRingTimeouts();
+
+        assertThat(sessionStore.get(CHAT_ID)).isPresent();
+        assertThat(sessionStore.get(CHAT_ID).get().getState()).isEqualTo(CallSessionState.IN_CALL);
+        verify(internalMessageClient, never()).sendSystemMessage(anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
     void end_fromInCall_removesSessionAndLeavesDurationSystemMessage() {
         when(chatValidationClient.isAccepted(CALLER_ID, CALLEE_ID)).thenReturn(true);
         callService.invite(CHAT_ID, CALLER_ID, CALLEE_ID, "AUDIO", "sdp-offer");
