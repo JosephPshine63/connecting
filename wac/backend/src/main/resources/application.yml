@@ -100,6 +100,8 @@ application:
       response-timeout-ms: 15000
     arno:
       avatar-url: ${ARNO_AVATAR_URL:}
+  admin:
+    user-id: ${ADMIN_USER_ID:}
   session:
     stale-after-seconds: ${SESSION_STALE_SECONDS:120}
     internal-api-key: ${BACKEND_INTERNAL_API_KEY:}

@@ -305,6 +305,16 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectedChat.unreadCount = 0;
   }
 
+  onReportBug(): void {
+    const adminChat = this.chats.find(c => c.adminChat);
+    if (!adminChat) {
+      return;
+    }
+    this.chatSelected(adminChat);
+    this.messageContent = 'Segnalazione bug: ';
+    this.showSettings = false;
+  }
+
   isSelfMessage(message: MessageResponse): boolean {
     return message.senderId === this.keycloakService.userId;
   }

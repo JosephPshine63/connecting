@@ -1,10 +1,18 @@
 package dev.pioruocco.wacchat.chat;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ChatMapper {
+
+    @Value("${application.admin.user-id:}")
+    private String adminUserId;
+
     public ChatResponse toChatResponse(Chat chat, String senderId) {
+        String otherUserId = chat.getSender().getId().equals(senderId)
+                ? chat.getRecipient().getId()
+                : chat.getSender().getId();
         return ChatResponse.builder()
                 .id(chat.getId())
                 .name(chat.getChatName(senderId))
@@ -20,6 +28,7 @@ public class ChatMapper {
                 .pendingMessageCount(chat.getPendingMessageCount())
                 .favorite(chat.isFavorite(senderId))
                 .archived(chat.isArchived(senderId))
+                .isAdminChat(!adminUserId.isBlank() && adminUserId.equals(otherUserId))
                 .build();
     }
 }

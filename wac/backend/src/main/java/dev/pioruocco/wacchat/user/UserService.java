@@ -8,6 +8,7 @@ import dev.pioruocco.wacchat.moderation.ModerationService;
 import dev.pioruocco.wacchat.notification.Notification;
 import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.notification.NotificationType;
+import dev.pioruocco.wacchat.support.AdminChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,7 @@ public class UserService {
     private final ChatRepository chatRepository;
     private final NotificationService notificationService;
     private final BotService botService;
+    private final AdminChatService adminChatService;
     private final ModerationService moderationService;
 
     public List<UserResponse> finAllUsersExceptSelf(Authentication connectedUser) {
@@ -61,6 +63,11 @@ public class UserService {
             botService.createChatWithWelcomeMessage(user.getId());
         } catch (Exception e) {
             log.error("Failed to create Arno welcome chat for user {}: {}", user.getId(), e.getMessage());
+        }
+        try {
+            adminChatService.createChatWithWelcomeMessage(user.getId());
+        } catch (Exception e) {
+            log.error("Failed to create admin chat for user {}: {}", user.getId(), e.getMessage());
         }
         return response;
     }

@@ -5,6 +5,7 @@ import dev.pioruocco.wacchat.chat.ChatRepository;
 import dev.pioruocco.wacchat.file.FileServiceClient;
 import dev.pioruocco.wacchat.moderation.ModerationService;
 import dev.pioruocco.wacchat.notification.NotificationService;
+import dev.pioruocco.wacchat.support.AdminChatService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,8 @@ class UserServiceTest {
     @Mock
     private BotService botService;
     @Mock
+    private AdminChatService adminChatService;
+    @Mock
     private ModerationService moderationService;
 
     private UserService userService;
@@ -42,7 +45,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userService = new UserService(userRepository, new UserMapper(), fileServiceClient, chatRepository,
-                notificationService, botService, moderationService);
+                notificationService, botService, adminChatService, moderationService);
     }
 
     private static User userWithEmail(String id, String email) {

@@ -72,3 +72,20 @@
     border-color: rgba(var(--accent-rgb), 0.6);
   }
 }
+
+.settings-report-bug {
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+
+  &:hover {
+    background: var(--bg-glass-hover);
+  }
+}

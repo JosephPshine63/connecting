@@ -30,4 +30,5 @@ public class ChatResponse {
     private int pendingMessageCount;
     private boolean favorite;
     private boolean archived;
+    private boolean isAdminChat;
 }

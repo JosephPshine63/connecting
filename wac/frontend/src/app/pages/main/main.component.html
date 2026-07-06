@@ -49,7 +49,7 @@
     ></app-avatar-upload>
   }
   @if (showSettings) {
-    <app-settings (closed)="showSettings = false"></app-settings>
+    <app-settings (closed)="showSettings = false" (reportBug)="onReportBug()"></app-settings>
   }
   @if (callState !== 'idle') {
     <app-call

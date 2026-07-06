@@ -10,6 +10,7 @@ import { ThemeService, ThemeId } from '../../utils/theme/theme.service';
 })
 export class SettingsComponent {
   @Output() closed = new EventEmitter<void>();
+  @Output() reportBug = new EventEmitter<void>();
 
   readonly themes: { id: ThemeId; label: string }[] = [
     { id: 'pio-light', label: 'Pio Light' },
@@ -23,5 +24,9 @@ export class SettingsComponent {
 
   close(): void {
     this.closed.emit();
+  }
+
+  onReportBug(): void {
+    this.reportBug.emit();
   }
 }
