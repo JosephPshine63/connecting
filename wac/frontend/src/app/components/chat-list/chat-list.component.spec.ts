@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { ChatListComponent } from './chat-list.component';
 import { ChatResponse } from '../../services/models/chat-response';
 import { ChatFilterService } from '../../utils/chat-filter/chat-filter.service';
@@ -25,14 +26,14 @@ describe('ChatListComponent', () => {
     const chatFilterService = new ChatFilterService();
     const fakeMuteService = { isMuted: () => false, toggleMute: () => {} } as any;
 
-    component = new ChatListComponent(
+    component = TestBed.runInInjectionContext(() => new ChatListComponent(
       fakeChatService,
       fakeUserService,
       fakeModerationService,
       fakeKeycloakService,
       chatFilterService,
       fakeMuteService
-    );
+    ));
 
     chats = [
       makeChat({ id: 'a', name: 'Alice Smith' }),

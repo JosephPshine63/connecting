@@ -100,23 +100,43 @@ envsubst '${RABBITMQ_USER} ${RABBITMQ_PASSWORD} ${RABBITMQ_BACKEND_USER} ${RABBI
 
 PUSH=false
 ENV="development"
+ONLY=""
+VALID_ONLY_VALUES=(backend frontend file-service api-gateway notification-service call-service)
 
 # ─── CLI flags ───────────────────────────────────────────────────────────────
 for arg in "$@"; do
   case $arg in
     --push)        PUSH=true ;;
     --env=*)       ENV="${arg#*=}" ;;
+    --only=*)      ONLY="${arg#*=}" ;;
     -h|--help)
-      echo "Usage: ./deploy.sh [--push] [--env=development|staging|production]"
+      echo "Usage: ./deploy-prod.sh [--push] [--env=development|staging|production] [--only=<service>]"
+      echo "  --only=<service>  Rebuild and restart a single app container instead of the whole stack."
+      echo "                    <service> is one of: ${VALID_ONLY_VALUES[*]}"
+      echo "                    Skips infra (Postgres/Keycloak/RabbitMQ/observability) restart and build-cache pruning;"
+      echo "                    assumes the rest of the stack is already running."
       exit 0
       ;;
     *)
       echo "[ERROR] Unknown argument: $arg"
-      echo "Usage: ./deploy.sh [--push] [--env=development|staging|production]"
+      echo "Usage: ./deploy-prod.sh [--push] [--env=development|staging|production] [--only=<service>]"
       exit 1
       ;;
   esac
 done
+
+if [[ -n "$ONLY" ]]; then
+  _only_valid=false
+  for _v in "${VALID_ONLY_VALUES[@]}"; do [[ "$ONLY" == "$_v" ]] && _only_valid=true; done
+  if ! $_only_valid; then
+    echo "[ERROR] Unknown --only value '$ONLY'. Use one of: ${VALID_ONLY_VALUES[*]}"
+    exit 1
+  fi
+fi
+
+# Returns true if the given service should be built/(re)started this run —
+# i.e. no --only was given (full deploy) or it matches the requested one.
+service_selected() { [[ -z "$ONLY" || "$ONLY" == "$1" ]]; }
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -282,6 +302,7 @@ fi
 
 BUILD_FLAGS="--no-cache"
 
+if [[ -z "$ONLY" ]]; then
 # ─── 1. Infrastructure (Postgres + Keycloak) ─────────────────────────────────
 log "Stopping infrastructure containers for rebuild..."
 COMPOSE_CMD="docker compose"
@@ -343,70 +364,92 @@ ok "Observability stack is up"
 log "Cleaning Docker build cache..."
 docker builder prune -af
 ok "Docker build cache cleared"
+else
+  log "--only=$ONLY: skipping infra restart and build-cache prune (stack assumed already running)"
+fi
 
 # ─── 5. Build backend image ──────────────────────────────────────────────────
-log "Building backend image: $FULL_BACKEND ..."
-docker build $BUILD_FLAGS \
-  -t "$FULL_BACKEND" \
-  -f "$BACKEND_DIR/Dockerfile" \
-  "$WAC_DIR"
-ok "Backend image built: $FULL_BACKEND"
+if service_selected backend; then
+  log "Building backend image: $FULL_BACKEND ..."
+  docker build $BUILD_FLAGS \
+    -t "$FULL_BACKEND" \
+    -f "$BACKEND_DIR/Dockerfile" \
+    "$WAC_DIR"
+  ok "Backend image built: $FULL_BACKEND"
+fi
 
 # ─── 5b. Build file-service image ────────────────────────────────────────────
-log "Building file-service image: $FULL_FILE_SERVICE ..."
-docker build $BUILD_FLAGS \
-  -t "$FULL_FILE_SERVICE" \
-  -f "$FILE_SERVICE_DIR/Dockerfile" \
-  "$WAC_DIR"
-ok "File-service image built: $FULL_FILE_SERVICE"
+if service_selected file-service; then
+  log "Building file-service image: $FULL_FILE_SERVICE ..."
+  docker build $BUILD_FLAGS \
+    -t "$FULL_FILE_SERVICE" \
+    -f "$FILE_SERVICE_DIR/Dockerfile" \
+    "$WAC_DIR"
+  ok "File-service image built: $FULL_FILE_SERVICE"
+fi
 
 # ─── 5c. Build api-gateway image ─────────────────────────────────────────────
-log "Building api-gateway image: $FULL_API_GATEWAY ..."
-docker build $BUILD_FLAGS \
-  -t "$FULL_API_GATEWAY" \
-  -f "$API_GATEWAY_DIR/Dockerfile" \
-  "$API_GATEWAY_DIR"
-ok "API gateway image built: $FULL_API_GATEWAY"
+if service_selected api-gateway; then
+  log "Building api-gateway image: $FULL_API_GATEWAY ..."
+  docker build $BUILD_FLAGS \
+    -t "$FULL_API_GATEWAY" \
+    -f "$API_GATEWAY_DIR/Dockerfile" \
+    "$API_GATEWAY_DIR"
+  ok "API gateway image built: $FULL_API_GATEWAY"
+fi
 
 # ─── 5d. Build notification-service image ────────────────────────────────────
-log "Building notification-service image: $FULL_NOTIFICATION_SERVICE ..."
-docker build $BUILD_FLAGS \
-  -t "$FULL_NOTIFICATION_SERVICE" \
-  -f "$NOTIFICATION_SERVICE_DIR/Dockerfile" \
-  "$WAC_DIR"
-ok "Notification-service image built: $FULL_NOTIFICATION_SERVICE"
+if service_selected notification-service; then
+  log "Building notification-service image: $FULL_NOTIFICATION_SERVICE ..."
+  docker build $BUILD_FLAGS \
+    -t "$FULL_NOTIFICATION_SERVICE" \
+    -f "$NOTIFICATION_SERVICE_DIR/Dockerfile" \
+    "$WAC_DIR"
+  ok "Notification-service image built: $FULL_NOTIFICATION_SERVICE"
+fi
 
 # ─── 5e. Build call-service image ────────────────────────────────────────────
-log "Building call-service image: $FULL_CALL_SERVICE ..."
-docker build $BUILD_FLAGS \
-  -t "$FULL_CALL_SERVICE" \
-  -f "$CALL_SERVICE_DIR/Dockerfile" \
-  "$WAC_DIR"
-ok "Call-service image built: $FULL_CALL_SERVICE"
+if service_selected call-service; then
+  log "Building call-service image: $FULL_CALL_SERVICE ..."
+  docker build $BUILD_FLAGS \
+    -t "$FULL_CALL_SERVICE" \
+    -f "$CALL_SERVICE_DIR/Dockerfile" \
+    "$WAC_DIR"
+  ok "Call-service image built: $FULL_CALL_SERVICE"
+fi
 
 # ─── 3. Build frontend image ─────────────────────────────────────────────────
-log "Building frontend image: $FULL_FRONTEND ..."
-docker build $BUILD_FLAGS \
-  -t "$FULL_FRONTEND" \
-  -f "$FRONTEND_DIR/Dockerfile" \
-  "$FRONTEND_DIR"
-ok "Frontend image built: $FULL_FRONTEND"
+if service_selected frontend; then
+  log "Building frontend image: $FULL_FRONTEND ..."
+  docker build $BUILD_FLAGS \
+    -t "$FULL_FRONTEND" \
+    -f "$FRONTEND_DIR/Dockerfile" \
+    "$FRONTEND_DIR"
+  ok "Frontend image built: $FULL_FRONTEND"
+fi
 
 # ─── 4. Push to registry (optional) ─────────────────────────────────────────
 if $PUSH; then
   [[ -n "$REGISTRY" ]] || err "--push requires REGISTRY to be set in deploy.sh"
   log "Pushing images to $REGISTRY ..."
-  docker push "$FULL_BACKEND"
-  docker push "$FULL_FRONTEND"
-  docker push "$FULL_FILE_SERVICE"
-  docker push "$FULL_API_GATEWAY"
-  docker push "$FULL_NOTIFICATION_SERVICE"
-  docker push "$FULL_CALL_SERVICE"
+  service_selected backend              && docker push "$FULL_BACKEND"
+  service_selected frontend             && docker push "$FULL_FRONTEND"
+  service_selected file-service         && docker push "$FULL_FILE_SERVICE"
+  service_selected api-gateway          && docker push "$FULL_API_GATEWAY"
+  service_selected notification-service && docker push "$FULL_NOTIFICATION_SERVICE"
+  service_selected call-service         && docker push "$FULL_CALL_SERVICE"
   ok "Images pushed to registry"
 fi
 
 # ─── 5. Stop and remove existing app containers ──────────────────────────────
-for name in "$CONTAINER_BACKEND" "$CONTAINER_FRONTEND" "$CONTAINER_FILE_SERVICE" "$CONTAINER_API_GATEWAY" "$CONTAINER_NOTIFICATION_SERVICE" "$CONTAINER_CALL_SERVICE"; do
+ONLY_CONTAINERS=()
+service_selected backend              && ONLY_CONTAINERS+=("$CONTAINER_BACKEND")
+service_selected frontend             && ONLY_CONTAINERS+=("$CONTAINER_FRONTEND")
+service_selected file-service         && ONLY_CONTAINERS+=("$CONTAINER_FILE_SERVICE")
+service_selected api-gateway          && ONLY_CONTAINERS+=("$CONTAINER_API_GATEWAY")
+service_selected notification-service && ONLY_CONTAINERS+=("$CONTAINER_NOTIFICATION_SERVICE")
+service_selected call-service         && ONLY_CONTAINERS+=("$CONTAINER_CALL_SERVICE")
+for name in "${ONLY_CONTAINERS[@]}"; do
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
     log "Stopping and removing container: $name"
     docker stop "$name" 2>/dev/null || true
@@ -416,6 +459,7 @@ done
 ok "Old containers removed"
 
 # ─── 6a. Run file-service container ──────────────────────────────────────────
+if service_selected file-service; then
 log "Starting file-service container on port $PORT_FILE_SERVICE ..."
 docker run -d \
   --name "$CONTAINER_FILE_SERVICE" \
@@ -433,8 +477,10 @@ docker run -d \
   --restart unless-stopped \
   "$FULL_FILE_SERVICE"
 ok "File-service container started"
+fi
 
 # ─── 6b. Run backend container ───────────────────────────────────────────────
+if service_selected backend; then
 log "Starting backend container on port $PORT_BACKEND ..."
 docker run -d \
   --name "$CONTAINER_BACKEND" \
@@ -452,7 +498,7 @@ docker run -d \
   -e MAIL_USERNAME="${MAIL_USERNAME:-}" \
   -e MAIL_PASSWORD="${MAIL_PASSWORD:-}" \
   -e MAIL_FROM="${MAIL_FROM:-}" \
-  -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:8080" \
+  -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:$PORT_FILE_SERVICE" \
   -e FILE_SERVICE_INTERNAL_API_KEY="${FILE_SERVICE_INTERNAL_API_KEY:-}" \
   -e RABBITMQ_HOST="wacchat-rabbitmq" \
   -e RABBITMQ_BACKEND_USER="$RABBITMQ_BACKEND_USER" \
@@ -465,8 +511,10 @@ docker run -d \
   --restart unless-stopped \
   "$FULL_BACKEND"
 ok "Backend container started"
+fi
 
 # ─── 6c. Run notification-service container ──────────────────────────────────
+if service_selected notification-service; then
 log "Starting notification-service container on port $PORT_NOTIFICATION_SERVICE ..."
 docker run -d \
   --name "$CONTAINER_NOTIFICATION_SERVICE" \
@@ -484,8 +532,10 @@ docker run -d \
   --restart unless-stopped \
   "$FULL_NOTIFICATION_SERVICE"
 ok "Notification-service container started"
+fi
 
 # ─── 6d. Run call-service container ──────────────────────────────────────────
+if service_selected call-service; then
 log "Starting call-service container on port $PORT_CALL_SERVICE ..."
 docker run -d \
   --name "$CONTAINER_CALL_SERVICE" \
@@ -503,8 +553,10 @@ docker run -d \
   --restart unless-stopped \
   "$FULL_CALL_SERVICE"
 ok "Call-service container started"
+fi
 
 # ─── 6e. Run api-gateway container ───────────────────────────────────────────
+if service_selected api-gateway; then
 log "Starting api-gateway container on port $PORT_API_GATEWAY ..."
 docker run -d \
   --name "$CONTAINER_API_GATEWAY" \
@@ -520,8 +572,10 @@ docker run -d \
   --restart unless-stopped \
   "$FULL_API_GATEWAY"
 ok "API gateway container started"
+fi
 
 # ─── 7. Run frontend container ───────────────────────────────────────────────
+if service_selected frontend; then
 log "Starting frontend container on port $PORT_FRONTEND ..."
 docker run -d \
   --name "$CONTAINER_FRONTEND" \
@@ -530,12 +584,15 @@ docker run -d \
   --restart unless-stopped \
   "$FULL_FRONTEND"
 ok "Frontend container started"
+fi
 
 # ─── 8. Health check ─────────────────────────────────────────────────────────
-log "Waiting for backend to be ready..."
-HEALTH_URL="http://localhost:$PORT_BACKEND/actuator/health"
 MAX_RETRIES=30
 RETRY_INTERVAL=3
+
+if service_selected backend; then
+log "Waiting for backend to be ready..."
+HEALTH_URL="http://localhost:$PORT_BACKEND/actuator/health"
 
 healthy=false
 for i in $(seq 1 $MAX_RETRIES); do
@@ -555,8 +612,10 @@ else
   log "Health check timed out after $((MAX_RETRIES * RETRY_INTERVAL))s — check container logs:"
   echo "  docker logs $CONTAINER_BACKEND"
 fi
+fi
 
 # ─── 8b. API gateway health check ────────────────────────────────────────────
+if service_selected api-gateway; then
 log "Waiting for API gateway to be ready..."
 GATEWAY_HEALTH_URL="http://localhost:$PORT_API_GATEWAY/actuator/health"
 
@@ -578,8 +637,10 @@ else
   log "API gateway health check timed out after $((MAX_RETRIES * RETRY_INTERVAL))s — check container logs:"
   echo "  docker logs $CONTAINER_API_GATEWAY"
 fi
+fi
 
 # ─── 8c. Notification-service health check ──────────────────────────────────
+if service_selected notification-service; then
 log "Waiting for notification-service to be ready..."
 NOTIFICATION_HEALTH_URL="http://localhost:$PORT_NOTIFICATION_SERVICE/actuator/health"
 
@@ -601,8 +662,10 @@ else
   log "Notification-service health check timed out after $((MAX_RETRIES * RETRY_INTERVAL))s — check container logs:"
   echo "  docker logs $CONTAINER_NOTIFICATION_SERVICE"
 fi
+fi
 
 # ─── 8d. Call-service health check ───────────────────────────────────────────
+if service_selected call-service; then
 log "Waiting for call-service to be ready..."
 CALL_HEALTH_URL="http://localhost:$PORT_CALL_SERVICE/actuator/health"
 
@@ -624,29 +687,36 @@ else
   log "Call-service health check timed out after $((MAX_RETRIES * RETRY_INTERVAL))s — check container logs:"
   echo "  docker logs $CONTAINER_CALL_SERVICE"
 fi
+fi
 
 # ─── Summary ─────────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " Deploy complete — env=$ENV"
+if [[ -n "$ONLY" ]]; then
+  echo " Deploy complete — env=$ENV, service=$ONLY only"
+else
+  echo " Deploy complete — env=$ENV"
+fi
 echo ""
-echo " API Gateway         : http://localhost:$PORT_API_GATEWAY"
-echo " Backend             : http://localhost:$PORT_BACKEND"
-echo " Frontend            : http://localhost:$PORT_FRONTEND"
-echo " File-service        : http://localhost:$PORT_FILE_SERVICE"
-echo " Notification-service: http://localhost:$PORT_NOTIFICATION_SERVICE"
-echo " Call-service        : http://localhost:$PORT_CALL_SERVICE"
-echo " Swagger             : http://localhost:$PORT_BACKEND/swagger-ui.html"
-echo " Keycloak            : http://localhost:8180"
-echo " RabbitMQ management : http://localhost:15672"
-echo " Grafana             : http://localhost:3000"
-echo " Prometheus          : http://localhost:9091"
+service_selected api-gateway          && echo " API Gateway         : http://localhost:$PORT_API_GATEWAY"
+service_selected backend              && echo " Backend             : http://localhost:$PORT_BACKEND"
+service_selected frontend             && echo " Frontend            : http://localhost:$PORT_FRONTEND"
+service_selected file-service         && echo " File-service        : http://localhost:$PORT_FILE_SERVICE"
+service_selected notification-service && echo " Notification-service: http://localhost:$PORT_NOTIFICATION_SERVICE"
+service_selected call-service         && echo " Call-service        : http://localhost:$PORT_CALL_SERVICE"
+service_selected backend              && echo " Swagger             : http://localhost:$PORT_BACKEND/swagger-ui.html"
+if [[ -z "$ONLY" ]]; then
+  echo " Keycloak            : http://localhost:8180"
+  echo " RabbitMQ management : http://localhost:15672"
+  echo " Grafana             : http://localhost:3000"
+  echo " Prometheus          : http://localhost:9091"
+fi
 echo ""
 echo " Logs:"
-echo "   docker logs -f $CONTAINER_API_GATEWAY"
-echo "   docker logs -f $CONTAINER_BACKEND"
-echo "   docker logs -f $CONTAINER_FRONTEND"
-echo "   docker logs -f $CONTAINER_FILE_SERVICE"
-echo "   docker logs -f $CONTAINER_NOTIFICATION_SERVICE"
-echo "   docker logs -f $CONTAINER_CALL_SERVICE"
+service_selected api-gateway          && echo "   docker logs -f $CONTAINER_API_GATEWAY"
+service_selected backend              && echo "   docker logs -f $CONTAINER_BACKEND"
+service_selected frontend             && echo "   docker logs -f $CONTAINER_FRONTEND"
+service_selected file-service         && echo "   docker logs -f $CONTAINER_FILE_SERVICE"
+service_selected notification-service && echo "   docker logs -f $CONTAINER_NOTIFICATION_SERVICE"
+service_selected call-service         && echo "   docker logs -f $CONTAINER_CALL_SERVICE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

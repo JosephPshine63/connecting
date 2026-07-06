@@ -19,6 +19,7 @@ describe('MainComponent', () => {
     const fakeWebRtcCallService = {} as any;
     const fakeDraftService = { getDraft: () => '', setDraft: () => {}, clearDraft: () => {} } as any;
     const fakeMuteService = { isMuted: () => false, toggleMute: () => {} } as any;
+    const fakeSupportService = {} as any;
 
     component = new MainComponent(
       fakeChatService,
@@ -31,7 +32,8 @@ describe('MainComponent', () => {
       fakeCallApiService,
       fakeWebRtcCallService,
       fakeDraftService,
-      fakeMuteService
+      fakeMuteService,
+      fakeSupportService
     );
 
     component.chatMessages = [

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-services:
+    name: Build & test (Java modules)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Install shared-security to local repo
+        working-directory: wac/shared-security
+        run: ./mvnw -B install -DskipTests
+
+      - name: Build & test backend
+        working-directory: wac/backend
+        # WacchatApiApplicationTests boots the full Spring context (Postgres/Keycloak/RabbitMQ
+        # required) — excluded here since CI has no such infra; the rest are real unit tests.
+        run: ./mvnw -B clean test -Dtest='!WacchatApiApplicationTests'
+
+      - name: Build & test api-gateway
+        working-directory: wac/api-gateway
+        run: ./mvnw -B clean test
+
+      - name: Build & test file-service
+        working-directory: wac/file-service
+        run: ./mvnw -B clean test
+
+      - name: Build & test notification-service
+        working-directory: wac/notification-service
+        run: ./mvnw -B clean test
+
+      - name: Build & test call-service
+        working-directory: wac/call-service
+        run: ./mvnw -B clean test
+
+  frontend:
+    name: Build & test (frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: wac/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: wac/frontend
+        run: npm ci
+
+      - name: Run unit tests (headless Chrome)
+        working-directory: wac/frontend
+        run: npx ng test --no-watch --no-progress --browsers=ChromeHeadless
+
+      - name: Production build
+        working-directory: wac/frontend
+        run: npm run build
