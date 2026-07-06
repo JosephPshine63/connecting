@@ -11,6 +11,10 @@ import { BaseService } from '../base-service';
 import { ApiConfiguration } from '../api-configuration';
 import { StrictHttpResponse } from '../strict-http-response';
 
+import { deleteMessage } from '../fn/message/delete-message';
+import { DeleteMessage$Params } from '../fn/message/delete-message';
+import { editMessage } from '../fn/message/edit-message';
+import { EditMessage$Params } from '../fn/message/edit-message';
 import { getAllMessages } from '../fn/message/get-all-messages';
 import { GetAllMessages$Params } from '../fn/message/get-all-messages';
 import { MessageResponse } from '../models/message-response';
@@ -18,6 +22,8 @@ import { saveMessage } from '../fn/message/save-message';
 import { SaveMessage$Params } from '../fn/message/save-message';
 import { setMessageToSeen } from '../fn/message/set-message-to-seen';
 import { SetMessageToSeen$Params } from '../fn/message/set-message-to-seen';
+import { toggleReaction } from '../fn/message/toggle-reaction';
+import { ToggleReaction$Params } from '../fn/message/toggle-reaction';
 import { uploadMedia } from '../fn/message/upload-media';
 import { UploadMedia$Params } from '../fn/message/upload-media';
 
@@ -25,6 +31,31 @@ import { UploadMedia$Params } from '../fn/message/upload-media';
 export class MessageService extends BaseService {
   constructor(config: ApiConfiguration, http: HttpClient) {
     super(config, http);
+  }
+
+  /** Path part for operation `toggleReaction()` */
+  static readonly ToggleReactionPath = '/api/v1/messages/{messageId}/reactions';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `toggleReaction()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  toggleReaction$Response(params: ToggleReaction$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
+    return toggleReaction(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `toggleReaction$Response()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  toggleReaction(params: ToggleReaction$Params, context?: HttpContext): Observable<MessageResponse> {
+    return this.toggleReaction$Response(params, context).pipe(
+      map((r: StrictHttpResponse<MessageResponse>): MessageResponse => r.body)
+    );
   }
 
   /** Path part for operation `saveMessage()` */
@@ -36,7 +67,7 @@ export class MessageService extends BaseService {
    *
    * This method sends `application/json` and handles request body of type `application/json`.
    */
-  saveMessage$Response(params: SaveMessage$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  saveMessage$Response(params: SaveMessage$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
     return saveMessage(this.http, this.rootUrl, params, context);
   }
 
@@ -46,9 +77,9 @@ export class MessageService extends BaseService {
    *
    * This method sends `application/json` and handles request body of type `application/json`.
    */
-  saveMessage(params: SaveMessage$Params, context?: HttpContext): Observable<void> {
+  saveMessage(params: SaveMessage$Params, context?: HttpContext): Observable<MessageResponse> {
     return this.saveMessage$Response(params, context).pipe(
-      map((r: StrictHttpResponse<void>): void => r.body)
+      map((r: StrictHttpResponse<MessageResponse>): MessageResponse => r.body)
     );
   }
 
@@ -86,7 +117,7 @@ export class MessageService extends BaseService {
    *
    * This method sends `multipart/form-data` and handles request body of type `multipart/form-data`.
    */
-  uploadMedia$Response(params: UploadMedia$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  uploadMedia$Response(params: UploadMedia$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
     return uploadMedia(this.http, this.rootUrl, params, context);
   }
 
@@ -96,9 +127,59 @@ export class MessageService extends BaseService {
    *
    * This method sends `multipart/form-data` and handles request body of type `multipart/form-data`.
    */
-  uploadMedia(params: UploadMedia$Params, context?: HttpContext): Observable<void> {
+  uploadMedia(params: UploadMedia$Params, context?: HttpContext): Observable<MessageResponse> {
     return this.uploadMedia$Response(params, context).pipe(
+      map((r: StrictHttpResponse<MessageResponse>): MessageResponse => r.body)
+    );
+  }
+
+  /** Path part for operation `deleteMessage()` */
+  static readonly DeleteMessagePath = '/api/v1/messages/{messageId}';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `deleteMessage()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  deleteMessage$Response(params: DeleteMessage$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+    return deleteMessage(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `deleteMessage$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  deleteMessage(params: DeleteMessage$Params, context?: HttpContext): Observable<void> {
+    return this.deleteMessage$Response(params, context).pipe(
       map((r: StrictHttpResponse<void>): void => r.body)
+    );
+  }
+
+  /** Path part for operation `editMessage()` */
+  static readonly EditMessagePath = '/api/v1/messages/{messageId}';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `editMessage()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  editMessage$Response(params: EditMessage$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
+    return editMessage(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `editMessage$Response()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  editMessage(params: EditMessage$Params, context?: HttpContext): Observable<MessageResponse> {
+    return this.editMessage$Response(params, context).pipe(
+      map((r: StrictHttpResponse<MessageResponse>): MessageResponse => r.body)
     );
   }
 

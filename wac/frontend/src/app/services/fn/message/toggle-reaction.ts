@@ -9,21 +9,18 @@ import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
 import { MessageResponse } from '../../models/message-response';
+import { ReactionRequest } from '../../models/reaction-request';
 
-export interface UploadMedia$Params {
-  'chat-id': string;
-  'media-type'?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO';
-      body?: {
-'file': Blob;
-}
+export interface ToggleReaction$Params {
+  messageId: number;
+      body: ReactionRequest
 }
 
-export function uploadMedia(http: HttpClient, rootUrl: string, params: UploadMedia$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
-  const rb = new RequestBuilder(rootUrl, uploadMedia.PATH, 'post');
+export function toggleReaction(http: HttpClient, rootUrl: string, params: ToggleReaction$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
+  const rb = new RequestBuilder(rootUrl, toggleReaction.PATH, 'put');
   if (params) {
-    rb.query('chat-id', params['chat-id'], {});
-    rb.query('media-type', params['media-type'], {});
-    rb.body(params.body, 'multipart/form-data');
+    rb.path('messageId', params.messageId, {});
+    rb.body(params.body, 'application/json');
   }
 
   return http.request(
@@ -36,4 +33,4 @@ export function uploadMedia(http: HttpClient, rootUrl: string, params: UploadMed
   );
 }
 
-uploadMedia.PATH = '/api/v1/messages/upload-media';
+toggleReaction.PATH = '/api/v1/messages/{messageId}/reactions';

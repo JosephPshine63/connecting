@@ -21,6 +21,8 @@ import { GetChatsByReceiver$Params } from '../fn/chat/get-chats-by-receiver';
 import { rejectChat } from '../fn/chat/reject-chat';
 import { RejectChat$Params } from '../fn/chat/reject-chat';
 import { StringResponse } from '../models/string-response';
+import { toggleArchive } from '../fn/chat/toggle-archive';
+import { ToggleArchive$Params } from '../fn/chat/toggle-archive';
 import { toggleFavorite } from '../fn/chat/toggle-favorite';
 import { ToggleFavorite$Params } from '../fn/chat/toggle-favorite';
 
@@ -130,6 +132,39 @@ export class ChatService extends BaseService {
 [key: string]: boolean;
 }> {
     return this.toggleFavorite$Response(params, context).pipe(
+      map((r: StrictHttpResponse<{
+[key: string]: boolean;
+}>): {
+[key: string]: boolean;
+} => r.body)
+    );
+  }
+
+  /** Path part for operation `toggleArchive()` */
+  static readonly ToggleArchivePath = '/api/v1/chats/{chatId}/archive';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `toggleArchive()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  toggleArchive$Response(params: ToggleArchive$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+[key: string]: boolean;
+}>> {
+    return toggleArchive(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `toggleArchive$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  toggleArchive(params: ToggleArchive$Params, context?: HttpContext): Observable<{
+[key: string]: boolean;
+}> {
+    return this.toggleArchive$Response(params, context).pipe(
       map((r: StrictHttpResponse<{
 [key: string]: boolean;
 }>): {

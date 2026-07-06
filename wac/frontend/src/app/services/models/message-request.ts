@@ -5,5 +5,7 @@
 export interface MessageRequest {
   chatId: string;
   content: string;
+  forwarded?: boolean;
+  replyToId?: number;
   type: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO';
 }

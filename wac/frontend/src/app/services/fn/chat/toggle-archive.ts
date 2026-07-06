@@ -8,17 +8,17 @@ import { filter, map } from 'rxjs/operators';
 import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
-import { MessageRequest } from '../../models/message-request';
-import { MessageResponse } from '../../models/message-response';
 
-export interface SaveMessage$Params {
-      body: MessageRequest
+export interface ToggleArchive$Params {
+  chatId: string;
 }
 
-export function saveMessage(http: HttpClient, rootUrl: string, params: SaveMessage$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
-  const rb = new RequestBuilder(rootUrl, saveMessage.PATH, 'post');
+export function toggleArchive(http: HttpClient, rootUrl: string, params: ToggleArchive$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+[key: string]: boolean;
+}>> {
+  const rb = new RequestBuilder(rootUrl, toggleArchive.PATH, 'patch');
   if (params) {
-    rb.body(params.body, 'application/json');
+    rb.path('chatId', params.chatId, {});
   }
 
   return http.request(
@@ -26,9 +26,11 @@ export function saveMessage(http: HttpClient, rootUrl: string, params: SaveMessa
   ).pipe(
     filter((r: any): r is HttpResponse<any> => r instanceof HttpResponse),
     map((r: HttpResponse<any>) => {
-      return r as StrictHttpResponse<MessageResponse>;
+      return r as StrictHttpResponse<{
+      [key: string]: boolean;
+      }>;
     })
   );
 }
 
-saveMessage.PATH = '/api/v1/messages';
+toggleArchive.PATH = '/api/v1/chats/{chatId}/archive';

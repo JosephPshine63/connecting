@@ -8,15 +8,15 @@ import { filter, map } from 'rxjs/operators';
 import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
-import { MessageRequest } from '../../models/message-request';
-import { MessageResponse } from '../../models/message-response';
+import { ChatValidationRequest } from '../../models/chat-validation-request';
+import { ChatValidationResponse } from '../../models/chat-validation-response';
 
-export interface SaveMessage$Params {
-      body: MessageRequest
+export interface Validate1$Params {
+      body: ChatValidationRequest
 }
 
-export function saveMessage(http: HttpClient, rootUrl: string, params: SaveMessage$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
-  const rb = new RequestBuilder(rootUrl, saveMessage.PATH, 'post');
+export function validate1(http: HttpClient, rootUrl: string, params: Validate1$Params, context?: HttpContext): Observable<StrictHttpResponse<ChatValidationResponse>> {
+  const rb = new RequestBuilder(rootUrl, validate1.PATH, 'post');
   if (params) {
     rb.body(params.body, 'application/json');
   }
@@ -26,9 +26,9 @@ export function saveMessage(http: HttpClient, rootUrl: string, params: SaveMessa
   ).pipe(
     filter((r: any): r is HttpResponse<any> => r instanceof HttpResponse),
     map((r: HttpResponse<any>) => {
-      return r as StrictHttpResponse<MessageResponse>;
+      return r as StrictHttpResponse<ChatValidationResponse>;
     })
   );
 }
 
-saveMessage.PATH = '/api/v1/messages';
+validate1.PATH = '/api/v1/internal/chats/validate';

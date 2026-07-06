@@ -4,11 +4,17 @@
 
 export { BlockedUserResponse } from './models/blocked-user-response';
 export { ChatResponse } from './models/chat-response';
+export { ChatValidationRequest } from './models/chat-validation-request';
+export { ChatValidationResponse } from './models/chat-validation-response';
+export { EditMessageRequest } from './models/edit-message-request';
 export { MessageRequest } from './models/message-request';
 export { MessageResponse } from './models/message-response';
+export { ReactionRequest } from './models/reaction-request';
+export { ReactionSummaryResponse } from './models/reaction-summary-response';
 export { SessionValidationRequest } from './models/session-validation-request';
 export { SessionValidationResponse } from './models/session-validation-response';
 export { StringResponse } from './models/string-response';
+export { SystemMessageRequest } from './models/system-message-request';
 export { UserReportRequest } from './models/user-report-request';
 export { UserRequest } from './models/user-request';
 export { UserResponse } from './models/user-response';
