@@ -14,7 +14,7 @@
 <div class="wac-wrap">
   <div class="wac-card">
 
-    <div class="wac-logo">WacChat</div>
+    <div class="wac-logo"><img src="${url.resourcesPath}/img/logo.png" alt="WacChat" class="wac-logo-img">WacChat</div>
 
     <div class="wac-idp-info-box">
       <div class="wac-idp-info-icon">&#9432;</div>

@@ -14,7 +14,7 @@
 <div class="wac-wrap">
   <div class="wac-card wac-card--wide">
 
-    <div class="wac-logo">WacChat</div>
+    <div class="wac-logo"><img src="${url.resourcesPath}/img/logo.png" alt="WacChat" class="wac-logo-img">WacChat</div>
     <p class="wac-page-subtitle">${msg("loginIdpReviewProfileTitle")}</p>
 
     <#if message?has_content>

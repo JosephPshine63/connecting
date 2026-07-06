@@ -136,9 +136,24 @@ body,
   display: none !important;
 }
 
-/* Replace with WacChat gradient text */
+/* Replace with the Pio logo image + gradient wordmark */
+.pf-v5-c-masthead__brand {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
 .pf-v5-c-masthead__brand::before {
-  content: 'WacChat';
+  content: '';
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  background-image: url('../img/logo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.pf-v5-c-masthead__brand::after {
+  content: 'Pio';
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 1.2rem;

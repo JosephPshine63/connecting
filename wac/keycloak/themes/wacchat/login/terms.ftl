@@ -14,7 +14,7 @@
 <div class="wac-wrap">
   <div class="wac-card wac-card--wide">
 
-    <div class="wac-logo">WacChat</div>
+    <div class="wac-logo"><img src="${url.resourcesPath}/img/logo.png" alt="WacChat" class="wac-logo-img">WacChat</div>
     <p class="wac-page-subtitle">Termini e condizioni di utilizzo</p>
 
     <div class="wac-verify-body">
