@@ -43,6 +43,11 @@
   min-width: 140px;
   overflow: hidden;
 
+  &.opens-up {
+    top: auto;
+    bottom: 26px;
+  }
+
   button {
     background: none;
     border: none;

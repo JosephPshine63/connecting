@@ -71,6 +71,18 @@ export class CallComponent implements OnChanges, AfterViewChecked, OnDestroy {
     if (this.localVideoRef && this.localVideoRef.nativeElement.srcObject !== this.webRtcCallService.localStream) {
       this.localVideoRef.nativeElement.srcObject = this.webRtcCallService.localStream;
     }
+    // Same race as local video, but for the remote stream: the constructor-time
+    // subscribe() below only fires on new emissions, and ontrack can fire before the
+    // 'in-call' branch (with #remoteVideo/#remoteAudio) has even rendered — e.g. on the
+    // callee side, whose video/audio elements don't exist yet during 'incoming'. Without
+    // this recheck, a missed emission means the remote stream never gets attached.
+    const remoteStream = this.webRtcCallService.remoteStream$.value;
+    if (this.remoteVideoRef && this.remoteVideoRef.nativeElement.srcObject !== remoteStream) {
+      this.remoteVideoRef.nativeElement.srcObject = remoteStream;
+    }
+    if (this.remoteAudioRef && this.remoteAudioRef.nativeElement.srcObject !== remoteStream) {
+      this.remoteAudioRef.nativeElement.srcObject = remoteStream;
+    }
   }
 
   ngOnDestroy(): void {

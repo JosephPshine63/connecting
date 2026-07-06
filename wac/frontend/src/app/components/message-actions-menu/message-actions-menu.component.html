@@ -1,9 +1,9 @@
 <div class="message-actions-menu">
-  <button class="message-actions-btn" [class.menu-open]="open" (click)="onToggleClick($event)" title="Azioni">
+  <button #toggleBtn class="message-actions-btn" [class.menu-open]="open" (click)="onToggleClick($event)" title="Azioni">
     <i class="fa-solid fa-ellipsis-vertical"></i>
   </button>
   @if (open) {
-    <div class="message-actions-dropdown" (click)="$event.stopPropagation()">
+    <div class="message-actions-dropdown" [class.opens-up]="opensUpward" (click)="$event.stopPropagation()">
       <button type="button" (click)="onReact($event)">
         <i class="fa-regular fa-face-smile"></i> Reagisci
       </button>
