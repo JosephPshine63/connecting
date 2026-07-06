@@ -1,4 +1,4 @@
-import {AfterViewChecked, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewChecked, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {ChatListComponent} from '../../components/chat-list/chat-list.component';
 import {KeycloakService} from '../../utils/keycloak/keycloak.service';
 import {ChatResponse} from '../../services/models/chat-response';
@@ -14,7 +14,7 @@ import {Notification} from './models/notification';
 import {CallSignal} from './models/call-signal';
 import {ChatService} from '../../services/services/chat.service';
 import {CallApiService} from '../../utils/call/call-api.service';
-import {WebRtcCallService} from '../../utils/webrtc/webrtc-call.service';
+import {LocalIceCandidate, WebRtcCallService} from '../../utils/webrtc/webrtc-call.service';
 import {CallComponent} from '../../components/call/call.component';
 import {PickerComponent} from '@ctrl/ngx-emoji-mart';
 import {EmojiData} from '@ctrl/ngx-emoji-mart/ngx-emoji';
@@ -32,6 +32,7 @@ import {MuteService} from '../../utils/mute/mute.service';
 import {MessageActionsMenuComponent} from '../../components/message-actions-menu/message-actions-menu.component';
 import {ReplyPreviewBarComponent} from '../../components/reply-preview-bar/reply-preview-bar.component';
 import {ForwardPickerComponent} from '../../components/forward-picker/forward-picker.component';
+import {ErrorLogMenuComponent} from '../../components/error-log-menu/error-log-menu.component';
 
 const HEARTBEAT_INTERVAL_MS = 60000;
 const ARNO_USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -59,7 +60,8 @@ const MAX_PENDING_MESSAGES = 3;
     MediaLightboxComponent,
     MessageActionsMenuComponent,
     ReplyPreviewBarComponent,
-    ForwardPickerComponent
+    ForwardPickerComponent,
+    ErrorLogMenuComponent
   ],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
@@ -123,6 +125,12 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   activeCallType: 'AUDIO' | 'VIDEO' = 'AUDIO';
   private pendingOfferSdp: string | null = null;
   private callSignalSubscription: StompSubscription | null = null;
+  // The caller starts local ICE gathering (setLocalDescription, inside startAsCaller())
+  // before invite() has confirmed the session exists in call-service's CallSessionStore —
+  // candidates generated in that window get queued here and flushed once invite() (or,
+  // for the callee, the incoming INVITE signal itself) confirms the session is live.
+  private callSessionConfirmed = false;
+  private pendingLocalIceCandidates: LocalIceCandidate[] = [];
 
   constructor(
     private chatService: ChatService,
@@ -181,9 +189,11 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.webRtcCallService.localIceCandidate$.subscribe(candidate => {
       this.ngZone.run(() => {
         if (!this.activeCallChatId) return;
-        this.callApiService.iceCandidate(
-          this.activeCallChatId, candidate.candidate, candidate.sdpMid, candidate.sdpMLineIndex
-        ).subscribe();
+        if (!this.callSessionConfirmed) {
+          this.pendingLocalIceCandidates.push(candidate);
+          return;
+        }
+        this.sendIceCandidate(candidate);
       });
     });
   }
@@ -458,6 +468,21 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   toggleMessageMenu(id: number | undefined): void {
     if (id === undefined) return;
     this.activeMessageMenuId = this.activeMessageMenuId === id ? null : id;
+  }
+
+  onMessageRightClick(event: MouseEvent, message: MessageResponse): void {
+    event.preventDefault();
+    if (message.deleted || message.id === undefined) return;
+    this.activeMessageMenuId = message.id;
+  }
+
+  // The compose emoji-mart's wrapper stops its own clicks from bubbling here (so
+  // picking multiple emoji in a row doesn't close it) — only a genuine outside click
+  // reaches this handler, so it's safe to also close showEmojis unconditionally.
+  @HostListener('document:click')
+  closeReactionPickerOnOutsideClick(): void {
+    this.reactingToMessageId = null;
+    this.showEmojis = false;
   }
 
   findMessageById(id: number | undefined): MessageResponse | undefined {
@@ -1165,7 +1190,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
     if (this.isSameDay(date, yesterday)) return 'Ieri';
-    return new DatePipe('it-IT').transform(date, 'd MMMM yyyy') ?? '';
+    return new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
   }
 
   toggleMessageSearch(): void {
@@ -1232,8 +1257,24 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     return this.callState === 'idle' && this.selectedChat.status === 'ACCEPTED';
   }
 
+  // The call overlay (z-index 10001) sits above any per-message picker (menu/reply/
+  // forward/edit/reaction, all z-index <= 200) without closing them — so if one was
+  // left open when a call starts (especially an incoming call, which arrives over the
+  // WebSocket with no click to close it), it stays open hidden underneath and pops
+  // back into view once the overlay is removed at call end. Close them all up front.
+  private closeMessageOverlays(): void {
+    this.activeMessageMenuId = null;
+    this.replyingToMessage = null;
+    this.forwardingMessage = null;
+    this.editingMessage = null;
+    this.editContent = '';
+    this.reactingToMessageId = null;
+    this.showEmojis = false;
+  }
+
   async startCall(callType: 'AUDIO' | 'VIDEO'): Promise<void> {
     if (!this.canCall() || !this.selectedChat.id) return;
+    this.closeMessageOverlays();
     const chatId = this.selectedChat.id;
     const peerId = this.getReceiverId();
     this.activeCallChatId = chatId;
@@ -1245,10 +1286,15 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     try {
       const sdpOffer = await this.webRtcCallService.startAsCaller(callType);
       this.callApiService.invite(chatId, peerId, callType, sdpOffer).subscribe({
-        error: () => this.endCallLocally()
+        next: () => this.ngZone.run(() => this.confirmCallSession()),
+        error: (err) => {
+          console.error('[call] invite request failed', err);
+          this.endCallLocally();
+        }
       });
-    } catch {
+    } catch (err) {
       // getUserMedia denied or unavailable: stay out of the call, no crash
+      console.error('[call] getUserMedia/startAsCaller failed', err);
       this.endCallLocally();
     }
   }
@@ -1260,9 +1306,15 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.webRtcCallService.startAsCallee(this.activeCallType, offerSdp).then(sdpAnswer => {
       this.callApiService.answer(chatId, sdpAnswer).subscribe({
         next: () => this.ngZone.run(() => this.callState = 'in-call'),
-        error: () => this.ngZone.run(() => this.endCallLocally())
+        error: (err) => this.ngZone.run(() => {
+          console.error('[call] answer request failed', err);
+          this.endCallLocally();
+        })
       });
-    }).catch(() => this.ngZone.run(() => this.endCallLocally()));
+    }).catch(err => this.ngZone.run(() => {
+      console.error('[call] getUserMedia/startAsCallee failed', err);
+      this.endCallLocally();
+    }));
   }
 
   rejectCall(): void {
@@ -1286,6 +1338,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.callApiService.end(signal.chatId, 'REJECT').subscribe();
           return;
         }
+        this.closeMessageOverlays();
         this.activeCallChatId = signal.chatId;
         this.activeCallPeerId = signal.fromUserId ?? null;
         this.activeCallType = signal.callType ?? 'AUDIO';
@@ -1294,6 +1347,9 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.activeCallPeerName = peerChat?.name ?? null;
         this.activeCallPeerAvatarUrl = peerChat?.avatarUrl ?? null;
         this.callState = 'incoming';
+        // The session already exists in call-service's CallSessionStore by the time this
+        // signal arrives (invite() created it before publishing) — no queueing needed here.
+        this.confirmCallSession();
         break;
       case 'ANSWER':
         if (this.callState === 'outgoing' && this.activeCallChatId === signal.chatId && signal.sdp) {
@@ -1328,5 +1384,21 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.activeCallPeerName = null;
     this.activeCallPeerAvatarUrl = null;
     this.pendingOfferSdp = null;
+    this.callSessionConfirmed = false;
+    this.pendingLocalIceCandidates = [];
+  }
+
+  private confirmCallSession(): void {
+    this.callSessionConfirmed = true;
+    const queued = this.pendingLocalIceCandidates;
+    this.pendingLocalIceCandidates = [];
+    queued.forEach(candidate => this.sendIceCandidate(candidate));
+  }
+
+  private sendIceCandidate(candidate: LocalIceCandidate): void {
+    if (!this.activeCallChatId) return;
+    this.callApiService.iceCandidate(
+      this.activeCallChatId, candidate.candidate, candidate.sdpMid, candidate.sdpMLineIndex
+    ).subscribe();
   }
 }

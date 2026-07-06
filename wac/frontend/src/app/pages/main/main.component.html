@@ -98,6 +98,7 @@
         <button class="nav-icon-btn" (click)="showSettings = true" title="Impostazioni">
           <i class="fa-solid fa-palette"></i>
         </button>
+        <app-error-log-menu></app-error-log-menu>
         <button class="nav-icon-btn" (click)="logout()" title="Esci">
           <i class="fa-solid fa-right-from-bracket"></i>
         </button>
@@ -186,7 +187,8 @@
             @if (isSelfMessage(message)) {
               <div class="message-bubble self" [attr.data-msg-index]="i"
                    [class.search-match]="isMessageSearchMatch(i)"
-                   [class.search-match-current]="isCurrentSearchMatch(i)">
+                   [class.search-match-current]="isCurrentSearchMatch(i)"
+                   (contextmenu)="onMessageRightClick($event, message)">
                 @if (!message.deleted) {
                   <app-message-actions-menu
                     [open]="activeMessageMenuId === message.id"
@@ -243,17 +245,20 @@
                   </div>
                 }
                 @if (reactingToMessageId === message.id) {
-                  <emoji-mart
-                    [set]="'google'"
-                    class="reaction-emoji-picker"
-                    (emojiClick)="onReactionSelected(message, $event)"
-                  ></emoji-mart>
+                  <div class="reaction-emoji-picker-wrapper" (click)="$event.stopPropagation()">
+                    <emoji-mart
+                      [set]="'google'"
+                      class="reaction-emoji-picker"
+                      (emojiClick)="onReactionSelected(message, $event)"
+                    ></emoji-mart>
+                  </div>
                 }
               </div>
             } @else {
               <div class="message-bubble friend" [attr.data-msg-index]="i"
                    [class.search-match]="isMessageSearchMatch(i)"
-                   [class.search-match-current]="isCurrentSearchMatch(i)">
+                   [class.search-match-current]="isCurrentSearchMatch(i)"
+                   (contextmenu)="onMessageRightClick($event, message)">
                 @if (!message.deleted) {
                   <app-message-actions-menu
                     [open]="activeMessageMenuId === message.id"
@@ -300,11 +305,13 @@
                   </div>
                 }
                 @if (reactingToMessageId === message.id) {
-                  <emoji-mart
-                    [set]="'google'"
-                    class="reaction-emoji-picker"
-                    (emojiClick)="onReactionSelected(message, $event)"
-                  ></emoji-mart>
+                  <div class="reaction-emoji-picker-wrapper" (click)="$event.stopPropagation()">
+                    <emoji-mart
+                      [set]="'google'"
+                      class="reaction-emoji-picker"
+                      (emojiClick)="onReactionSelected(message, $event)"
+                    ></emoji-mart>
+                  </div>
                 }
               </div>
             }
@@ -388,7 +395,7 @@
               accept=".jpg,.jpeg,.png,.webp,.gif,.svg,.mp4,.mov,.mp3,.wav,.ogg,.m4a"
               (change)="uploadMedia($event.target)"
             >
-            <div class="emoji-wrapper">
+            <div class="emoji-wrapper" (click)="$event.stopPropagation()">
               <button class="input-icon-btn" (click)="showEmojis = !showEmojis" title="Emoji">
                 <i class="fa-regular fa-face-smile"></i>
               </button>

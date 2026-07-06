@@ -13,25 +13,24 @@ export const keycloakHttpInterceptor: HttpInterceptorFn = (req, next) => {
   return from(keycloakService.keycloak.updateToken(30).catch(() => false)).pipe(
     switchMap(() => {
       const token = keycloakService.keycloak.token;
-      if (token) {
-        const authReq = req.clone({
-          headers: req.headers
-            .set('Authorization', `Bearer ${token}`)
-            .set('X-Tab-Id', keycloakService.tabId)
-        });
-        return next(authReq);
-      }
-      return next(req);
-    }),
-    tap({
-      next: () => sessionGuard.markUnblocked(),
-    }),
-    catchError((err: unknown) => {
-      if (err instanceof HttpErrorResponse && err.status === 409 && err.error?.code === 'SESSION_CONFLICT') {
-        sessionGuard.markBlocked();
-        return throwError(() => err);
-      }
-      return next(req);
+      const authReq = token
+        ? req.clone({
+            headers: req.headers
+              .set('Authorization', `Bearer ${token}`)
+              .set('X-Tab-Id', keycloakService.tabId)
+          })
+        : req;
+      return next(authReq).pipe(
+        tap({
+          next: () => sessionGuard.markUnblocked(),
+        }),
+        catchError((err: unknown) => {
+          if (err instanceof HttpErrorResponse && err.status === 409 && err.error?.code === 'SESSION_CONFLICT') {
+            sessionGuard.markBlocked();
+          }
+          return throwError(() => err);
+        })
+      );
     })
   );
 };

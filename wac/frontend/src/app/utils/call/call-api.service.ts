@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
+import { EMPTY, Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { SILENT_ERROR } from '../http/error-log.interceptor';
 
 // Hand-written, mirroring utils/username/username.service.ts — call-service isn't part
 // of the ng-openapi-gen pipeline (that only points at the backend's own OpenAPI spec),
@@ -20,8 +22,15 @@ export class CallApiService {
     return this.http.post<void>(`/api/v1/calls/${chatId}/answer`, { sdpAnswer });
   }
 
+  // A 404 here means the call session was already torn down server-side (hangup/reject/
+  // ring-timeout) while the browser was still trickling ICE candidates — expected noise
+  // for a late candidate, not an error worth surfacing.
   iceCandidate(chatId: string, candidate: string, sdpMid: string | null, sdpMLineIndex: number | null): Observable<void> {
-    return this.http.post<void>(`/api/v1/calls/${chatId}/ice-candidate`, { candidate, sdpMid, sdpMLineIndex });
+    return this.http.post<void>(`/api/v1/calls/${chatId}/ice-candidate`, { candidate, sdpMid, sdpMLineIndex }, {
+      context: new HttpContext().set(SILENT_ERROR, true)
+    }).pipe(
+      catchError((err: unknown) => err instanceof HttpErrorResponse && err.status === 404 ? EMPTY : throwError(() => err))
+    );
   }
 
   end(chatId: string, reason: 'HANGUP' | 'REJECT'): Observable<void> {

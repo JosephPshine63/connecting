@@ -18,6 +18,17 @@ export class WebRtcCallService {
 
   private pc: RTCPeerConnection | null = null;
   private localMediaStream: MediaStream | null = null;
+  // The callee's pc doesn't exist yet while the call is ringing (only created in
+  // startAsCallee, on accept), but the caller trickles ICE candidates the moment it
+  // creates its offer — well before a human reacts to a ringing call. Likewise the
+  // caller's pc exists from the start but its remote description (the answer) isn't
+  // set until the ANSWER signal arrives, which can lose a race against the callee's
+  // own trickled candidates sent right after createAnswer. Either way, candidates
+  // that arrive before there's a pc with a remote description set must be queued and
+  // replayed once one exists, or they're silently dropped and the connection never
+  // completes ICE negotiation (remote track never arrives).
+  private remoteDescriptionSet = false;
+  private pendingRemoteCandidates: LocalIceCandidate[] = [];
 
   readonly remoteStream$ = new BehaviorSubject<MediaStream | null>(null);
   readonly localIceCandidate$ = new Subject<LocalIceCandidate>();
@@ -36,6 +47,7 @@ export class WebRtcCallService {
   async startAsCallee(callType: 'AUDIO' | 'VIDEO', offerSdp: string): Promise<string> {
     await this.setUpLocalMediaAndPeerConnection(callType);
     await this.pc!.setRemoteDescription({ type: 'offer', sdp: offerSdp });
+    await this.onRemoteDescriptionSet();
     const answer = await this.pc!.createAnswer();
     await this.pc!.setLocalDescription(answer);
     return answer.sdp ?? '';
@@ -44,11 +56,25 @@ export class WebRtcCallService {
   async completeAsCaller(answerSdp: string): Promise<void> {
     if (!this.pc) return;
     await this.pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+    await this.onRemoteDescriptionSet();
   }
 
   async addRemoteIceCandidate(candidate: string, sdpMid: string | null, sdpMLineIndex: number | null): Promise<void> {
-    if (!this.pc || !candidate) return;
+    if (!candidate) return;
+    if (!this.pc || !this.remoteDescriptionSet) {
+      this.pendingRemoteCandidates.push({ candidate, sdpMid, sdpMLineIndex });
+      return;
+    }
     await this.pc.addIceCandidate({ candidate, sdpMid: sdpMid ?? undefined, sdpMLineIndex: sdpMLineIndex ?? undefined });
+  }
+
+  private async onRemoteDescriptionSet(): Promise<void> {
+    this.remoteDescriptionSet = true;
+    const queued = this.pendingRemoteCandidates;
+    this.pendingRemoteCandidates = [];
+    for (const c of queued) {
+      await this.pc!.addIceCandidate({ candidate: c.candidate, sdpMid: c.sdpMid ?? undefined, sdpMLineIndex: c.sdpMLineIndex ?? undefined });
+    }
   }
 
   setMuted(muted: boolean): void {
@@ -60,6 +86,8 @@ export class WebRtcCallService {
     this.localMediaStream = null;
     this.pc?.close();
     this.pc = null;
+    this.remoteDescriptionSet = false;
+    this.pendingRemoteCandidates = [];
     this.remoteStream$.next(null);
   }
 
