@@ -23,4 +23,5 @@ public class UserResponse {
     private LocalDateTime lastSeen;
     private boolean isOnline;
     private String avatarUrl;
+    private LocalDateTime createdDate;
 }

@@ -138,3 +138,19 @@ CREATE TABLE IF NOT EXISTS message_reactions
 
 ALTER TABLE message_reactions
     ADD CONSTRAINT FK_MESSAGE_REACTIONS_ON_MESSAGE FOREIGN KEY (message_id) REFERENCES messages (id);
+
+CREATE SEQUENCE IF NOT EXISTS message_stars_seq START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE IF NOT EXISTS message_stars
+(
+    id                 BIGINT                      NOT NULL,
+    created_date       TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    last_modified_date TIMESTAMP WITHOUT TIME ZONE,
+    message_id         BIGINT                      NOT NULL,
+    user_id            VARCHAR(255)                NOT NULL,
+    CONSTRAINT pk_message_stars PRIMARY KEY (id),
+    CONSTRAINT uk_message_stars_user_per_message UNIQUE (message_id, user_id)
+);
+
+ALTER TABLE message_stars
+    ADD CONSTRAINT FK_MESSAGE_STARS_ON_MESSAGE FOREIGN KEY (message_id) REFERENCES messages (id);

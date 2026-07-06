@@ -29,4 +29,5 @@ public class MessageResponse {
     private LocalDateTime editedAt;
     private boolean deleted;
     private List<ReactionSummaryResponse> reactions;
+    private boolean starred;
 }

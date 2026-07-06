@@ -27,7 +27,7 @@ class MessageMapperTest {
         message.setCreatedDate(now);
         message.setLastModifiedDate(now);
 
-        MessageResponse response = mapper.toMessageResponse(message, "sender-1", List.of());
+        MessageResponse response = mapper.toMessageResponse(message, "sender-1", List.of(), false);
 
         assertThat(response.getEditedAt()).isNull();
     }
@@ -46,7 +46,7 @@ class MessageMapperTest {
         message.setCreatedDate(created);
         message.setLastModifiedDate(edited);
 
-        MessageResponse response = mapper.toMessageResponse(message, "sender-1", List.of());
+        MessageResponse response = mapper.toMessageResponse(message, "sender-1", List.of(), false);
 
         assertThat(response.getEditedAt()).isEqualTo(edited);
     }
@@ -64,7 +64,7 @@ class MessageMapperTest {
         message.setCreatedDate(LocalDateTime.now());
         message.setDeleted(true);
 
-        MessageResponse response = mapper.toMessageResponse(message, "sender-1", List.of());
+        MessageResponse response = mapper.toMessageResponse(message, "sender-1", List.of(), false);
 
         assertThat(response.isDeleted()).isTrue();
         assertThat(response.getContent()).isNull();
@@ -86,7 +86,7 @@ class MessageMapperTest {
         message.setCreatedDate(LocalDateTime.now());
         message.setLastModifiedDate(null);
 
-        MessageResponse response = mapper.toMessageResponse(message, "sender-1", List.of());
+        MessageResponse response = mapper.toMessageResponse(message, "sender-1", List.of(), false);
 
         assertThat(response.getEditedAt()).isNull();
     }
@@ -95,7 +95,7 @@ class MessageMapperTest {
     void toMessageResponse_noReactions_returnsEmptyList() {
         Message message = existingMessage();
 
-        MessageResponse response = mapper.toMessageResponse(message, "viewer-1", List.of());
+        MessageResponse response = mapper.toMessageResponse(message, "viewer-1", List.of(), false);
 
         assertThat(response.getReactions()).isEmpty();
     }
@@ -109,7 +109,7 @@ class MessageMapperTest {
                 reaction("third-user", "❤️")
         );
 
-        MessageResponse response = mapper.toMessageResponse(message, "viewer-1", reactions);
+        MessageResponse response = mapper.toMessageResponse(message, "viewer-1", reactions, false);
 
         assertThat(response.getReactions()).hasSize(2);
         ReactionSummaryResponse thumbsUp = response.getReactions().stream()
@@ -121,6 +121,24 @@ class MessageMapperTest {
                 .filter(r -> r.getEmoji().equals("❤️")).findFirst().orElseThrow();
         assertThat(heart.getCount()).isEqualTo(1);
         assertThat(heart.isReactedByMe()).isFalse();
+    }
+
+    @Test
+    void toMessageResponse_starredByViewerTrue_setsStarredOnResponse() {
+        Message message = existingMessage();
+
+        MessageResponse response = mapper.toMessageResponse(message, "viewer-1", List.of(), true);
+
+        assertThat(response.isStarred()).isTrue();
+    }
+
+    @Test
+    void toMessageResponse_starredByViewerFalse_setsStarredOnResponse() {
+        Message message = existingMessage();
+
+        MessageResponse response = mapper.toMessageResponse(message, "viewer-1", List.of(), false);
+
+        assertThat(response.isStarred()).isFalse();
     }
 
     private static Message existingMessage() {

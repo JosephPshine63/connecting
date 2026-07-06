@@ -17,6 +17,7 @@ export class MessageActionsMenuComponent implements OnChanges {
   @Input() canCopy = true;
   @Input() canEdit = false;
   @Input() canDelete = false;
+  @Input() starred = false;
   @Output() toggle = new EventEmitter<void>();
   @Output() closeRequested = new EventEmitter<void>();
   @Output() replyRequested = new EventEmitter<void>();
@@ -25,6 +26,7 @@ export class MessageActionsMenuComponent implements OnChanges {
   @Output() editRequested = new EventEmitter<void>();
   @Output() deleteRequested = new EventEmitter<void>();
   @Output() reactRequested = new EventEmitter<void>();
+  @Output() starRequested = new EventEmitter<void>();
 
   @ViewChild('toggleBtn') toggleBtn?: ElementRef<HTMLButtonElement>;
 
@@ -91,6 +93,12 @@ export class MessageActionsMenuComponent implements OnChanges {
   onReact(event: Event): void {
     event.stopPropagation();
     this.reactRequested.emit();
+    this.closeRequested.emit();
+  }
+
+  onStar(event: Event): void {
+    event.stopPropagation();
+    this.starRequested.emit();
     this.closeRequested.emit();
   }
 

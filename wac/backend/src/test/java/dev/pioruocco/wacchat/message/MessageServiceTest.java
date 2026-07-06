@@ -27,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -57,6 +58,8 @@ class MessageServiceTest {
     @Mock
     private MessageReactionRepository messageReactionRepository;
     @Mock
+    private MessageStarRepository messageStarRepository;
+    @Mock
     private Authentication authentication;
 
     private MessageService messageService;
@@ -65,7 +68,7 @@ class MessageServiceTest {
     void setUp() {
         messageService = new MessageService(
                 messageRepository, chatRepository, mapper, notificationService, fileServiceClient, botService,
-                moderationService, messageReactionRepository);
+                moderationService, messageReactionRepository, messageStarRepository);
     }
 
     @Test
@@ -147,7 +150,7 @@ class MessageServiceTest {
             saved.setId(42L);
             return saved;
         }).when(messageRepository).save(any(Message.class));
-        when(mapper.toMessageResponse(any(Message.class), anyString(), any()))
+        when(mapper.toMessageResponse(any(Message.class), anyString(), any(), anyBoolean()))
                 .thenAnswer(invocation -> MessageResponse.builder().id(invocation.<Message>getArgument(0).getId()).build());
 
         MessageResponse response = messageService.saveMessage(request(chat.getId()), authentication);
@@ -424,11 +427,91 @@ class MessageServiceTest {
         messageService.findChatMessages(chat.getId(), authentication);
 
         ArgumentCaptor<java.util.List<MessageReaction>> reactionsCaptor = ArgumentCaptor.forClass(java.util.List.class);
-        verify(mapper).toMessageResponse(org.mockito.ArgumentMatchers.eq(message1), org.mockito.ArgumentMatchers.eq(REQUESTER_ID), reactionsCaptor.capture());
+        verify(mapper).toMessageResponse(org.mockito.ArgumentMatchers.eq(message1), org.mockito.ArgumentMatchers.eq(REQUESTER_ID), reactionsCaptor.capture(), anyBoolean());
         assertThat(reactionsCaptor.getValue()).containsExactly(reactionOnMessage1);
 
-        verify(mapper).toMessageResponse(org.mockito.ArgumentMatchers.eq(message2), org.mockito.ArgumentMatchers.eq(REQUESTER_ID), reactionsCaptor.capture());
+        verify(mapper).toMessageResponse(org.mockito.ArgumentMatchers.eq(message2), org.mockito.ArgumentMatchers.eq(REQUESTER_ID), reactionsCaptor.capture(), anyBoolean());
         assertThat(reactionsCaptor.getValue()).isEmpty();
+    }
+
+    @Test
+    void findChatMessages_starredMessageForViewer_passesStarredTrueToMapper() {
+        Chat chat = chat(ChatStatus.ACCEPTED, 0);
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+        when(authentication.getName()).thenReturn(REQUESTER_ID);
+
+        Message message1 = existingTextMessage(chat, REQUESTER_ID, RECIPIENT_ID);
+        message1.setId(1L);
+        Message message2 = existingTextMessage(chat, REQUESTER_ID, RECIPIENT_ID);
+        message2.setId(2L);
+        when(messageRepository.findMessagesByChatId(chat.getId())).thenReturn(java.util.List.of(message1, message2));
+
+        MessageStar starOnMessage1ByViewer = new MessageStar();
+        starOnMessage1ByViewer.setMessageId(1L);
+        starOnMessage1ByViewer.setUserId(REQUESTER_ID);
+        MessageStar starOnMessage2ByOtherUser = new MessageStar();
+        starOnMessage2ByOtherUser.setMessageId(2L);
+        starOnMessage2ByOtherUser.setUserId(RECIPIENT_ID);
+        when(messageStarRepository.findByMessageIdIn(java.util.List.of(1L, 2L)))
+                .thenReturn(java.util.List.of(starOnMessage1ByViewer, starOnMessage2ByOtherUser));
+
+        messageService.findChatMessages(chat.getId(), authentication);
+
+        verify(mapper).toMessageResponse(org.mockito.ArgumentMatchers.eq(message1), org.mockito.ArgumentMatchers.eq(REQUESTER_ID), any(), org.mockito.ArgumentMatchers.eq(true));
+        verify(mapper).toMessageResponse(org.mockito.ArgumentMatchers.eq(message2), org.mockito.ArgumentMatchers.eq(REQUESTER_ID), any(), org.mockito.ArgumentMatchers.eq(false));
+    }
+
+    @Test
+    void toggleStar_notYetStarred_savesStarAndReturnsStarredTrue() {
+        Chat chat = chat(ChatStatus.ACCEPTED, 0);
+        Message message = existingTextMessage(chat, REQUESTER_ID, RECIPIENT_ID);
+        when(messageRepository.findById(5L)).thenReturn(Optional.of(message));
+        when(authentication.getName()).thenReturn(RECIPIENT_ID);
+        when(messageStarRepository.findByMessageIdAndUserId(5L, RECIPIENT_ID)).thenReturn(Optional.empty());
+        when(mapper.toMessageResponse(any(Message.class), anyString(), any(), anyBoolean()))
+                .thenAnswer(invocation -> MessageResponse.builder().starred(invocation.getArgument(3)).build());
+
+        MessageResponse response = messageService.toggleStar(5L, authentication);
+
+        ArgumentCaptor<MessageStar> starCaptor = ArgumentCaptor.forClass(MessageStar.class);
+        verify(messageStarRepository).save(starCaptor.capture());
+        assertThat(starCaptor.getValue().getMessageId()).isEqualTo(5L);
+        assertThat(starCaptor.getValue().getUserId()).isEqualTo(RECIPIENT_ID);
+        assertThat(response.isStarred()).isTrue();
+        verify(notificationService, never()).sendNotification(anyString(), any());
+    }
+
+    @Test
+    void toggleStar_alreadyStarred_removesStarAndReturnsStarredFalse() {
+        Chat chat = chat(ChatStatus.ACCEPTED, 0);
+        Message message = existingTextMessage(chat, REQUESTER_ID, RECIPIENT_ID);
+        when(messageRepository.findById(5L)).thenReturn(Optional.of(message));
+        when(authentication.getName()).thenReturn(RECIPIENT_ID);
+        MessageStar existing = new MessageStar();
+        existing.setMessageId(5L);
+        existing.setUserId(RECIPIENT_ID);
+        when(messageStarRepository.findByMessageIdAndUserId(5L, RECIPIENT_ID)).thenReturn(Optional.of(existing));
+        when(mapper.toMessageResponse(any(Message.class), anyString(), any(), anyBoolean()))
+                .thenAnswer(invocation -> MessageResponse.builder().starred(invocation.getArgument(3)).build());
+
+        MessageResponse response = messageService.toggleStar(5L, authentication);
+
+        verify(messageStarRepository).delete(existing);
+        verify(messageStarRepository, never()).save(any());
+        assertThat(response.isStarred()).isFalse();
+        verify(notificationService, never()).sendNotification(anyString(), any());
+    }
+
+    @Test
+    void toggleStar_nonParticipant_throwsAccessDenied() {
+        Chat chat = chat(ChatStatus.ACCEPTED, 0);
+        Message message = existingTextMessage(chat, REQUESTER_ID, RECIPIENT_ID);
+        when(messageRepository.findById(5L)).thenReturn(Optional.of(message));
+        when(authentication.getName()).thenReturn("stranger");
+
+        assertThatThrownBy(() -> messageService.toggleStar(5L, authentication))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(messageStarRepository, never()).save(any());
     }
 
     private static Message existingTextMessage(Chat chat, String senderId, String receiverId) {

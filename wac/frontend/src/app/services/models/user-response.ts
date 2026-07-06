@@ -4,6 +4,7 @@
 
 export interface UserResponse {
   avatarUrl?: string;
+  createdDate?: string;
   email?: string;
   firstName?: string;
   id?: string;

@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +41,7 @@ public class MessageService {
     private final BotService botService;
     private final ModerationService moderationService;
     private final MessageReactionRepository messageReactionRepository;
+    private final MessageStarRepository messageStarRepository;
 
     public MessageResponse saveMessage(MessageRequest messageRequest, Authentication authentication) {
         Chat chat = chatRepository.findById(messageRequest.getChatId())
@@ -91,7 +93,7 @@ public class MessageService {
             botService.generateAndSendReply(chat.getId(), senderId);
         }
 
-        return mapper.toMessageResponse(message, senderId, List.of());
+        return mapper.toMessageResponse(message, senderId, List.of(), false);
     }
 
     public MessageResponse editMessage(Long messageId, EditMessageRequest request, Authentication authentication) {
@@ -118,7 +120,9 @@ public class MessageService {
                 .build();
         notificationService.sendNotification(message.getReceiverId(), notification);
 
-        return mapper.toMessageResponse(message, authentication.getName(), messageReactionRepository.findByMessageId(messageId));
+        final String editorId = authentication.getName();
+        boolean starred = messageStarRepository.findByMessageIdAndUserId(messageId, editorId).isPresent();
+        return mapper.toMessageResponse(message, editorId, messageReactionRepository.findByMessageId(messageId), starred);
     }
 
     public void deleteMessage(Long messageId, Authentication authentication) {
@@ -156,9 +160,17 @@ public class MessageService {
         Map<Long, List<MessageReaction>> reactionsByMessageId = messageReactionRepository.findByMessageIdIn(messageIds)
                 .stream()
                 .collect(Collectors.groupingBy(MessageReaction::getMessageId));
+        Set<Long> starredMessageIds = messageStarRepository.findByMessageIdIn(messageIds).stream()
+                .filter(star -> star.getUserId().equals(viewerId))
+                .map(MessageStar::getMessageId)
+                .collect(Collectors.toSet());
 
         return messages.stream()
-                .map(message -> mapper.toMessageResponse(message, viewerId, reactionsByMessageId.getOrDefault(message.getId(), List.of())))
+                .map(message -> mapper.toMessageResponse(
+                        message,
+                        viewerId,
+                        reactionsByMessageId.getOrDefault(message.getId(), List.of()),
+                        starredMessageIds.contains(message.getId())))
                 .toList();
     }
 
@@ -214,7 +226,7 @@ public class MessageService {
 
         notificationService.sendNotification(receiverId, notification);
 
-        return mapper.toMessageResponse(message, senderId, List.of());
+        return mapper.toMessageResponse(message, senderId, List.of(), false);
     }
 
     public MessageResponse toggleReaction(Long messageId, String emoji, Authentication authentication) {
@@ -257,7 +269,33 @@ public class MessageService {
                 .build();
         notificationService.sendNotification(otherParticipant, notification);
 
-        return mapper.toMessageResponse(message, userId, messageReactionRepository.findByMessageId(messageId));
+        boolean starred = messageStarRepository.findByMessageIdAndUserId(messageId, userId).isPresent();
+        return mapper.toMessageResponse(message, userId, messageReactionRepository.findByMessageId(messageId), starred);
+    }
+
+    @Transactional
+    public MessageResponse toggleStar(Long messageId, Authentication authentication) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new EntityNotFoundException("Message not found"));
+        final String userId = authentication.getName();
+        assertParticipant(message.getChat(), userId);
+
+        boolean nowStarred;
+        Optional<MessageStar> existing = messageStarRepository.findByMessageIdAndUserId(messageId, userId);
+        if (existing.isPresent()) {
+            messageStarRepository.delete(existing.get());
+            nowStarred = false;
+        } else {
+            MessageStar star = new MessageStar();
+            star.setMessageId(messageId);
+            star.setUserId(userId);
+            messageStarRepository.save(star);
+            nowStarred = true;
+        }
+
+        // Starring is private to the viewer — unlike reactions/edits, it must not be
+        // pushed to the other chat participant, so no NotificationService call here.
+        return mapper.toMessageResponse(message, userId, messageReactionRepository.findByMessageId(messageId), nowStarred);
     }
 
     private static String bearerToken(Authentication authentication) {

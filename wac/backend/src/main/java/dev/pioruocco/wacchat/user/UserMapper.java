@@ -39,6 +39,7 @@ public class UserMapper {
                 .lastSeen(user.getLastSeen())
                 .isOnline(user.isUserOnline())
                 .avatarUrl(user.getAvatarUrl())
+                .createdDate(user.getCreatedDate())
                 .build();
     }
 

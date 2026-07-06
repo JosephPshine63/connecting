@@ -591,6 +591,19 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
+  onToggleStar(message: MessageResponse): void {
+    if (!message.id) return;
+    const messageId = message.id;
+    this.messageService.toggleStar({ messageId }).subscribe({
+      next: (response) => {
+        const target = this.findMessageById(messageId);
+        if (target) {
+          target.starred = response.starred;
+        }
+      }
+    });
+  }
+
   confirmDelete(message: MessageResponse): void {
     if (!message.id || message.deleted) return;
     if (!window.confirm('Eliminare questo messaggio?')) return;

@@ -36,9 +36,12 @@
   @if (selectedCardUserId) {
     <app-user-card
       [userId]="selectedCardUserId"
+      [chatId]="selectedCardUserId === getReceiverId() ? selectedChat.id : undefined"
+      [chatMessages]="selectedCardUserId === getReceiverId() ? chatMessages : undefined"
       (closed)="closeUserCard()"
       (chatRequested)="onChatRequested($event)"
       (userBlocked)="onUserBlocked($event)"
+      (mediaRequested)="openLightbox($event)"
     ></app-user-card>
   }
   @if (showAvatarUpload) {
@@ -196,6 +199,7 @@
                     [canCopy]="message.type === 'TEXT'"
                     [canEdit]="message.type === 'TEXT'"
                     [canDelete]="true"
+                    [starred]="message.starred ?? false"
                     (toggle)="toggleMessageMenu(message.id)"
                     (closeRequested)="activeMessageMenuId = null"
                     (replyRequested)="startReply(message)"
@@ -204,6 +208,7 @@
                     (editRequested)="startEdit(message)"
                     (deleteRequested)="confirmDelete(message)"
                     (reactRequested)="openReactionPicker(message.id)"
+                    (starRequested)="onToggleStar(message)"
                   ></app-message-actions-menu>
                 }
                 @if (message.replyToId) {
@@ -264,12 +269,14 @@
                     [open]="activeMessageMenuId === message.id"
                     [canForward]="message.type === 'TEXT'"
                     [canCopy]="message.type === 'TEXT'"
+                    [starred]="message.starred ?? false"
                     (toggle)="toggleMessageMenu(message.id)"
                     (closeRequested)="activeMessageMenuId = null"
                     (replyRequested)="startReply(message)"
                     (forwardRequested)="startForward(message)"
                     (copyRequested)="copyMessageText(message)"
                     (reactRequested)="openReactionPicker(message.id)"
+                    (starRequested)="onToggleStar(message)"
                   ></app-message-actions-menu>
                 }
                 @if (message.replyToId) {

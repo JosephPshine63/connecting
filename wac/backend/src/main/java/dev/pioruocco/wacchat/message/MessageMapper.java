@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 @Service
 public class MessageMapper {
 
-    public MessageResponse toMessageResponse(Message message, String viewerId, List<MessageReaction> reactions) {
+    public MessageResponse toMessageResponse(Message message, String viewerId, List<MessageReaction> reactions, boolean starredByViewer) {
         boolean deleted = message.isDeleted();
         return MessageResponse.builder()
                 .id(message.getId())
@@ -26,6 +26,7 @@ public class MessageMapper {
                 .editedAt(hasBeenEdited(message) ? message.getLastModifiedDate() : null)
                 .deleted(deleted)
                 .reactions(aggregateReactions(reactions, viewerId))
+                .starred(starredByViewer)
                 .build();
     }
 

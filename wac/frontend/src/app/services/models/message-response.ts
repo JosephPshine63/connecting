@@ -15,6 +15,7 @@ export interface MessageResponse {
   receiverId?: string;
   replyToId?: number;
   senderId?: string;
+  starred?: boolean;
   state?: 'SENT' | 'SEEN';
   type?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO';
 }

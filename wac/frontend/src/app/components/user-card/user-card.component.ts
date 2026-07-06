@@ -5,9 +5,11 @@ import { UserService } from '../../services/services/user.service';
 import { UserResponse } from '../../services/models/user-response';
 import { ChatService } from '../../services/services/chat.service';
 import { ChatResponse } from '../../services/models/chat-response';
+import { MessageResponse } from '../../services/models/message-response';
 import { ModerationService } from '../../services/services/moderation.service';
 import { UserReportRequest } from '../../services/models/user-report-request';
 import { KeycloakService } from '../../utils/keycloak/keycloak.service';
+import { MuteService } from '../../utils/mute/mute.service';
 
 @Component({
   selector: 'app-user-card',
@@ -18,9 +20,12 @@ import { KeycloakService } from '../../utils/keycloak/keycloak.service';
 export class UserCardComponent implements OnChanges {
 
   @Input() userId: string | null = null;
+  @Input() chatId?: string;
+  @Input() chatMessages?: MessageResponse[];
   @Output() closed = new EventEmitter<void>();
   @Output() chatRequested = new EventEmitter<ChatResponse>();
   @Output() userBlocked = new EventEmitter<string>();
+  @Output() mediaRequested = new EventEmitter<MessageResponse>();
 
   user: UserResponse | null = null;
   loading = false;
@@ -33,11 +38,15 @@ export class UserCardComponent implements OnChanges {
   reportReason: UserReportRequest['reason'] = 'SPAM';
   reportDetails = '';
 
+  activeTab: 'info' | 'media' | 'starred' = 'info';
+  usernameCopied = false;
+
   constructor(
     private userService: UserService,
     private chatService: ChatService,
     private moderationService: ModerationService,
-    private keycloakService: KeycloakService
+    private keycloakService: KeycloakService,
+    private muteService: MuteService
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -51,6 +60,8 @@ export class UserCardComponent implements OnChanges {
       this.reportSent = false;
       this.reportReason = 'SPAM';
       this.reportDetails = '';
+      this.activeTab = 'info';
+      this.usernameCopied = false;
       this.userService.getUserById({ id: this.userId }).subscribe({
         next: user => { this.user = user; this.loading = false; },
         error: () => { this.loading = false; }
@@ -59,6 +70,35 @@ export class UserCardComponent implements OnChanges {
         next: res => { this.blocked = !!res['blocked']; }
       });
     }
+  }
+
+  mediaMessages(): MessageResponse[] {
+    return (this.chatMessages ?? []).filter(m => (m.type === 'IMAGE' || m.type === 'VIDEO') && !m.deleted);
+  }
+
+  starredMessages(): MessageResponse[] {
+    return (this.chatMessages ?? []).filter(m => m.starred && !m.deleted);
+  }
+
+  openMedia(message: MessageResponse): void {
+    this.mediaRequested.emit(message);
+  }
+
+  copyUsername(): void {
+    if (!this.user?.username) return;
+    navigator.clipboard?.writeText(this.user.username).then(() => {
+      this.usernameCopied = true;
+      setTimeout(() => { this.usernameCopied = false; }, 1500);
+    }).catch(() => undefined);
+  }
+
+  isMuted(): boolean {
+    return this.muteService.isMuted(this.chatId);
+  }
+
+  toggleMute(): void {
+    if (!this.chatId) return;
+    this.muteService.toggleMute(this.chatId);
   }
 
   close(): void {

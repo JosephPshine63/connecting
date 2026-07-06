@@ -79,6 +79,11 @@ public class MessageController {
         return messageService.toggleReaction(messageId, request.getEmoji(), authentication);
     }
 
+    @PutMapping("/{messageId}/star")
+    public MessageResponse toggleStar(@PathVariable Long messageId, Authentication authentication) {
+        return messageService.toggleStar(messageId, authentication);
+    }
+
     @GetMapping("/chat/{chat-id}")
     public ResponseEntity<List<MessageResponse>> getAllMessages(
             @PathVariable("chat-id") String chatId,

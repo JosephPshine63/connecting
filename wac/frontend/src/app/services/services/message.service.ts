@@ -24,6 +24,8 @@ import { setMessageToSeen } from '../fn/message/set-message-to-seen';
 import { SetMessageToSeen$Params } from '../fn/message/set-message-to-seen';
 import { toggleReaction } from '../fn/message/toggle-reaction';
 import { ToggleReaction$Params } from '../fn/message/toggle-reaction';
+import { toggleStar } from '../fn/message/toggle-star';
+import { ToggleStar$Params } from '../fn/message/toggle-star';
 import { uploadMedia } from '../fn/message/upload-media';
 import { UploadMedia$Params } from '../fn/message/upload-media';
 
@@ -31,6 +33,31 @@ import { UploadMedia$Params } from '../fn/message/upload-media';
 export class MessageService extends BaseService {
   constructor(config: ApiConfiguration, http: HttpClient) {
     super(config, http);
+  }
+
+  /** Path part for operation `toggleStar()` */
+  static readonly ToggleStarPath = '/api/v1/messages/{messageId}/star';
+
+  /**
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `toggleStar()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  toggleStar$Response(params: ToggleStar$Params, context?: HttpContext): Observable<StrictHttpResponse<MessageResponse>> {
+    return toggleStar(this.http, this.rootUrl, params, context);
+  }
+
+  /**
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `toggleStar$Response()` instead.
+   *
+   * This method doesn't expect any request body.
+   */
+  toggleStar(params: ToggleStar$Params, context?: HttpContext): Observable<MessageResponse> {
+    return this.toggleStar$Response(params, context).pipe(
+      map((r: StrictHttpResponse<MessageResponse>): MessageResponse => r.body)
+    );
   }
 
   /** Path part for operation `toggleReaction()` */

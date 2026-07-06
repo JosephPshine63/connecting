@@ -7,6 +7,9 @@
       <button type="button" (click)="onReact($event)">
         <i class="fa-regular fa-face-smile"></i> Reagisci
       </button>
+      <button type="button" (click)="onStar($event)">
+        <i class="fa-{{ starred ? 'solid' : 'regular' }} fa-star"></i> {{ starred ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti' }}
+      </button>
       <button type="button" (click)="onReply($event)">
         <i class="fa-solid fa-reply"></i> Rispondi
       </button>

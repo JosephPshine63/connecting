@@ -9,7 +9,7 @@
         <i class="fa-solid fa-spinner fa-spin"></i>
       </div>
     } @else if (user) {
-      <div class="user-card-avatar">
+      <div class="user-card-avatar" [class.online]="user.online" [class.offline]="!user.online">
         @if (user.avatarUrl) {
           <img [src]="user.avatarUrl" alt="">
         } @else {
@@ -18,7 +18,15 @@
       </div>
       <h2 class="user-card-name">{{ displayName() }}</h2>
       @if (user.username) {
-        <span class="user-card-username">&#64;{{ user.username }}</span>
+        <div class="user-card-username-row">
+          <span class="user-card-username">&#64;{{ user.username }}</span>
+          <button class="user-card-copy-btn" (click)="copyUsername()" title="Copia username">
+            <i class="fa-solid" [class.fa-copy]="!usernameCopied" [class.fa-check]="usernameCopied"></i>
+          </button>
+        </div>
+      }
+      @if (user.createdDate) {
+        <span class="user-card-member-since">Membro da {{ user.createdDate | date:'MMMM yyyy' }}</span>
       }
       <div class="user-card-status">
         @if (user.online) {
@@ -38,19 +46,73 @@
         <button class="user-card-request-btn" (click)="sendChatRequest()">Invia richiesta di chat</button>
       }
 
-      <div class="user-card-moderation-actions">
-        @if (blocked) {
-          <span class="user-card-blocked-banner">Hai bloccato questo utente</span>
-          <button class="chat-request-reject-btn" (click)="unblockUser()">Sblocca</button>
-        } @else {
-          <button class="user-card-block-btn" (click)="openBlockConfirm()">Blocca utente</button>
+      @if (chatId) {
+        <button class="user-card-mute-btn" (click)="toggleMute()">
+          <i class="fa-solid" [class.fa-bell-slash]="isMuted()" [class.fa-bell]="!isMuted()"></i>
+          {{ isMuted() ? 'Riattiva notifiche' : 'Silenzia notifiche' }}
+        </button>
+      }
+
+      @if (chatMessages) {
+        <div class="user-card-tabs">
+          <button type="button" [class.active]="activeTab==='info'" (click)="activeTab='info'">Info</button>
+          <button type="button" [class.active]="activeTab==='media'" (click)="activeTab='media'">
+            Media ({{ mediaMessages().length }})
+          </button>
+          <button type="button" [class.active]="activeTab==='starred'" (click)="activeTab='starred'">
+            <i class="fa-solid fa-star"></i> Preferiti ({{ starredMessages().length }})
+          </button>
+        </div>
+
+        @if (activeTab === 'media') {
+          <div class="user-card-media-grid">
+            @for (m of mediaMessages(); track m.id) {
+              <div class="media-thumb" (click)="openMedia(m)">
+                @if (m.type === 'IMAGE') {
+                  <img [src]="m.media?.[0]" alt="">
+                } @else {
+                  <video [src]="m.media?.[0]"></video>
+                }
+              </div>
+            } @empty {
+              <p class="user-card-empty">Nessun media condiviso in questa chat.</p>
+            }
+          </div>
         }
-        @if (reportSent) {
-          <span class="user-card-report-sent">Segnalazione inviata</span>
-        } @else {
-          <button class="user-card-report-btn" (click)="openReportConfirm()">Segnala utente</button>
+
+        @if (activeTab === 'starred') {
+          <div class="user-card-starred-list">
+            @for (m of starredMessages(); track m.id) {
+              <div class="starred-item">
+                @if (m.type === 'TEXT') {
+                  <span>{{ m.content }}</span>
+                } @else {
+                  <span><i class="fa-solid fa-paperclip"></i> {{ m.type }}</span>
+                }
+                <span class="starred-date">{{ m.createdAt | date:'dd.MM.yy' }}</span>
+              </div>
+            } @empty {
+              <p class="user-card-empty">Nessun messaggio preferito in questa chat.</p>
+            }
+          </div>
         }
-      </div>
+      }
+
+      @if (!chatMessages || activeTab === 'info') {
+        <div class="user-card-moderation-actions">
+          @if (blocked) {
+            <span class="user-card-blocked-banner">Hai bloccato questo utente</span>
+            <button class="chat-request-reject-btn" (click)="unblockUser()">Sblocca</button>
+          } @else {
+            <button class="user-card-block-btn" (click)="openBlockConfirm()">Blocca utente</button>
+          }
+          @if (reportSent) {
+            <span class="user-card-report-sent">Segnalazione inviata</span>
+          } @else {
+            <button class="user-card-report-btn" (click)="openReportConfirm()">Segnala utente</button>
+          }
+        </div>
+      }
     }
   </div>
 
