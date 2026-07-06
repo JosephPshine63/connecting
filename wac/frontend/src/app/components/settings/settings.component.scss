@@ -73,6 +73,40 @@
   }
 }
 
+.settings-bg-swatches {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.settings-bg-swatch {
+  flex: 1;
+  aspect-ratio: 1;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background-color: var(--bg-base);
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: rgba(var(--accent-rgb), 0.4);
+  }
+
+  &.active {
+    border-color: var(--accent);
+  }
+
+  &.swatch-none {
+    font-size: 1.1rem;
+  }
+}
+
 .settings-report-bug {
   width: 100%;
   margin-top: 1.5rem;

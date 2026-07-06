@@ -401,6 +401,7 @@
 
 // Messages area
 .messages-area {
+  position: relative;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -413,11 +414,46 @@
   &::-webkit-scrollbar { width: 4px; }
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  // Optional selectable background pattern (Impostazioni > Sfondo chat),
+  // drawn as a ::before layer instead of the element's own `background` so
+  // it can be tiled/inverted independently of --bg-base. Baked-alpha PNGs
+  // (see public/chat-backgrounds/) show only faint "ink" pixels on a
+  // transparent field; `--chat-bg-invert` (set per theme) flips that ink
+  // from dark to light so the same asset stays visible on both light and
+  // dark themes without needing separate exports per theme.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-repeat: repeat;
+    filter: invert(var(--chat-bg-invert, 0));
+  }
+}
+
+:root[data-chat-bg="birds-solid"] .messages-area::before {
+  background-image: url('/chat-backgrounds/birds-solid.png');
+}
+
+:root[data-chat-bg="birds-red"] .messages-area::before {
+  background-image: url('/chat-backgrounds/birds-red.png');
+}
+
+:root[data-chat-bg="birds-outline"] .messages-area::before {
+  background-image: url('/chat-backgrounds/birds-outline.png');
 }
 
 // Message bubbles
 .message-bubble {
   position: relative;
+  // Own stacking context so the ::before background layer (z-index: -1)
+  // stays scoped behind this bubble's content instead of leaking out to
+  // .messages-area's pattern layer, without changing this element's paint
+  // order relative to its siblings (isolation doesn't assign a numeric
+  // z-index the way `z-index: 0` would).
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   max-width: 65%;

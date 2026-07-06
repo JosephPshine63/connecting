@@ -18,6 +18,25 @@
       }
     </select>
 
+    <label class="settings-label">Sfondo chat</label>
+    <div class="settings-bg-swatches">
+      @for (bg of chatBackgrounds; track bg.id) {
+        <button
+          type="button"
+          class="settings-bg-swatch"
+          [class.active]="chatBackgroundService.background() === bg.id"
+          [class.swatch-none]="bg.id === 'none'"
+          [style.backgroundImage]="bg.id !== 'none' ? 'url(/chat-backgrounds/' + bg.id + '-preview.png)' : null"
+          [title]="bg.label"
+          (click)="chatBackgroundService.setBackground(bg.id)"
+        >
+          @if (bg.id === 'none') {
+            <i class="fas fa-ban"></i>
+          }
+        </button>
+      }
+    </div>
+
     <button class="settings-report-bug" type="button" (click)="onReportBug()">
       <i class="fas fa-bug"></i> Segnala un bug
     </button>

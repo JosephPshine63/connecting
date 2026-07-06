@@ -29,6 +29,11 @@
 
   --font-body:    'Inter', system-ui, sans-serif;
   --font-heading: 'Arvo', serif;
+
+  // Used to flip the baked-alpha chat background patterns (dark ink on
+  // transparent) so they read as a light tint on dark themes instead of
+  // vanishing into the background. 0 = keep as-is (light theme), 1 = invert.
+  --chat-bg-invert: 0;
 }
 
 :root[data-theme="pio-dark"] {
@@ -62,6 +67,8 @@
 
   --font-body:    'Inter', system-ui, sans-serif;
   --font-heading: 'Arvo', serif;
+
+  --chat-bg-invert: 1;
 }
 
 :root[data-theme="blue"] {
@@ -95,6 +102,8 @@
 
   --font-body:    'Inter', system-ui, sans-serif;
   --font-heading: var(--font-body);
+
+  --chat-bg-invert: 1;
 }
 
 :root[data-theme="light"] {
@@ -128,6 +137,8 @@
 
   --font-body:    'Inter', system-ui, sans-serif;
   --font-heading: var(--font-body);
+
+  --chat-bg-invert: 0;
 }
 
 :root[data-theme="dark"] {
@@ -161,4 +172,185 @@
 
   --font-body:    'Inter', system-ui, sans-serif;
   --font-heading: var(--font-body);
+
+  --chat-bg-invert: 1;
+}
+
+// Below: 5 additional accent-color themes sourced from the logo's "senza
+// bordo" color variants (see plan doc) — same 24-property shape as the
+// themes above, all dark-background to keep the vivid accents readable.
+
+:root[data-theme="green"] {
+  --bg-base:        #071208;
+  --bg-panel:       #0E1F10;
+  --bg-glass:       rgba(18, 168, 61, 0.07);
+  --bg-glass-hover: rgba(18, 168, 61, 0.14);
+  --bg-modal:       rgba(10, 20, 11, 0.95);
+  --overlay-scrim:  rgba(0, 0, 0, 0.8);
+
+  --grad-start: #12A83D;
+  --grad-end:   #3FE07A;
+  --accent:     #12A83D;
+  --accent-rgb: 18, 168, 61;
+  --on-accent:  #FFFFFF;
+
+  --text-primary:   #EAF5EC;
+  --text-secondary: #9FB8A6;
+  --text-muted:     #5E7566;
+
+  --bubble-self-bg:   #123A1E;
+  --bubble-friend-bg: #122315;
+
+  --online:  #2ECC71;
+  --offline: #5E7566;
+  --unread:  #12A83D;
+
+  --error:     #F87171;
+  --error-rgb: 248, 113, 113;
+  --border:    rgba(255, 255, 255, 0.08);
+
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-heading: var(--font-body);
+
+  --chat-bg-invert: 1;
+}
+
+:root[data-theme="indigo"] {
+  --bg-base:        #0A0A1A;
+  --bg-panel:       #12122A;
+  --bg-glass:       rgba(47, 49, 149, 0.08);
+  --bg-glass-hover: rgba(47, 49, 149, 0.16);
+  --bg-modal:       rgba(16, 16, 38, 0.95);
+  --overlay-scrim:  rgba(0, 0, 0, 0.8);
+
+  --grad-start: #2F3195;
+  --grad-end:   #6C6FE0;
+  --accent:     #2F3195;
+  --accent-rgb: 47, 49, 149;
+  --on-accent:  #FFFFFF;
+
+  --text-primary:   #E8E8F5;
+  --text-secondary: #9A9AC0;
+  --text-muted:     #5C5C80;
+
+  --bubble-self-bg:   #24266E;
+  --bubble-friend-bg: #16162E;
+
+  --online:  #2ECC71;
+  --offline: #5C5C80;
+  --unread:  #2F3195;
+
+  --error:     #F87171;
+  --error-rgb: 248, 113, 113;
+  --border:    rgba(255, 255, 255, 0.08);
+
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-heading: var(--font-body);
+
+  --chat-bg-invert: 1;
+}
+
+:root[data-theme="magenta"] {
+  --bg-base:        #150512;
+  --bg-panel:       #230D1F;
+  --bg-glass:       rgba(230, 0, 209, 0.08);
+  --bg-glass-hover: rgba(230, 0, 209, 0.16);
+  --bg-modal:       rgba(20, 8, 18, 0.95);
+  --overlay-scrim:  rgba(0, 0, 0, 0.8);
+
+  --grad-start: #E600D1;
+  --grad-end:   #FF5FE0;
+  --accent:     #E600D1;
+  --accent-rgb: 230, 0, 209;
+  --on-accent:  #FFFFFF;
+
+  --text-primary:   #F5E8F3;
+  --text-secondary: #B592AF;
+  --text-muted:     #6B5468;
+
+  --bubble-self-bg:   #3D1338;
+  --bubble-friend-bg: #220F1E;
+
+  --online:  #2ECC71;
+  --offline: #6B5468;
+  --unread:  #E600D1;
+
+  --error:     #F87171;
+  --error-rgb: 248, 113, 113;
+  --border:    rgba(255, 255, 255, 0.08);
+
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-heading: var(--font-body);
+
+  --chat-bg-invert: 1;
+}
+
+:root[data-theme="crimson"] {
+  --bg-base:        #140505;
+  --bg-panel:       #210A0A;
+  --bg-glass:       rgba(191, 0, 0, 0.08);
+  --bg-glass-hover: rgba(191, 0, 0, 0.16);
+  --bg-modal:       rgba(20, 8, 8, 0.95);
+  --overlay-scrim:  rgba(0, 0, 0, 0.8);
+
+  --grad-start: #BF0000;
+  --grad-end:   #FF4D4D;
+  --accent:     #BF0000;
+  --accent-rgb: 191, 0, 0;
+  --on-accent:  #FFFFFF;
+
+  --text-primary:   #F5E7E7;
+  --text-secondary: #B99494;
+  --text-muted:     #6B5252;
+
+  --bubble-self-bg:   #3A1010;
+  --bubble-friend-bg: #210F0F;
+
+  --online:  #2ECC71;
+  --offline: #6B5252;
+  --unread:  #BF0000;
+
+  --error:     #F87171;
+  --error-rgb: 248, 113, 113;
+  --border:    rgba(255, 255, 255, 0.08);
+
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-heading: var(--font-body);
+
+  --chat-bg-invert: 1;
+}
+
+:root[data-theme="earth"] {
+  --bg-base:        #0F0B08;
+  --bg-panel:       #1C1611;
+  --bg-glass:       rgba(138, 115, 96, 0.08);
+  --bg-glass-hover: rgba(138, 115, 96, 0.16);
+  --bg-modal:       rgba(20, 16, 12, 0.95);
+  --overlay-scrim:  rgba(0, 0, 0, 0.8);
+
+  --grad-start: #8A7360;
+  --grad-end:   #B89B7E;
+  --accent:     #8A7360;
+  --accent-rgb: 138, 115, 96;
+  --on-accent:  #FFFFFF;
+
+  --text-primary:   #F0E9E2;
+  --text-secondary: #B3A392;
+  --text-muted:     #6E6255;
+
+  --bubble-self-bg:   #332A22;
+  --bubble-friend-bg: #1E1914;
+
+  --online:  #2ECC71;
+  --offline: #6E6255;
+  --unread:  #8A7360;
+
+  --error:     #F87171;
+  --error-rgb: 248, 113, 113;
+  --border:    rgba(255, 255, 255, 0.08);
+
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-heading: var(--font-body);
+
+  --chat-bg-invert: 1;
 }
