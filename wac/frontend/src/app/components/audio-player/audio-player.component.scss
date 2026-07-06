@@ -1,0 +1,77 @@
+.audio-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+  max-width: 100%;
+  padding: 2px 0;
+}
+
+.audio-play-btn {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.8em;
+
+  i.fa-play { margin-left: 2px; } // optically center the triangle
+
+  &:hover { filter: brightness(1.08); }
+}
+
+.audio-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+}
+
+.audio-track-fill {
+  position: absolute;
+  left: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.audio-track-thumb {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateX(-50%);
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--bg-panel, transparent);
+}
+
+.audio-time {
+  flex: 0 0 auto;
+  font-size: 0.68em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+audio {
+  display: none;
+}

@@ -224,7 +224,7 @@
                 } @else if (message.type === 'VIDEO') {
                   <video controls class="bubble-video" [src]="mediaSrc(message.media![0])" (dblclick)="openLightbox(message)"></video>
                 } @else if (message.type === 'AUDIO') {
-                  <audio controls class="bubble-audio" [src]="mediaSrc(message.media![0])"></audio>
+                  <app-audio-player class="bubble-audio" [src]="mediaSrc(message.media![0])"></app-audio-player>
                 } @else if (message.media) {
                   <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="" (click)="openLightbox(message)">
                 }
@@ -292,7 +292,7 @@
                 } @else if (message.type === 'VIDEO') {
                   <video controls class="bubble-video" [src]="mediaSrc(message.media![0])" (dblclick)="openLightbox(message)"></video>
                 } @else if (message.type === 'AUDIO') {
-                  <audio controls class="bubble-audio" [src]="mediaSrc(message.media![0])"></audio>
+                  <app-audio-player class="bubble-audio" [src]="mediaSrc(message.media![0])"></app-audio-player>
                 } @else if (message.media) {
                   <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="" (click)="openLightbox(message)">
                 }
@@ -366,7 +366,7 @@
           </div>
         } @else if (recordingState === 'preview' || recordingState === 'sending') {
           <div class="voice-preview-bar">
-            <audio controls [src]="recordedPreviewUrl"></audio>
+            <app-audio-player [src]="recordedPreviewUrl!"></app-audio-player>
             <button class="recording-cancel-btn" [disabled]="recordingState === 'sending'" (click)="discardRecording()" title="Scarta">
               <i class="fa-solid fa-trash"></i>
             </button>

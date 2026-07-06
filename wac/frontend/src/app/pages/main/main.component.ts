@@ -33,6 +33,7 @@ import {MessageActionsMenuComponent} from '../../components/message-actions-menu
 import {ReplyPreviewBarComponent} from '../../components/reply-preview-bar/reply-preview-bar.component';
 import {ForwardPickerComponent} from '../../components/forward-picker/forward-picker.component';
 import {ErrorLogMenuComponent} from '../../components/error-log-menu/error-log-menu.component';
+import {AudioPlayerComponent} from '../../components/audio-player/audio-player.component';
 
 const HEARTBEAT_INTERVAL_MS = 60000;
 const ARNO_USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -61,7 +62,8 @@ const MAX_PENDING_MESSAGES = 3;
     MessageActionsMenuComponent,
     ReplyPreviewBarComponent,
     ForwardPickerComponent,
-    ErrorLogMenuComponent
+    ErrorLogMenuComponent,
+    AudioPlayerComponent
   ],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'

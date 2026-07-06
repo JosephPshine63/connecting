@@ -1,0 +1,27 @@
+<div class="audio-player">
+  <button
+    type="button"
+    class="audio-play-btn"
+    (click)="togglePlay()"
+    [attr.aria-label]="playing ? 'Pausa' : 'Riproduci'"
+  >
+    <i class="fa-solid" [class.fa-pause]="playing" [class.fa-play]="!playing"></i>
+  </button>
+
+  <div class="audio-track" #track (click)="onSeek($event)">
+    <div class="audio-track-fill" [style.width.%]="progressPercent"></div>
+    <div class="audio-track-thumb" [style.left.%]="progressPercent"></div>
+  </div>
+
+  <span class="audio-time">{{ displayTime }}</span>
+
+  <audio
+    #audioEl
+    preload="metadata"
+    [src]="src"
+    (loadedmetadata)="onLoadedMetadata()"
+    (timeupdate)="onTimeUpdate()"
+    (ended)="onEnded()"
+    (pause)="onPause()"
+  ></audio>
+</div>
