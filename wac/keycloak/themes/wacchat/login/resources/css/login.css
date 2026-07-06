@@ -474,6 +474,21 @@ html, body {
 }
 
 /* =====================================================================
+   TERMS page
+   ===================================================================== */
+
+.wac-terms-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.wac-terms-actions .wac-btn-primary,
+.wac-terms-actions .wac-btn-outline {
+  width: auto;
+  flex: 1;
+}
+
+/* =====================================================================
    PF5 OVERRIDES for inherited templates
    (register.ftl, logout-confirm.ftl, login-reset-password.ftl, etc.)
    These templates use template.ftl which generates PF5 HTML structure.

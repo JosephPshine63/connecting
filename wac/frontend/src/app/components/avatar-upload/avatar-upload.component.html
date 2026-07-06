@@ -7,7 +7,9 @@
     <h2 class="avatar-upload-title">Foto profilo</h2>
 
     <div class="avatar-upload-preview">
-      @if (currentAvatarUrl) {
+      @if (mode === 'preview' && previewUrl) {
+        <img [src]="previewUrl" alt="">
+      } @else if (currentAvatarUrl) {
         <img [src]="currentAvatarUrl" alt="">
       } @else {
         <i class="fa-solid fa-user"></i>
@@ -24,13 +26,22 @@
     }
 
     <div class="avatar-upload-actions">
-      <button class="avatar-upload-btn primary" (click)="fileInput.click()" [disabled]="uploading">
-        Carica foto
-      </button>
-      @if (currentAvatarUrl) {
-        <button class="avatar-upload-btn danger" (click)="removeAvatar()" [disabled]="uploading">
-          Rimuovi foto
+      @if (mode === 'preview') {
+        <button class="avatar-upload-btn primary" (click)="confirmUpload()" [disabled]="uploading">
+          Usa questa foto
         </button>
+        <button class="avatar-upload-btn danger" (click)="cancelPreview()" [disabled]="uploading">
+          Annulla
+        </button>
+      } @else {
+        <button class="avatar-upload-btn primary" (click)="fileInput.click()" [disabled]="uploading">
+          Carica foto
+        </button>
+        @if (currentAvatarUrl) {
+          <button class="avatar-upload-btn danger" (click)="removeAvatar()" [disabled]="uploading">
+            Rimuovi foto
+          </button>
+        }
       }
     </div>
 
@@ -39,6 +50,7 @@
       type="file"
       [hidden]="true"
       accept=".jpg,.jpeg,.png,.webp"
+      capture="user"
       (change)="onFileSelected($event)"
     >
   </div>

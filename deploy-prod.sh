@@ -171,6 +171,59 @@ set_keycloak_admin_email() {
   ok "Keycloak admin email set to ${ADMIN_EMAIL}"
 }
 
+ensure_admin_user() {
+  [[ -z "${ADMIN_USER_PASSWORD:-}"      ]] && return 0
+  [[ -z "${ADMIN_EMAIL:-}"              ]] && { log "ADMIN_EMAIL not set — skipping admin user seed"; return 0; }
+  [[ -z "${KEYCLOAK_ADMIN_USERNAME:-}"  ]] && return 0
+  [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}"  ]] && return 0
+  local kc="http://localhost:8180"
+  log "Waiting for Keycloak (wacchat realm) to be ready..."
+  local i=0
+  until curl -sf "$kc/realms/wacchat" >/dev/null 2>&1; do
+    (( ++i )); if (( i >= 30 )); then log "wacchat realm not ready — skipping admin user seed"; return 0; fi
+    sleep 2
+  done
+  local token
+  token=$(curl -sf -X POST "$kc/realms/master/protocol/openid-connect/token" \
+    --data-urlencode "client_id=admin-cli" \
+    --data-urlencode "username=${KEYCLOAK_ADMIN_USERNAME}" \
+    --data-urlencode "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+    --data-urlencode "grant_type=password" 2>/dev/null \
+    | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4) || true
+  [[ -z "$token" ]] && { log "Could not get Keycloak token — skipping admin user seed"; return 0; }
+
+  local user_id
+  user_id=$(curl -sf "$kc/admin/realms/wacchat/users?email=${ADMIN_EMAIL}&exact=true" \
+    -H "Authorization: Bearer $token" 2>/dev/null \
+    | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4) || true
+
+  if [[ -z "$user_id" ]]; then
+    log "Creating admin user (${ADMIN_EMAIL}) in wacchat realm..."
+    curl -sf -X POST "$kc/admin/realms/wacchat/users" \
+      -H "Authorization: Bearer $token" \
+      -H "Content-Type: application/json" \
+      -d "{\"username\":\"${ADMIN_EMAIL}\",\"email\":\"${ADMIN_EMAIL}\",\"firstName\":\"Giuseppe Pio\",\"lastName\":\"Ruocco\",\"enabled\":true,\"emailVerified\":true,\"credentials\":[{\"type\":\"password\",\"value\":\"${ADMIN_USER_PASSWORD}\",\"temporary\":false}]}" \
+      >/dev/null 2>&1 || { log "Failed to create admin user — skipping"; return 0; }
+    user_id=$(curl -sf "$kc/admin/realms/wacchat/users?email=${ADMIN_EMAIL}&exact=true" \
+      -H "Authorization: Bearer $token" 2>/dev/null \
+      | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4) || true
+    [[ -z "$user_id" ]] && { log "Admin user created but could not read back id — skipping .env update"; return 0; }
+    ok "Admin user (${ADMIN_EMAIL}) created in wacchat realm"
+  else
+    ok "Admin user (${ADMIN_EMAIL}) already exists in wacchat realm"
+  fi
+
+  if [[ -z "${ADMIN_USER_ID:-}" ]]; then
+    if grep -q '^ADMIN_USER_ID=' "$SCRIPT_DIR/.env"; then
+      sed -i.bak "s/^ADMIN_USER_ID=.*/ADMIN_USER_ID=${user_id}/" "$SCRIPT_DIR/.env" && rm -f "$SCRIPT_DIR/.env.bak"
+    else
+      echo "ADMIN_USER_ID=${user_id}" >> "$SCRIPT_DIR/.env"
+    fi
+    ADMIN_USER_ID="$user_id"
+    ok "Wrote ADMIN_USER_ID=${user_id} to .env"
+  fi
+}
+
 # ─── Preflight checks ────────────────────────────────────────────────────────
 log "=== WacChat deploy — env=$ENV ==="
 
@@ -279,6 +332,7 @@ log "Starting infrastructure (Keycloak + RabbitMQ)..."
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD up -d)
 ok "Infrastructure is up"
 set_keycloak_admin_email
+ensure_admin_user
 
 # Observability stack needs the network created by the infra compose file
 log "Starting observability stack (Prometheus, Grafana, Loki, Tempo)..."
@@ -394,6 +448,7 @@ docker run -d \
   -e KEYCLOAK_ADMIN_USERNAME="${KEYCLOAK_ADMIN_USERNAME:-admin}" \
   -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
   -e ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
+  -e ADMIN_USER_ID="${ADMIN_USER_ID:-}" \
   -e MAIL_USERNAME="${MAIL_USERNAME:-}" \
   -e MAIL_PASSWORD="${MAIL_PASSWORD:-}" \
   -e MAIL_FROM="${MAIL_FROM:-}" \

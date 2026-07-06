@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { UserService } from '../../services/services/user.service';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -10,16 +10,26 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024;
   styleUrl: './avatar-upload.component.scss',
   imports: []
 })
-export class AvatarUploadComponent {
+export class AvatarUploadComponent implements OnDestroy {
 
   @Input() currentAvatarUrl?: string;
   @Output() avatarChanged = new EventEmitter<string | undefined>();
   @Output() closed = new EventEmitter<void>();
 
+  @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
+
   uploading = false;
   errorMessage = '';
 
+  mode: 'view' | 'preview' = 'view';
+  previewUrl: string | null = null;
+  private pendingFile: File | null = null;
+
   constructor(private userService: UserService) {}
+
+  ngOnDestroy(): void {
+    this.revokePreview();
+  }
 
   close(): void {
     this.closed.emit();
@@ -42,10 +52,20 @@ export class AvatarUploadComponent {
     }
 
     this.errorMessage = '';
+    this.pendingFile = file;
+    this.previewUrl = URL.createObjectURL(file);
+    this.mode = 'preview';
+  }
+
+  confirmUpload(): void {
+    if (!this.pendingFile) return;
+    const file = this.pendingFile;
     this.uploading = true;
     this.userService.uploadAvatar({ body: { file } }).subscribe({
       next: user => {
         this.uploading = false;
+        this.revokePreview();
+        this.mode = 'view';
         this.avatarChanged.emit(user.avatarUrl);
       },
       error: () => {
@@ -53,6 +73,23 @@ export class AvatarUploadComponent {
         this.errorMessage = 'Caricamento non riuscito. Riprova.';
       }
     });
+  }
+
+  cancelPreview(): void {
+    this.revokePreview();
+    this.mode = 'view';
+    this.errorMessage = '';
+    if (this.fileInput) {
+      this.fileInput.nativeElement.value = '';
+    }
+  }
+
+  private revokePreview(): void {
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl);
+    }
+    this.previewUrl = null;
+    this.pendingFile = null;
   }
 
   removeAvatar(): void {
