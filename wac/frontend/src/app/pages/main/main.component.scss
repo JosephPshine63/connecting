@@ -468,22 +468,53 @@
     outline-width: 3px;
   }
 
+  // The bubble's background/border/shape live on a ::before layer instead
+  // of directly on .message-bubble: applying `mask-image` straight to
+  // .message-bubble clips ALL of its content to the bubble's box in
+  // Chromium/WebKit — including app-message-actions-menu's absolutely
+  // positioned dropdown, which needs to render outside those bounds. The
+  // ::before is a plain box behind the flex content (z-index: -1), so
+  // masking it only reshapes the visual background, never the overlay menu.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+
+  // Both variants keep the smooth border-radius rounding (safe for
+  // arbitrary text length) and bite a small rounded notch out of the
+  // already-tight "tail" corner via mask, evoking the brand's feather/wing
+  // silhouette (see Risorsa 5/6.png) without reshaping the whole bubble —
+  // a full clip-path trace of that artwork was tried and discarded: its
+  // silhouette narrows to a sliver in its top ~12% of height, which would
+  // clip away text on short, single-line bubbles.
   &.self {
     align-self: flex-end;
-    background: var(--bubble-self-bg);
-    border: 1px solid rgba(var(--accent-rgb), 0.3);
-    border-radius: 16px 16px 4px 16px;
     padding: 8px 12px 4px;
     align-items: flex-end;
+
+    &::before {
+      background: var(--bubble-self-bg);
+      border: 1px solid rgba(var(--accent-rgb), 0.3);
+      border-radius: 16px 16px 4px 16px;
+      mask-image: radial-gradient(circle at 100% 100%, transparent 9px, #fff 9.5px);
+      -webkit-mask-image: radial-gradient(circle at 100% 100%, transparent 9px, #fff 9.5px);
+    }
   }
 
   &.friend {
     align-self: flex-start;
-    background: var(--bubble-friend-bg);
-    border: 1px solid var(--border);
-    border-radius: 16px 16px 16px 4px;
     padding: 8px 12px 4px;
     align-items: flex-start;
+
+    &::before {
+      background: var(--bubble-friend-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px 16px 16px 4px;
+      mask-image: radial-gradient(circle at 0% 100%, transparent 9px, #fff 9.5px);
+      -webkit-mask-image: radial-gradient(circle at 0% 100%, transparent 9px, #fff 9.5px);
+    }
   }
 }
 
