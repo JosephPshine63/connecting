@@ -5,6 +5,11 @@ import { Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Ou
 // downward, or whether it should flip upward instead.
 const DROPDOWN_MAX_HEIGHT = 220;
 
+// Matches the dropdown's CSS min-width (140px) plus a small margin — used as
+// the threshold to decide whether there's enough room to the left of the
+// button to open leftward, or whether it should flip rightward instead.
+const DROPDOWN_MIN_WIDTH = 148;
+
 @Component({
   selector: 'app-message-actions-menu',
   templateUrl: './message-actions-menu.component.html',
@@ -31,6 +36,7 @@ export class MessageActionsMenuComponent implements OnChanges {
   @ViewChild('toggleBtn') toggleBtn?: ElementRef<HTMLButtonElement>;
 
   opensUpward = false;
+  opensRight = false;
 
   // Recomputed whenever the menu transitions to open — covers both the ⋮
   // button toggle and right-click, which sets `open` directly on the parent
@@ -38,6 +44,7 @@ export class MessageActionsMenuComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['open'] && this.open) {
       this.opensUpward = this.computeOpensUpward();
+      this.opensRight = this.computeOpensRight();
     }
   }
 
@@ -58,6 +65,20 @@ export class MessageActionsMenuComponent implements OnChanges {
       ? scrollContainer.getBoundingClientRect().bottom
       : window.innerHeight;
     return boundaryBottom - rect.bottom < DROPDOWN_MAX_HEIGHT;
+  }
+
+  // The dropdown is right-anchored and grows leftward by default, which
+  // clips it against the scrollable messages container's left edge for
+  // narrow, left-aligned (friend) bubbles. Flip it rightward in that case.
+  private computeOpensRight(): boolean {
+    const btn = this.toggleBtn?.nativeElement;
+    if (!btn) return false;
+    const rect = btn.getBoundingClientRect();
+    const scrollContainer = btn.closest('.messages-area');
+    const boundaryLeft = scrollContainer
+      ? scrollContainer.getBoundingClientRect().left
+      : 0;
+    return rect.right - boundaryLeft < DROPDOWN_MIN_WIDTH;
   }
 
   onReply(event: Event): void {

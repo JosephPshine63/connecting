@@ -48,6 +48,11 @@
     bottom: 26px;
   }
 
+  &.opens-right {
+    right: auto;
+    left: 0;
+  }
+
   button {
     background: none;
     border: none;
