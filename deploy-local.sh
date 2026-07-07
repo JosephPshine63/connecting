@@ -125,7 +125,8 @@ _pw_orig="${MAIL_PASSWORD:-}"
 if [[ ${#_pw_orig} -eq 16 ]]; then
   MAIL_PASSWORD="${_pw_orig:0:4} ${_pw_orig:4:4} ${_pw_orig:8:4} ${_pw_orig:12:4}"
 fi
-envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET} ${MAIL_USERNAME} ${MAIL_PASSWORD} ${MAIL_FROM}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
+: "${APP_BASE_URL:=http://localhost:4200}"
+envsubst '${GOOGLE_CLIENT_ID} ${GOOGLE_CLIENT_SECRET} ${MAIL_USERNAME} ${MAIL_PASSWORD} ${MAIL_FROM} ${APP_BASE_URL}' < "$REALM_TEMPLATE" > "$REALM_OUTPUT"
 MAIL_PASSWORD="$_pw_orig"
 
 # Generate RabbitMQ definitions (per-consumer credentials) from template.
