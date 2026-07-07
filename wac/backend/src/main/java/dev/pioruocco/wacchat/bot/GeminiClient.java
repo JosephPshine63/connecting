@@ -36,7 +36,8 @@ public class GeminiClient {
     @CircuitBreaker(name = "gemini", fallbackMethod = "generateReplyFallback")
     @Retry(name = "gemini")
     public String generateReply(List<GeminiContent> conversation) {
-        GenerateContentRequest request = new GenerateContentRequest(conversation);
+        GenerateContentRequest request = new GenerateContentRequest(
+                SystemInstruction.of(BotConstants.SYSTEM_INSTRUCTION), conversation);
         GenerateContentResponse response = webClient.post()
                 .uri("/v1beta/models/" + model + ":generateContent")
                 .bodyValue(request)
@@ -76,7 +77,14 @@ public class GeminiClient {
     record GeminiPart(String text) {
     }
 
-    private record GenerateContentRequest(List<GeminiContent> contents) {
+    // No "role" field — Gemini's system_instruction Content object doesn't take one.
+    record SystemInstruction(List<GeminiPart> parts) {
+        static SystemInstruction of(String text) {
+            return new SystemInstruction(List.of(new GeminiPart(text)));
+        }
+    }
+
+    private record GenerateContentRequest(SystemInstruction systemInstruction, List<GeminiContent> contents) {
     }
 
     private record GenerateContentResponse(List<Candidate> candidates) {

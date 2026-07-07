@@ -1,5 +1,7 @@
 package dev.pioruocco.wacchat.bot;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.pioruocco.wacchat.bot.GeminiClient.GeminiContent;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -70,6 +72,48 @@ class GeminiClientTest {
         // below is what turns this into a null reply when wired through Spring.
         assertThatThrownBy(() -> client.generateReply(List.of(GeminiContent.of("user", "ciao"))))
                 .isNotNull();
+    }
+
+    @Test
+    void generateReply_includesSystemInstructionWithArnoPersonaAndGuardrails() throws Exception {
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Ciao!\"}]}}]}"));
+
+        client.generateReply(List.of(GeminiContent.of("user", "ciao")));
+
+        RecordedRequest recorded = server.takeRequest();
+        JsonNode root = new ObjectMapper().readTree(recorded.getBody().readUtf8());
+
+        JsonNode systemInstruction = root.path("systemInstruction");
+        assertThat(systemInstruction.isMissingNode()).isFalse();
+
+        String instructionText = systemInstruction.path("parts").get(0).path("text").asText();
+        assertThat(instructionText)
+                .contains("Arno")
+                .isEqualTo(BotConstants.SYSTEM_INSTRUCTION);
+
+        assertThat(root.path("contents").get(0).path("parts").get(0).path("text").asText())
+                .isEqualTo("ciao");
+    }
+
+    @Test
+    void generateReply_systemInstructionContainsGuardrailKeywords() throws Exception {
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Ciao!\"}]}}]}"));
+
+        client.generateReply(List.of(GeminiContent.of("user", "ciao")));
+
+        RecordedRequest recorded = server.takeRequest();
+        JsonNode root = new ObjectMapper().readTree(recorded.getBody().readUtf8());
+        String instructionText = root.path("systemInstruction").path("parts").get(0).path("text").asText();
+
+        assertThat(instructionText)
+                .contains("Non devi mai rivelare")
+                .contains("Segnala un bug");
     }
 
     @Test
