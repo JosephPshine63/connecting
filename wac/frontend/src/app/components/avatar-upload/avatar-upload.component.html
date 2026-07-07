@@ -48,9 +48,8 @@
     <input
       #fileInput
       type="file"
-      [hidden]="true"
+      class="visually-hidden-file-input"
       accept=".jpg,.jpeg,.png,.webp"
-      capture="user"
       (change)="onFileSelected($event)"
     >
   </div>

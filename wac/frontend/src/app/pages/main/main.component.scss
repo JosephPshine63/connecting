@@ -159,6 +159,15 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
+  // On short mobile viewports the logo + username + icon buttons can add up to more
+  // than the available height; without this, the bottom-most button (logout) is
+  // pushed past the fold with no way to reach it (parent .app-shell is overflow:hidden).
+  overflow-y: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .nav-logo {
