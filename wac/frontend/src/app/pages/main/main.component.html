@@ -428,7 +428,7 @@
               (change)="uploadMedia($event.target)"
             >
             <div class="emoji-wrapper" (click)="$event.stopPropagation()">
-              <button class="input-icon-btn" (click)="showEmojis = !showEmojis" title="Emoji">
+              <button class="input-icon-btn" (click)="toggleEmojiPicker(messageInput)" title="Emoji">
                 <i class="fa-regular fa-face-smile"></i>
               </button>
               @if (showEmojis) {
@@ -442,6 +442,7 @@
               }
             </div>
             <input
+              #messageInput
               type="text"
               class="message-input"
               [disabled]="isChatPending() && pendingLimitReached()"

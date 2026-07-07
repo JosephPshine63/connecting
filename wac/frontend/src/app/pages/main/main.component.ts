@@ -534,6 +534,17 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.messageContent += emoji.native;
   }
 
+  // Blurring the text input dismisses the native mobile keyboard before the custom
+  // picker opens — without this, the OS keyboard stays up behind the panel, doubling
+  // the space needed at the bottom of the screen and squeezing/overlapping both.
+  toggleEmojiPicker(messageInput: HTMLInputElement): void {
+    const opening = !this.showEmojis;
+    this.showEmojis = opening;
+    if (opening) {
+      messageInput.blur();
+    }
+  }
+
   onClick() {
     this.setMessagesToSeen();
   }
