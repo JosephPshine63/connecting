@@ -137,6 +137,10 @@
   display: flex;
   width: 100vw;
   height: 100vh;
+  // 100vh on mobile Safari/Chrome is the layout viewport, taller than what's actually
+  // visible once the address bar/toolbar is showing — dvh tracks the real visible
+  // viewport so the bottom-docked input bar can't end up outside the tappable area.
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg-base);
 
@@ -652,6 +656,22 @@
   align-items: center;
   gap: 8px;
   padding: 0 12px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+// iOS Safari (and WebKit-based mobile browsers) unreliably ignore a programmatic
+// .click() on a display:none input — [hidden]/display:none must be avoided here,
+// this keeps the element rendered (off-screen, invisible) instead.
+.visually-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .input-icon-btn {
