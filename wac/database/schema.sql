@@ -111,6 +111,19 @@ ALTER TABLE blocked_users
 ALTER TABLE blocked_users
     ADD CONSTRAINT FK_BLOCKED_USERS_ON_BLOCKED FOREIGN KEY (blocked_id) REFERENCES users (id);
 
+-- Replaces the old single-slot users.active_session_id column (left in place, now
+-- unused/dead — no migration drops columns in this file, see convention above) with
+-- an up-to-`application.session.max-active-sessions` set of per-tab entries.
+CREATE TABLE IF NOT EXISTS user_active_sessions
+(
+    user_id   VARCHAR(255)                NOT NULL,
+    tab_id    VARCHAR(255),
+    last_seen TIMESTAMP WITHOUT TIME ZONE
+);
+
+ALTER TABLE user_active_sessions
+    ADD CONSTRAINT FK_USER_ACTIVE_SESSIONS_ON_USER FOREIGN KEY (user_id) REFERENCES users (id);
+
 CREATE SEQUENCE IF NOT EXISTS user_reports_seq START WITH 1 INCREMENT BY 1;
 
 CREATE TABLE IF NOT EXISTS user_reports

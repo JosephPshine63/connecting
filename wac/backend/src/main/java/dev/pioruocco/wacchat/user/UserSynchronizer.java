@@ -53,7 +53,7 @@ public class UserSynchronizer {
             if (sessionGuard.isConflicting(user, tabId)) {
                 throw new SessionConflictException(user.getId());
             }
-            user.setActiveSessionId(tabId);
+            sessionGuard.recordSession(user, tabId);
         }
         userMapper.updateFromTokenAttributes(user, token.getClaims());
     }

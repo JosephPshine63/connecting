@@ -104,6 +104,7 @@ application:
     user-id: ${ADMIN_USER_ID:}
   session:
     stale-after-seconds: ${SESSION_STALE_SECONDS:120}
+    max-active-sessions: ${SESSION_MAX_ACTIVE:3}
     internal-api-key: ${BACKEND_INTERNAL_API_KEY:}
   notification:
     exchange: wacchat.notifications

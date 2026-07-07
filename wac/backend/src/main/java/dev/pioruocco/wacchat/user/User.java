@@ -2,9 +2,12 @@ package dev.pioruocco.wacchat.user;
 
 import dev.pioruocco.wacchat.chat.Chat;
 import dev.pioruocco.wacchat.common.BaseAuditingEntity;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PostLoad;
@@ -18,6 +21,7 @@ import lombok.Setter;
 import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -59,8 +63,13 @@ public class User extends BaseAuditingEntity implements Persistable<String> {
     private LocalDateTime lastSeen;
     @Column(length = 500)
     private String avatarUrl;
-    @Column(name = "active_session_id", length = 255)
-    private String activeSessionId;
+    // Up to `application.session.max-active-sessions` concurrent tabs/devices are
+    // tolerated (see SessionGuard) — each entry is one tab's tabId + its own last-seen
+    // timestamp, independent of the user-level `lastSeen` above (which tracks any request,
+    // not per-tab liveness).
+    @ElementCollection
+    @CollectionTable(name = "user_active_sessions", joinColumns = @JoinColumn(name = "user_id"))
+    private List<ActiveSession> activeSessions = new ArrayList<>();
 
     @OneToMany(mappedBy = "sender")
     private List<Chat> chatsAsSender;

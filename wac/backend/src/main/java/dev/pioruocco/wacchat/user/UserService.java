@@ -115,13 +115,14 @@ public class UserService {
     }
 
     public void clearActiveSession(Authentication authentication, String tabId) {
+        if (tabId == null) {
+            return;
+        }
+        // Only release this one tab's slot — other concurrent tabs/devices keep theirs.
         userRepository.findByPublicId(authentication.getName())
                 .ifPresent(user -> {
-                    // Only release the lock if it's still held by the tab that's asking — a
-                    // stale/losing tab closing shouldn't be able to kick out the tab that has
-                    // since taken over the single-session lock.
-                    if (tabId == null || tabId.equals(user.getActiveSessionId())) {
-                        user.setActiveSessionId(null);
+                    boolean removed = user.getActiveSessions().removeIf(session -> tabId.equals(session.getTabId()));
+                    if (removed) {
                         userRepository.save(user);
                     }
                 });
