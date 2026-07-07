@@ -1,4 +1,5 @@
-import { AfterViewChecked, Component, ElementRef, Input, ViewChild } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, Input, ViewChild, inject } from '@angular/core';
+import { ErrorLogService } from '../../utils/error-log/error-log.service';
 
 @Component({
   selector: 'app-call-tile',
@@ -18,6 +19,8 @@ export class CallTileComponent implements AfterViewChecked {
   @ViewChild('videoEl') videoRef?: ElementRef<HTMLVideoElement>;
   @ViewChild('audioEl') audioRef?: ElementRef<HTMLAudioElement>;
 
+  private readonly errorLogService = inject(ErrorLogService);
+
   // Same "re-check every view check" approach the pre-mesh CallComponent used for its
   // single local/remote video: a plain ViewChild lookup right after this.stream changes
   // (e.g. a peer joining mid-call, or this tile only just entering the @for list) can
@@ -26,10 +29,25 @@ export class CallTileComponent implements AfterViewChecked {
   ngAfterViewChecked(): void {
     if (this.videoRef && this.videoRef.nativeElement.srcObject !== this.stream) {
       this.videoRef.nativeElement.srcObject = this.stream;
+      this.playOrLog(this.videoRef.nativeElement);
     }
     if (this.audioRef && this.audioRef.nativeElement.srcObject !== this.stream) {
       this.audioRef.nativeElement.srcObject = this.stream;
+      this.playOrLog(this.audioRef.nativeElement);
     }
+  }
+
+  // The `autoplay` attribute alone doesn't surface anything when a mobile browser's
+  // playback policy silently blocks it — an explicit .play() call at least lets us log
+  // the rejection where the error-log menu can show it (there's no devtools on a phone).
+  private playOrLog(element: HTMLMediaElement): void {
+    if (!this.stream) return;
+    element.play().catch(err => {
+      this.errorLogService.report({
+        source: 'client',
+        message: `Riproduzione ${this.callType === 'VIDEO' ? 'video' : 'audio'} chiamata bloccata dal browser: ${err?.message ?? err}`
+      });
+    });
   }
 
   get initial(): string {
