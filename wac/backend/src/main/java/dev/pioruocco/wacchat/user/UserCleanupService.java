@@ -3,6 +3,7 @@ package dev.pioruocco.wacchat.user;
 import dev.pioruocco.wacchat.chat.Chat;
 import dev.pioruocco.wacchat.chat.ChatRepository;
 import dev.pioruocco.wacchat.message.MessageRepository;
+import dev.pioruocco.wacchat.push.PushSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +27,7 @@ public class UserCleanupService {
     private final UserRepository userRepository;
     private final ChatRepository chatRepository;
     private final MessageRepository messageRepository;
+    private final PushSubscriptionRepository pushSubscriptionRepository;
 
     @Value("${application.keycloak.admin-url}")
     private String keycloakAdminUrl;
@@ -82,6 +84,7 @@ public class UserCleanupService {
             messageRepository.deleteMessagesByChatId(chat.getId());
         }
         chatRepository.deleteAll(userChats);
+        pushSubscriptionRepository.deleteByUserId(user.getId());
         userRepository.delete(user);
 
         log.info("Cleanup: deleted user {} ({})", user.getEmail(), user.getId());

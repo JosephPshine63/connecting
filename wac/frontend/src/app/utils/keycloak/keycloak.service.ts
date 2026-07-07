@@ -4,6 +4,7 @@ import {Router} from '@angular/router';
 import {HttpClient} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
 import { environment } from '../../../environments/environment';
+import {PushSubscriptionService} from '../push/push-subscription.service';
 
 const TAB_ID_STORAGE_KEY = 'wacchat_tab_id';
 
@@ -17,7 +18,8 @@ export class KeycloakService {
 
   constructor(
     private router: Router,
-    private http: HttpClient
+    private http: HttpClient,
+    private pushSubscriptionService: PushSubscriptionService
   ) {
   }
 
@@ -68,6 +70,7 @@ export class KeycloakService {
   }
 
   async logout() {
+    await this.pushSubscriptionService.unsubscribe();
     try {
       await firstValueFrom(this.http.delete<void>('/api/v1/users/me/session'));
     } catch {

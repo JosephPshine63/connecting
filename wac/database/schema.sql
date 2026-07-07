@@ -202,3 +202,25 @@ ALTER TABLE chat_members
     ADD CONSTRAINT FK_CHAT_MEMBERS_ON_CHAT FOREIGN KEY (chat_id) REFERENCES chat (id);
 ALTER TABLE chat_members
     ADD CONSTRAINT FK_CHAT_MEMBERS_ON_USER FOREIGN KEY (user_id) REFERENCES users (id);
+
+-- push_subscriptions: one row per browser/device Service Worker registration (Web Push).
+-- Unique on endpoint ALONE, not (user_id, endpoint) — a shared device re-subscribing under
+-- a different logged-in user reassigns the row instead of duplicating it.
+
+CREATE SEQUENCE IF NOT EXISTS push_subscriptions_seq START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE IF NOT EXISTS push_subscriptions
+(
+    id                 BIGINT                      NOT NULL,
+    created_date       TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    last_modified_date TIMESTAMP WITHOUT TIME ZONE,
+    user_id            VARCHAR(255)                NOT NULL,
+    endpoint           TEXT                        NOT NULL,
+    p256dh             VARCHAR(255)                NOT NULL,
+    auth_key           VARCHAR(255)                NOT NULL,
+    CONSTRAINT pk_push_subscriptions PRIMARY KEY (id),
+    CONSTRAINT uk_push_subscriptions_endpoint UNIQUE (endpoint)
+);
+
+ALTER TABLE push_subscriptions
+    ADD CONSTRAINT FK_PUSH_SUBSCRIPTIONS_ON_USER FOREIGN KEY (user_id) REFERENCES users (id);

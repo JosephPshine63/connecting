@@ -20,8 +20,11 @@ export class CallApiService {
 
   constructor(private http: HttpClient) {}
 
-  invite(chatId: string, invitees: InviteeOffer[], callType: 'AUDIO' | 'VIDEO'): Observable<void> {
-    return this.http.post<void>(`/api/v1/calls/${chatId}/invite`, { invitees, callType });
+  // fromUserName is self-asserted by the frontend (call-service is deliberately DB-free and
+  // never looks up display names) — used only to personalize the callee's push notification
+  // title, not a security boundary.
+  invite(chatId: string, invitees: InviteeOffer[], callType: 'AUDIO' | 'VIDEO', fromUserName: string | null): Observable<void> {
+    return this.http.post<void>(`/api/v1/calls/${chatId}/invite`, { invitees, callType, fromUserName });
   }
 
   answer(chatId: string, sdpAnswer: string): Observable<void> {

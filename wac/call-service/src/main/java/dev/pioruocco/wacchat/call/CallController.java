@@ -29,7 +29,7 @@ public class CallController {
     @PostMapping("/{chatId}/invite")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void invite(@PathVariable String chatId, @RequestBody InviteRequest request, Authentication authentication) {
-        callService.invite(chatId, authentication.getName(), request.invitees(), request.callType());
+        callService.invite(chatId, authentication.getName(), request.fromUserName(), request.invitees(), request.callType());
     }
 
     @PostMapping("/{chatId}/answer")
@@ -62,7 +62,7 @@ public class CallController {
         callService.end(chatId, authentication.getName(), request.reason());
     }
 
-    public record InviteRequest(List<InviteeOffer> invitees, String callType) {
+    public record InviteRequest(List<InviteeOffer> invitees, String callType, String fromUserName) {
     }
 
     public record AnswerRequest(String sdpAnswer) {

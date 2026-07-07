@@ -136,6 +136,29 @@
 			<version>4.12.0</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>nl.martijndwars</groupId>
+			<artifactId>web-push</artifactId>
+			<version>5.1.2</version>
+		</dependency>
+		<!-- web-push declares these as runtime-scope (httpasyncclient, for the org.apache.http.HttpResponse
+		     PushService#send return type) or optional (bcprov, and outdated at that — jdk15on:1.70) transitive
+		     dependencies, so neither is on our compile classpath by default; redeclared explicitly here. -->
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpasyncclient</artifactId>
+			<version>4.1.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bitbucket.b_c</groupId>
+			<artifactId>jose4j</artifactId>
+			<version>0.7.9</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk18on</artifactId>
+			<version>1.84</version>
+		</dependency>
 	</dependencies>
 
 	<build>

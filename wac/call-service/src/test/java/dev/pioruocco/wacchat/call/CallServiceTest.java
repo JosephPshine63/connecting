@@ -55,7 +55,7 @@ class CallServiceTest {
     }
 
     private void invite1to1(String sdpOffer) {
-        callService.invite(CHAT_ID, CALLER_ID, List.of(new InviteeOffer(CALLEE_ID, sdpOffer)), "AUDIO");
+        callService.invite(CHAT_ID, CALLER_ID, "Caller Name", List.of(new InviteeOffer(CALLEE_ID, sdpOffer)), "AUDIO");
     }
 
     @SuppressWarnings("unchecked")
@@ -271,7 +271,7 @@ class CallServiceTest {
 
     @Test
     void invite_selfInvite_throwsBadRequest() {
-        assertThatThrownBy(() -> callService.invite(CHAT_ID, CALLER_ID, List.of(new InviteeOffer(CALLER_ID, "sdp")), "AUDIO"))
+        assertThatThrownBy(() -> callService.invite(CHAT_ID, CALLER_ID, "Caller Name", List.of(new InviteeOffer(CALLER_ID, "sdp")), "AUDIO"))
                 .isInstanceOf(ResponseStatusException.class);
         verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
     }
@@ -280,7 +280,7 @@ class CallServiceTest {
     void invite_duplicateInvitees_throwsBadRequest() {
         List<InviteeOffer> invitees = List.of(new InviteeOffer(INVITEE_1, "sdp-1"), new InviteeOffer(INVITEE_1, "sdp-1b"));
 
-        assertThatThrownBy(() -> callService.invite(CHAT_ID, CALLER_ID, invitees, "AUDIO"))
+        assertThatThrownBy(() -> callService.invite(CHAT_ID, CALLER_ID, "Caller Name", invitees, "AUDIO"))
                 .isInstanceOf(ResponseStatusException.class);
         verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
     }
@@ -291,7 +291,7 @@ class CallServiceTest {
         List<InviteeOffer> invitees = List.of(
                 new InviteeOffer(INVITEE_1, "sdp-1"), new InviteeOffer(INVITEE_2, "sdp-2"), new InviteeOffer("invitee-3", "sdp-3"));
 
-        assertThatThrownBy(() -> callService.invite(CHAT_ID, CALLER_ID, invitees, "AUDIO"))
+        assertThatThrownBy(() -> callService.invite(CHAT_ID, CALLER_ID, "Caller Name", invitees, "AUDIO"))
                 .isInstanceOf(ResponseStatusException.class);
         verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
     }
@@ -300,7 +300,7 @@ class CallServiceTest {
 
     private void inviteGroup() {
         when(chatValidationClient.isGroupCallAllowed(CHAT_ID, CALLER_ID, List.of(INVITEE_1, INVITEE_2))).thenReturn(true);
-        callService.invite(CHAT_ID, CALLER_ID,
+        callService.invite(CHAT_ID, CALLER_ID, "Caller Name",
                 List.of(new InviteeOffer(INVITEE_1, "sdp-1"), new InviteeOffer(INVITEE_2, "sdp-2")), "VIDEO");
     }
 
@@ -325,7 +325,7 @@ class CallServiceTest {
     void groupInvite_secondInviteWhileActive_throwsConflict() {
         inviteGroup();
 
-        assertThatThrownBy(() -> callService.invite(CHAT_ID, CALLER_ID,
+        assertThatThrownBy(() -> callService.invite(CHAT_ID, CALLER_ID, "Caller Name",
                 List.of(new InviteeOffer(INVITEE_1, "sdp-1b"), new InviteeOffer(INVITEE_2, "sdp-2b")), "VIDEO"))
                 .isInstanceOf(ResponseStatusException.class);
 

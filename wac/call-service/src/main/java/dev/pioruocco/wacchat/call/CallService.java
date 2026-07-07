@@ -36,7 +36,7 @@ public class CallService {
     @Value("${application.call.max-participants}")
     private int maxParticipants;
 
-    public void invite(String chatId, String callerId, List<InviteeOffer> invitees, String callType) {
+    public void invite(String chatId, String callerId, String callerName, List<InviteeOffer> invitees, String callType) {
         if (invitees == null || invitees.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one invitee is required");
         }
@@ -63,7 +63,7 @@ public class CallService {
 
         for (InviteeOffer invitee : invitees) {
             publish(invitee.peerId(),
-                    new CallSignal(chatId, callerId, CallSignalType.INVITE, callType, invitee.sdpOffer(), null, null, null));
+                    new CallSignal(chatId, callerId, CallSignalType.INVITE, callType, invitee.sdpOffer(), null, null, null, callerName));
         }
     }
 
@@ -78,7 +78,7 @@ public class CallService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Call is no longer ringing");
         }
         publish(session.getCallerId(),
-                new CallSignal(chatId, calleeId, CallSignalType.ANSWER, session.getCallType(), sdpAnswer, null, null, null));
+                new CallSignal(chatId, calleeId, CallSignalType.ANSWER, session.getCallType(), sdpAnswer, null, null, null, null));
 
         // Mesh bootstrap: every other already-joined participant (besides the caller, who
         // already has a direct link to the new joiner from the original invite/answer)
@@ -86,7 +86,7 @@ public class CallService {
         for (String otherId : session.joinedParticipantIds()) {
             if (!otherId.equals(calleeId) && !otherId.equals(session.getCallerId())) {
                 publish(otherId, new CallSignal(chatId, calleeId, CallSignalType.PARTICIPANT_JOINED,
-                        session.getCallType(), null, null, null, null));
+                        session.getCallType(), null, null, null, null, null));
             }
         }
     }
@@ -94,20 +94,20 @@ public class CallService {
     public void peerOffer(String chatId, String fromUserId, String peerId, String sdpOffer) {
         CallSession session = requireParticipant(chatId, fromUserId);
         requireParticipantId(session, peerId);
-        publish(peerId, new CallSignal(chatId, fromUserId, CallSignalType.PEER_OFFER, session.getCallType(), sdpOffer, null, null, null));
+        publish(peerId, new CallSignal(chatId, fromUserId, CallSignalType.PEER_OFFER, session.getCallType(), sdpOffer, null, null, null, null));
     }
 
     public void peerAnswer(String chatId, String fromUserId, String peerId, String sdpAnswer) {
         CallSession session = requireParticipant(chatId, fromUserId);
         requireParticipantId(session, peerId);
-        publish(peerId, new CallSignal(chatId, fromUserId, CallSignalType.PEER_ANSWER, session.getCallType(), sdpAnswer, null, null, null));
+        publish(peerId, new CallSignal(chatId, fromUserId, CallSignalType.PEER_ANSWER, session.getCallType(), sdpAnswer, null, null, null, null));
     }
 
     public void iceCandidate(String chatId, String fromUserId, String peerId, String candidate, String sdpMid, Integer sdpMLineIndex) {
         CallSession session = requireParticipant(chatId, fromUserId);
         requireParticipantId(session, peerId);
         publish(peerId,
-                new CallSignal(chatId, fromUserId, CallSignalType.ICE_CANDIDATE, session.getCallType(), null, candidate, sdpMid, sdpMLineIndex));
+                new CallSignal(chatId, fromUserId, CallSignalType.ICE_CANDIDATE, session.getCallType(), null, candidate, sdpMid, sdpMLineIndex, null));
     }
 
     public void end(String chatId, String userId, String reason) {
@@ -122,7 +122,7 @@ public class CallService {
         ParticipantState endState = signalType == CallSignalType.REJECT ? ParticipantState.DECLINED : ParticipantState.LEFT;
         session.leave(userId, endState);
 
-        CallSignal signal = new CallSignal(chatId, userId, signalType, session.getCallType(), null, null, null, null);
+        CallSignal signal = new CallSignal(chatId, userId, signalType, session.getCallType(), null, null, null, null, null);
         for (String otherId : session.activeParticipantIds()) {
             publish(otherId, signal);
         }
@@ -145,7 +145,7 @@ public class CallService {
                     // roster — the timed-out participant's own client uses it the same way
                     // an END/REJECT sender id is used, to dismiss their own incoming banner.
                     CallSignal missed = new CallSignal(session.getChatId(), ringingId, CallSignalType.MISSED,
-                            session.getCallType(), null, null, null, null);
+                            session.getCallType(), null, null, null, null, null);
                     publish(session.getCallerId(), missed);
                     publish(ringingId, missed);
                 }

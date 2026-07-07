@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 public class CallSignalListener {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final PushNotificationClient pushNotificationClient;
 
     @RabbitListener(queues = "${application.call.queue}")
     public void onCallSignalEvent(CallSignalEvent event) {
@@ -19,5 +20,15 @@ public class CallSignalListener {
         // Same /queue prefix requirement as NotificationListener — enableStompBrokerRelay
         // in WebSocketConfig only forwards /topic and /queue destinations.
         messagingTemplate.convertAndSendToUser(event.toUserId(), "/queue/call", event.signal());
+
+        // Only INVITE is worth waking a backgrounded/closed client for — ANSWER/ICE/PEER_*
+        // are mid-call plumbing between already-connected parties, END/REJECT/BUSY/MISSED/
+        // PARTICIPANT_JOINED are post-hoc status updates.
+        if (event.signal().type() == CallSignalType.INVITE) {
+            String callerName = event.signal().fromUserName();
+            String title = (callerName != null && !callerName.isBlank())
+                    ? callerName + " ti sta chiamando" : "Chiamata in arrivo";
+            pushNotificationClient.send(event.toUserId(), title, "Tocca per rispondere", event.signal().chatId());
+        }
     }
 }

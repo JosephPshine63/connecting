@@ -42,6 +42,7 @@ import {ErrorLogService} from '../../utils/error-log/error-log.service';
 import {AudioPlayerComponent} from '../../components/audio-player/audio-player.component';
 import {GroupCreateComponent} from '../../components/group-create/group-create.component';
 import {GroupMembersComponent} from '../../components/group-members/group-members.component';
+import {PushSubscriptionService} from '../../utils/push/push-subscription.service';
 
 const HEARTBEAT_INTERVAL_MS = 60000;
 const ARNO_USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -165,6 +166,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     private muteService: MuteService,
     private supportService: SupportService,
     private errorLogService: ErrorLogService,
+    private pushSubscriptionService: PushSubscriptionService,
   ) {
   }
 
@@ -200,6 +202,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   ngOnInit(): void {
     this.browserNotifications.requestPermission();
+    void this.pushSubscriptionService.registerServiceWorkerAndSubscribe();
     this.initWebSocket();
     this.getAllChats();
     this.refreshCurrentUser();
@@ -1448,7 +1451,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
         peerId: p.userId,
         sdpOffer: await this.webRtcCallService.createOfferFor(p.userId, callType)
       })));
-      this.callApiService.invite(chatId, offers, callType).subscribe({
+      const fromUserName = this.currentUser?.username ?? this.keycloakService.fullName;
+      this.callApiService.invite(chatId, offers, callType, fromUserName).subscribe({
         next: () => this.ngZone.run(() => this.confirmCallSession()),
         error: (err) => {
           console.error('[call] invite request failed', err);
