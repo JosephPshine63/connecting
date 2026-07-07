@@ -354,3 +354,21 @@
 
   --chat-bg-invert: 1;
 }
+
+// Chat background patterns (Impostazioni > Sfondo chat). Kept in this global
+// stylesheet rather than main.component.scss: component styles get scoped by
+// Angular's view encapsulation, which appends an [_ngcontent-*] attribute to
+// every simple selector including :root — but <html> is never part of the
+// component's own template, so it never receives that attribute and the rule
+// can never match. Global styles aren't scoped, so :root works here.
+:root[data-chat-bg="birds-solid"] .messages-area::before {
+  background-image: url('/chat-backgrounds/birds-solid.png');
+}
+
+:root[data-chat-bg="birds-red"] .messages-area::before {
+  background-image: url('/chat-backgrounds/birds-red.png');
+}
+
+:root[data-chat-bg="birds-outline"] .messages-area::before {
+  background-image: url('/chat-backgrounds/birds-outline.png');
+}

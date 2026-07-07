@@ -434,18 +434,6 @@
   }
 }
 
-:root[data-chat-bg="birds-solid"] .messages-area::before {
-  background-image: url('/chat-backgrounds/birds-solid.png');
-}
-
-:root[data-chat-bg="birds-red"] .messages-area::before {
-  background-image: url('/chat-backgrounds/birds-red.png');
-}
-
-:root[data-chat-bg="birds-outline"] .messages-area::before {
-  background-image: url('/chat-backgrounds/birds-outline.png');
-}
-
 // Message bubbles
 .message-bubble {
   position: relative;
