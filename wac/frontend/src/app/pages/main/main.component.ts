@@ -997,6 +997,10 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.handleChatRequest(notification);
         return;
       }
+      if (notification.type === 'GROUP_ADDED') {
+        this.handleGroupAdded(notification);
+        return;
+      }
       if (notification.type === 'CHAT_REQUEST_ACCEPTED') {
         this.handleChatRequestAccepted(notification);
         return;
@@ -1118,6 +1122,22 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.browserNotifications.notify(
       notification.chatName || 'Nuova richiesta di chat',
       'Vuole iniziare una chat con te',
+      () => this.ngZone.run(() => {
+        const chat = this.chats.find(c => c.id === notification.chatId);
+        if (chat) this.chatSelected(chat);
+      })
+    );
+  }
+
+  // Refetches the whole chat list rather than synthesizing a ChatResponse locally —
+  // group chats carry members/role/type fields a hand-built object would have to guess at,
+  // and this notification is rare enough (group created/joined) that the extra round-trip
+  // doesn't matter.
+  private handleGroupAdded(notification: Notification): void {
+    this.getAllChats();
+    this.browserNotifications.notify(
+      notification.chatName || 'Nuovo gruppo',
+      'Sei stato aggiunto a un gruppo',
       () => this.ngZone.run(() => {
         const chat = this.chats.find(c => c.id === notification.chatId);
         if (chat) this.chatSelected(chat);
@@ -1550,6 +1570,21 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     // The session already exists in call-service's CallSessionStore by the time this
     // signal arrives (invite() created it before publishing) — no queueing needed here.
     this.confirmCallSession();
+    // The in-call banner overlay already covers the focused-tab case; a desktop
+    // notification here is only useful when the tab isn't in front (background tab,
+    // other app, phone locked) — same idea as maybeShowDesktopNotification, but calls
+    // aren't scoped to "is this chat currently open" since the banner is global.
+    if (!document.hasFocus()) {
+      const chatId = this.activeCallChatId;
+      this.browserNotifications.notify(
+        name || 'Chiamata in arrivo',
+        this.activeCallType === 'VIDEO' ? 'Videochiamata in arrivo' : 'Chiamata in arrivo',
+        () => this.ngZone.run(() => {
+          const chat = this.chats.find(c => c.id === chatId);
+          if (chat) this.chatSelected(chat);
+        })
+      );
+    }
   }
 
   private handleAnswerSignal(signal: CallSignal): void {

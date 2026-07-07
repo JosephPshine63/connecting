@@ -1,5 +1,6 @@
 package dev.pioruocco.wacchat.chat;
 
+import dev.pioruocco.wacchat.notification.NotificationService;
 import dev.pioruocco.wacchat.user.User;
 import dev.pioruocco.wacchat.user.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -39,12 +40,14 @@ class GroupChatServiceTest {
     private UserRepository userRepository;
     @Mock
     private ChatMapper mapper;
+    @Mock
+    private NotificationService notificationService;
 
     private GroupChatService groupChatService;
 
     @BeforeEach
     void setUp() {
-        groupChatService = new GroupChatService(chatRepository, chatMemberRepository, userRepository, mapper);
+        groupChatService = new GroupChatService(chatRepository, chatMemberRepository, userRepository, mapper, notificationService);
     }
 
     @Test

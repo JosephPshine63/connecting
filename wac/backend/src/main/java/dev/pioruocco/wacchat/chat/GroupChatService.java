@@ -1,5 +1,8 @@
 package dev.pioruocco.wacchat.chat;
 
+import dev.pioruocco.wacchat.notification.Notification;
+import dev.pioruocco.wacchat.notification.NotificationService;
+import dev.pioruocco.wacchat.notification.NotificationType;
 import dev.pioruocco.wacchat.user.User;
 import dev.pioruocco.wacchat.user.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -28,6 +31,7 @@ public class GroupChatService {
     private final ChatMemberRepository chatMemberRepository;
     private final UserRepository userRepository;
     private final ChatMapper mapper;
+    private final NotificationService notificationService;
 
     @Transactional
     public ChatResponse createGroup(String creatorId, List<String> memberIds, String name) {
@@ -51,13 +55,14 @@ public class GroupChatService {
 
         chatMemberRepository.save(newMember(saved.getId(), creatorId, GroupMemberRole.OWNER));
         otherMembers.forEach(memberId -> chatMemberRepository.save(newMember(saved.getId(), memberId, GroupMemberRole.MEMBER)));
+        otherMembers.forEach(memberId -> notifyGroupAdded(saved, creatorId, memberId));
 
         return mapper.toChatResponse(saved, creatorId);
     }
 
     @Transactional
     public void addMember(String chatId, String currentUserId, String newMemberId) {
-        findGroupOrThrow(chatId);
+        Chat chat = findGroupOrThrow(chatId);
         assertOwner(chatId, currentUserId);
         if (chatMemberRepository.existsByChatIdAndUserId(chatId, newMemberId)) {
             return;
@@ -65,6 +70,18 @@ public class GroupChatService {
         assertWithinSizeLimit(chatMemberRepository.countByChatId(chatId) + 1);
         findUserOrThrow(newMemberId);
         chatMemberRepository.save(newMember(chatId, newMemberId, GroupMemberRole.MEMBER));
+        notifyGroupAdded(chat, currentUserId, newMemberId);
+    }
+
+    private void notifyGroupAdded(Chat chat, String actorId, String recipientId) {
+        notificationService.sendNotification(recipientId, Notification.builder()
+                .type(NotificationType.GROUP_ADDED)
+                .chatId(chat.getId())
+                .senderId(actorId)
+                .receiverId(recipientId)
+                .chatName(chat.getName())
+                .avatarUrl(chat.getAvatarUrl())
+                .build());
     }
 
     /** Self-removal (leaving) is always allowed; removing someone else requires OWNER. */

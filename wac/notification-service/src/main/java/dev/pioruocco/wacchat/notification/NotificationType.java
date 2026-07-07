@@ -15,6 +15,7 @@ public enum NotificationType {
     MESSAGE_DELETED,
     REACTION_ADDED,
     REACTION_REMOVED,
+    GROUP_ADDED,
 
     /** Produced and consumed entirely within notification-service (see ws.TypingController) —
      *  never published by the backend, so unlike the other constants above it does not need

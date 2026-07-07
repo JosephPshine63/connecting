@@ -15,5 +15,6 @@ public enum NotificationType {
     MESSAGE_DELETED,
     REACTION_ADDED,
     REACTION_REMOVED,
+    GROUP_ADDED,
 
 }
