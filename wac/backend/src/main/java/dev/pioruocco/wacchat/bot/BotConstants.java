@@ -13,7 +13,7 @@ public final class BotConstants {
     public static final String WELCOME_MESSAGE =
             "Ciao! Sono Arno AI 🐦 il tuo assistente virtuale su WacChat. "
                     + "Sono qui se ti va di scambiare due chiacchiere o hai bisogno di una mano. Scrivimi pure! "
-                    + "Ps: questa è un'app sviluppata per hobby, dopo 2 settimane tutti i dati dell'utente corrente verranno cancellati.";
+                    + "Ps: questa è un'app sviluppata per hobby, dopo 2 mesi tutti i dati dell'utente corrente verranno cancellati.";
 
     private BotConstants() {
     }

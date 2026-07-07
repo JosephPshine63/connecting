@@ -87,6 +87,7 @@
   font-size: 0.72em;
   cursor: pointer;
   background: var(--bg-glass);
+  border: 1px solid var(--border);
   color: var(--text-secondary);
   transition: background 0.15s, color 0.15s;
   user-select: none;

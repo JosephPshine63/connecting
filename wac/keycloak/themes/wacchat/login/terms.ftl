@@ -23,7 +23,7 @@
         <li>WacChat è un progetto dimostrativo/personale, non un servizio commerciale.</li>
         <li>Il servizio è fornito "così com'è", senza garanzie di disponibilità o continuità.</li>
         <li>Sei responsabile dei contenuti che invii; sono vietati contenuti illeciti, offensivi o lesivi di diritti altrui.</li>
-        <li>Gli account inattivi da più di 14 giorni vengono cancellati automaticamente, insieme a chat e media associati.</li>
+        <li>Gli account inattivi da più di 2 mesi vengono cancellati automaticamente, insieme a chat e media associati.</li>
         <li>Il titolare può sospendere o rimuovere account che violano queste condizioni.</li>
       </ul>
       <p>
@@ -47,7 +47,7 @@
 <div class="wac-disclaimer">
   <span>&#9888;</span>
   App dimostrativa per uso personale &mdash; non inserire dati personali reali.
-  Gli account inattivi vengono eliminati automaticamente dopo 14&nbsp;giorni.
+  Gli account inattivi vengono eliminati automaticamente dopo 2&nbsp;mesi.
 </div>
 
 </body>

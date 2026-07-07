@@ -84,7 +84,7 @@ application:
   mail:
     from: ${MAIL_FROM:}
   cleanup:
-    inactivity-days: 14
+    inactivity-days: 60
     protected-email: ${ADMIN_EMAIL:}
   file-service:
     base-url: ${FILE_SERVICE_BASE_URL:http://localhost:8083}

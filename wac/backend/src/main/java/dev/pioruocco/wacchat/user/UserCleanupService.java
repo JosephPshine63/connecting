@@ -39,7 +39,7 @@ public class UserCleanupService {
     @Value("${application.keycloak.admin-password}")
     private String adminPassword;
 
-    @Value("${application.cleanup.inactivity-days:14}")
+    @Value("${application.cleanup.inactivity-days:60}")
     private int inactivityDays;
 
     @Value("${application.cleanup.protected-email:}")

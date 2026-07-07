@@ -1,17 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('appTheme');
-        var validThemes = ['pio-light', 'pio-dark', 'blue', 'light', 'dark',
-          'green', 'indigo', 'magenta', 'crimson', 'earth'];
-        document.documentElement.setAttribute('data-theme',
-          validThemes.indexOf(t) !== -1 ? t : 'pio-light');
-      } catch (e) {}
-    })();
-  </script>
+  <script src="theme-init.js"></script>
   <meta charset="utf-8">
   <title>WacChat</title>
   <base href="/">

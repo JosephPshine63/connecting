@@ -14,8 +14,8 @@ export class SettingsComponent {
   @Output() reportBug = new EventEmitter<void>();
 
   readonly themes: { id: ThemeId; label: string }[] = [
-    { id: 'pio-light', label: 'Pio Light' },
-    { id: 'pio-dark', label: 'Pio Dark' },
+    { id: 'pio-light', label: 'WacChat Light' },
+    { id: 'pio-dark', label: 'WacChat Dark' },
     { id: 'blue', label: 'Blu classico' },
     { id: 'light', label: 'Bianco / Chiaro' },
     { id: 'dark', label: 'Nero / Scuro' },

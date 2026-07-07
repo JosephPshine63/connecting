@@ -498,6 +498,9 @@ docker run -d \
   -e MAIL_USERNAME="${MAIL_USERNAME:-}" \
   -e MAIL_PASSWORD="${MAIL_PASSWORD:-}" \
   -e MAIL_FROM="${MAIL_FROM:-}" \
+  -e GEMINI_API_KEY="${GEMINI_API_KEY:-}" \
+  -e GEMINI_MODEL="${GEMINI_MODEL:-}" \
+  -e GEMINI_BASE_URL="${GEMINI_BASE_URL:-}" \
   -e FILE_SERVICE_BASE_URL="http://wacchat-file-service:$PORT_FILE_SERVICE" \
   -e FILE_SERVICE_INTERNAL_API_KEY="${FILE_SERVICE_INTERNAL_API_KEY:-}" \
   -e RABBITMQ_HOST="wacchat-rabbitmq" \
