@@ -12,11 +12,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,10 +74,21 @@ class UserServiceTest {
     @Test
     void findUserById_doesNotExposeEmail() {
         when(userRepository.findByPublicId(OTHER_ID)).thenReturn(Optional.of(userWithEmail(OTHER_ID, "other@example.com")));
+        when(moderationService.isBlocked(USER_ID, OTHER_ID)).thenReturn(false);
 
-        UserResponse result = userService.findUserById(OTHER_ID);
+        UserResponse result = userService.findUserById(OTHER_ID, new TestingAuthenticationToken(USER_ID, null));
 
         assertThat(result.getEmail()).isNull();
+    }
+
+    @Test
+    void findUserById_returns404WhenTargetIsBlocked() {
+        when(userRepository.findByPublicId(OTHER_ID)).thenReturn(Optional.of(userWithEmail(OTHER_ID, "other@example.com")));
+        when(moderationService.isBlocked(USER_ID, OTHER_ID)).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.findUserById(OTHER_ID, new TestingAuthenticationToken(USER_ID, null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("404");
     }
 
     @Test

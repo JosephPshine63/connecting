@@ -73,11 +73,20 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 15s
         permittedNumberOfCallsInHalfOpenState: 3
+      typingValidation:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15s
+        permittedNumberOfCallsInHalfOpenState: 3
   retry:
     instances:
       sessionValidation:
         maxAttempts: 2
         waitDuration: 300ms
       pushNotification:
+        maxAttempts: 2
+        waitDuration: 300ms
+      typingValidation:
         maxAttempts: 2
         waitDuration: 300ms

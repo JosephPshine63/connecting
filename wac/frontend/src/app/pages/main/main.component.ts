@@ -905,6 +905,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   logout() {
+    this.draftService.clearAll();
     this.keycloakService.logout();
   }
 

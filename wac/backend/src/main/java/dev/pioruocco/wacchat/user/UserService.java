@@ -108,10 +108,15 @@ public class UserService {
         return ((Jwt) authentication.getPrincipal()).getTokenValue();
     }
 
-    public UserResponse findUserById(String id) {
-        return userRepository.findByPublicId(id)
-                .map(userMapper::toPublicUserResponse)
+    public UserResponse findUserById(String id, Authentication authentication) {
+        User user = userRepository.findByPublicId(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        // Same 404 as "not found" — a blocked-vs-nonexistent oracle would let a blocked user
+        // fingerprint who has blocked them by id.
+        if (moderationService.isBlocked(authentication.getName(), user.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        return userMapper.toPublicUserResponse(user);
     }
 
     public void clearActiveSession(Authentication authentication, String tabId) {

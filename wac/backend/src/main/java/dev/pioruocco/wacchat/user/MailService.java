@@ -19,7 +19,7 @@ public class MailService {
 
     public void sendWelcome(User user) {
         if (fromAddress.isBlank()) {
-            log.warn("MAIL_FROM not configured — skipping welcome email for {}", user.getEmail());
+            log.warn("MAIL_FROM not configured — skipping welcome email for user {}", user.getId());
             return;
         }
         try {
@@ -39,9 +39,9 @@ public class MailService {
                 "A presto!"
             );
             mailSender.send(msg);
-            log.info("Welcome email sent to {}", user.getEmail());
+            log.info("Welcome email sent to user {}", user.getId());
         } catch (Exception e) {
-            log.error("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+            log.error("Failed to send welcome email to user {}: {}", user.getId(), e.getMessage());
         }
     }
 }

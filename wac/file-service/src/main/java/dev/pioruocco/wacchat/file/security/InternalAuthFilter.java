@@ -32,6 +32,12 @@ public class InternalAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    // Unlike backend's InternalAuthFilter (which only gates its /api/v1/internal/**
+    // endpoints), this filter guards every request except /actuator. That's deliberate:
+    // file-service has no user-facing JWT-authenticated endpoints of its own — the only
+    // caller is backend's FileServiceClient (see FileServiceClient/WebClientConfig), so
+    // requiring the shared secret on the whole surface, not just an /internal/** subset,
+    // is the correct scope here rather than an oversight to narrow.
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return request.getRequestURI().startsWith("/actuator");

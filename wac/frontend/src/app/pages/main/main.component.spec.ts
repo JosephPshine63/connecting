@@ -17,9 +17,11 @@ describe('MainComponent', () => {
     const fakeBrowserNotifications = {} as any;
     const fakeCallApiService = {} as any;
     const fakeWebRtcCallService = {} as any;
-    const fakeDraftService = { getDraft: () => '', setDraft: () => {}, clearDraft: () => {} } as any;
+    const fakeDraftService = { getDraft: () => '', setDraft: () => {}, clearDraft: () => {}, clearAll: () => {} } as any;
     const fakeMuteService = { isMuted: () => false, toggleMute: () => {} } as any;
     const fakeSupportService = {} as any;
+    const fakeErrorLogService = {} as any;
+    const fakePushSubscriptionService = { registerServiceWorkerAndSubscribe: () => Promise.resolve() } as any;
 
     component = new MainComponent(
       fakeChatService,
@@ -33,7 +35,9 @@ describe('MainComponent', () => {
       fakeWebRtcCallService,
       fakeDraftService,
       fakeMuteService,
-      fakeSupportService
+      fakeSupportService,
+      fakeErrorLogService,
+      fakePushSubscriptionService
     );
 
     component.chatMessages = [

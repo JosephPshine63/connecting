@@ -69,7 +69,7 @@ public class UserCleanupService {
             try {
                 purgeUser(user);
             } catch (Exception e) {
-                log.error("Cleanup: failed to delete user {} — {}", user.getEmail(), e.getMessage());
+                log.error("Cleanup: failed to delete user {} — {}", user.getId(), e.getMessage());
             }
         }
     }
@@ -87,7 +87,7 @@ public class UserCleanupService {
         pushSubscriptionRepository.deleteByUserId(user.getId());
         userRepository.delete(user);
 
-        log.info("Cleanup: deleted user {} ({})", user.getEmail(), user.getId());
+        log.info("Cleanup: deleted user {}", user.getId());
     }
 
     private void deleteFromKeycloak(String userId) {

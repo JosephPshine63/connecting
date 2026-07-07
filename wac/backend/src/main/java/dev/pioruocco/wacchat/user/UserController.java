@@ -64,8 +64,8 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable String id) {
-        return ResponseEntity.ok(userService.findUserById(id));
+    public ResponseEntity<UserResponse> getUserById(@PathVariable String id, Authentication authentication) {
+        return ResponseEntity.ok(userService.findUserById(id, authentication));
     }
 
     @DeleteMapping("/me/session")
