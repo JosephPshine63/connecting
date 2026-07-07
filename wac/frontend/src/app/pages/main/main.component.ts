@@ -38,6 +38,7 @@ import {MessageActionsMenuComponent} from '../../components/message-actions-menu
 import {ReplyPreviewBarComponent} from '../../components/reply-preview-bar/reply-preview-bar.component';
 import {ForwardPickerComponent} from '../../components/forward-picker/forward-picker.component';
 import {ErrorLogMenuComponent} from '../../components/error-log-menu/error-log-menu.component';
+import {ErrorLogService} from '../../utils/error-log/error-log.service';
 import {AudioPlayerComponent} from '../../components/audio-player/audio-player.component';
 import {GroupCreateComponent} from '../../components/group-create/group-create.component';
 import {GroupMembersComponent} from '../../components/group-members/group-members.component';
@@ -163,6 +164,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     private draftService: DraftService,
     private muteService: MuteService,
     private supportService: SupportService,
+    private errorLogService: ErrorLogService,
   ) {
   }
 
@@ -797,8 +799,13 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
           }
         });
       }, 1000);
-    } catch {
-      // permesso negato o device non disponibile: resta in idle, nessun crash
+    } catch (err) {
+      // permesso negato o device non disponibile: resta in idle, nessun crash —
+      // ma logga il motivo, altrimenti dal telefono (senza devtools) sembra solo rotto
+      this.errorLogService.report({
+        source: 'client',
+        message: `Registrazione nota vocale non avviata: ${(err as Error)?.message ?? err}`
+      });
     }
   }
 
