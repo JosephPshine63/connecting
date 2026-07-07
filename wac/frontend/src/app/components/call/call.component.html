@@ -2,13 +2,13 @@
   <div class="call-overlay">
     <div class="call-box">
       <div class="call-avatar">
-        @if (peerAvatarUrl) {
-          <img [src]="peerAvatarUrl" alt="">
+        @if (incomingCaller?.avatarUrl) {
+          <img [src]="incomingCaller?.avatarUrl" alt="">
         } @else {
-          <span>{{ (peerName || '?').charAt(0).toUpperCase() }}</span>
+          <span>{{ (incomingCaller?.name || '?').charAt(0).toUpperCase() }}</span>
         }
       </div>
-      <h2 class="call-peer-name">{{ peerName }}</h2>
+      <h2 class="call-peer-name">{{ incomingCaller?.name }}</h2>
       <p class="call-status-text">Chiamata {{ callType === 'VIDEO' ? 'video' : 'vocale' }} in arrivo…</p>
       <div class="call-actions">
         <button class="call-btn call-btn-reject" (click)="rejected.emit()" title="Rifiuta">
@@ -22,21 +22,45 @@
   </div>
 } @else if (callState === 'outgoing' || callState === 'in-call') {
   <div class="call-overlay in-call-overlay">
-    <div class="call-box in-call-box">
+    <div class="call-box in-call-box" [class.multi]="participants.length > 1">
       @if (callType === 'VIDEO') {
-        <video #remoteVideo class="remote-video" autoplay playsinline></video>
-        <video #localVideo class="local-video" autoplay playsinline muted></video>
+        <div class="call-tiles-grid" [class.single]="participants.length === 1">
+          @for (participant of participants; track participant.userId) {
+            <app-call-tile
+              [name]="participant.name"
+              [avatarUrl]="participant.avatarUrl"
+              callType="VIDEO"
+              [stream]="remoteStreams.get(participant.userId) ?? null"
+              [statusLabel]="statusLabelFor(participant)">
+            </app-call-tile>
+          }
+        </div>
+        <app-call-tile class="local-tile" callType="VIDEO" [stream]="localStream" [muted]="true" [isLocal]="true">
+        </app-call-tile>
       } @else {
-        <audio #remoteAudio autoplay></audio>
-        <div class="call-avatar large">
-          @if (peerAvatarUrl) {
-            <img [src]="peerAvatarUrl" alt="">
-          } @else {
-            <span>{{ (peerName || '?').charAt(0).toUpperCase() }}</span>
+        <div class="call-audio-participants" [class.single]="participants.length === 1">
+          @for (participant of participants; track participant.userId) {
+            <div class="call-avatar-item">
+              <div class="call-avatar" [class.large]="participants.length === 1">
+                @if (participant.avatarUrl) {
+                  <img [src]="participant.avatarUrl" alt="">
+                } @else {
+                  <span>{{ (participant.name || '?').charAt(0).toUpperCase() }}</span>
+                }
+              </div>
+              @if (participants.length > 1) {
+                <span class="call-avatar-item-name">{{ participant.name }}</span>
+              }
+              @if (statusLabelFor(participant); as label) {
+                <span class="call-avatar-item-status">{{ label }}</span>
+              }
+            </div>
           }
         </div>
       }
-      <h2 class="call-peer-name">{{ peerName }}</h2>
+      @if (participants.length === 1 && callType !== 'VIDEO') {
+        <h2 class="call-peer-name">{{ participants[0].name }}</h2>
+      }
       <p class="call-status-text">{{ callState === 'outgoing' ? 'Chiamata in corso…' : elapsedLabel }}</p>
       <div class="call-actions">
         <button class="call-btn" (click)="toggleMute()" title="Muto">

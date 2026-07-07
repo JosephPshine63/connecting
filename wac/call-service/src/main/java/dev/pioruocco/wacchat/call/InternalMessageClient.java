@@ -35,6 +35,22 @@ public class InternalMessageClient {
                 .subscribe();
     }
 
+    public void sendGroupSystemMessage(String chatId, String senderId, String content) {
+        webClient.post()
+                .uri("/api/v1/internal/messages/system-group")
+                .bodyValue(new GroupSystemMessageRequest(chatId, senderId, content))
+                .retrieve()
+                .toBodilessEntity()
+                .onErrorResume(e -> {
+                    log.warn("Failed to leave group system message for call in chat {}: {}", chatId, e.getMessage());
+                    return Mono.empty();
+                })
+                .subscribe();
+    }
+
     private record SystemMessageRequest(String chatId, String senderId, String receiverId, String content) {
+    }
+
+    private record GroupSystemMessageRequest(String chatId, String senderId, String content) {
     }
 }

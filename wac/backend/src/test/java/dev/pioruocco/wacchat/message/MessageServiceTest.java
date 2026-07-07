@@ -2,10 +2,14 @@ package dev.pioruocco.wacchat.message;
 
 import dev.pioruocco.wacchat.bot.BotService;
 import dev.pioruocco.wacchat.chat.Chat;
+import dev.pioruocco.wacchat.chat.ChatMember;
+import dev.pioruocco.wacchat.chat.ChatMemberRepository;
 import dev.pioruocco.wacchat.chat.ChatNotAcceptedException;
 import dev.pioruocco.wacchat.chat.ChatRepository;
 import dev.pioruocco.wacchat.chat.ChatRequestLimitExceededException;
 import dev.pioruocco.wacchat.chat.ChatStatus;
+import dev.pioruocco.wacchat.chat.ChatType;
+import dev.pioruocco.wacchat.chat.GroupMemberRole;
 import dev.pioruocco.wacchat.file.FileServiceClient;
 import dev.pioruocco.wacchat.moderation.ModerationService;
 import dev.pioruocco.wacchat.notification.Notification;
@@ -22,6 +26,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,9 +34,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,6 +67,8 @@ class MessageServiceTest {
     @Mock
     private MessageStarRepository messageStarRepository;
     @Mock
+    private ChatMemberRepository chatMemberRepository;
+    @Mock
     private Authentication authentication;
 
     private MessageService messageService;
@@ -68,7 +77,7 @@ class MessageServiceTest {
     void setUp() {
         messageService = new MessageService(
                 messageRepository, chatRepository, mapper, notificationService, fileServiceClient, botService,
-                moderationService, messageReactionRepository, messageStarRepository);
+                moderationService, messageReactionRepository, messageStarRepository, chatMemberRepository);
     }
 
     @Test
@@ -611,6 +620,86 @@ class MessageServiceTest {
         verify(notificationService).sendNotification(anyString(), notificationCaptor.capture());
         assertThat(notificationCaptor.getValue().getType()).isEqualTo(NotificationType.AUDIO);
         assertThat(notificationCaptor.getValue().getMessageType()).isEqualTo(MessageType.AUDIO);
+    }
+
+    @Test
+    void saveMessage_groupChat_notifiesAllOtherMembersNotSender() {
+        Chat chat = groupChat();
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+        when(chatMemberRepository.existsByChatIdAndUserId(chat.getId(), REQUESTER_ID)).thenReturn(true);
+        when(chatMemberRepository.findByChatId(chat.getId())).thenReturn(List.of(
+                groupMember(REQUESTER_ID), groupMember(RECIPIENT_ID), groupMember("member-3")));
+        when(authentication.getName()).thenReturn(REQUESTER_ID);
+
+        messageService.saveMessage(request(chat.getId()), authentication);
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(messageRepository).save(messageCaptor.capture());
+        assertThat(messageCaptor.getValue().getReceiverId()).isNull();
+
+        verify(notificationService, times(2)).sendNotification(anyString(), any(Notification.class));
+        verify(notificationService, never()).sendNotification(eq(REQUESTER_ID), any(Notification.class));
+        verify(notificationService).sendNotification(eq(RECIPIENT_ID), any(Notification.class));
+        verify(notificationService).sendNotification(eq("member-3"), any(Notification.class));
+    }
+
+    @Test
+    void toggleReaction_groupChat_notifiesAllOtherMembers() {
+        Chat chat = groupChat();
+        Message message = new Message();
+        message.setId(42L);
+        message.setChat(chat);
+        message.setSenderId(RECIPIENT_ID);
+        when(messageRepository.findById(42L)).thenReturn(Optional.of(message));
+        when(chatMemberRepository.existsByChatIdAndUserId(chat.getId(), REQUESTER_ID)).thenReturn(true);
+        when(chatMemberRepository.findByChatId(chat.getId())).thenReturn(List.of(
+                groupMember(REQUESTER_ID), groupMember(RECIPIENT_ID)));
+        when(authentication.getName()).thenReturn(REQUESTER_ID);
+
+        messageService.toggleReaction(42L, "👍", authentication);
+
+        verify(notificationService).sendNotification(eq(RECIPIENT_ID), any(Notification.class));
+        verify(notificationService, never()).sendNotification(eq(REQUESTER_ID), any(Notification.class));
+    }
+
+    @Test
+    void setMessagesToSeen_groupChat_advancesReadCursorAndNotifiesOthers() {
+        Chat chat = groupChat();
+        Message message = new Message();
+        message.setId(7L);
+        message.setSenderId(RECIPIENT_ID);
+        chat.setMessages(List.of(message));
+        when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
+        when(chatMemberRepository.existsByChatIdAndUserId(chat.getId(), REQUESTER_ID)).thenReturn(true);
+        ChatMember viewerMembership = groupMember(REQUESTER_ID);
+        when(chatMemberRepository.findByChatIdAndUserId(chat.getId(), REQUESTER_ID)).thenReturn(Optional.of(viewerMembership));
+        when(chatMemberRepository.findByChatId(chat.getId())).thenReturn(List.of(viewerMembership, groupMember(RECIPIENT_ID)));
+        when(authentication.getName()).thenReturn(REQUESTER_ID);
+
+        messageService.setMessagesToSeen(chat.getId(), authentication);
+
+        assertThat(viewerMembership.getLastReadMessageId()).isEqualTo(7L);
+        verify(chatMemberRepository).save(viewerMembership);
+        verify(notificationService).sendNotification(eq(RECIPIENT_ID), any(Notification.class));
+        verify(notificationService, never()).sendNotification(eq(REQUESTER_ID), any(Notification.class));
+    }
+
+    private static ChatMember groupMember(String userId) {
+        ChatMember member = new ChatMember();
+        member.setChatId("group-chat-1");
+        member.setUserId(userId);
+        member.setRole(GroupMemberRole.MEMBER);
+        return member;
+    }
+
+    private static Chat groupChat() {
+        Chat chat = new Chat();
+        chat.setId("group-chat-1");
+        chat.setType(ChatType.GROUP);
+        chat.setName("Group");
+        chat.setStatus(ChatStatus.ACCEPTED);
+        chat.setMessages(List.of());
+        return chat;
     }
 
     private static MessageRequest request(String chatId) {

@@ -10,10 +10,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
- * REST signaling intake for WebRTC calls. Identity (caller/callee) always comes from the
- * JWT (Authentication), never from the request body — the body only carries the peer id
- * on /invite (the frontend already knows it from the open chat) and the SDP/ICE payload.
+ * REST signaling intake for WebRTC calls (mesh topology). Identity (caller/participant)
+ * always comes from the JWT (Authentication), never from the request body — the body only
+ * carries peer id(s) and the SDP/ICE payload. A 1:1 call is the degenerate case of a
+ * single-invitee /invite; peer-offer/peer-answer only come into play once a third
+ * participant joins an already-running call (mesh bootstrap).
  */
 @RestController
 @RequestMapping("/api/v1/calls")
@@ -25,7 +29,7 @@ public class CallController {
     @PostMapping("/{chatId}/invite")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void invite(@PathVariable String chatId, @RequestBody InviteRequest request, Authentication authentication) {
-        callService.invite(chatId, authentication.getName(), request.peerId(), request.callType(), request.sdpOffer());
+        callService.invite(chatId, authentication.getName(), request.invitees(), request.callType());
     }
 
     @PostMapping("/{chatId}/answer")
@@ -37,7 +41,19 @@ public class CallController {
     @PostMapping("/{chatId}/ice-candidate")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void iceCandidate(@PathVariable String chatId, @RequestBody IceCandidateRequest request, Authentication authentication) {
-        callService.iceCandidate(chatId, authentication.getName(), request.candidate(), request.sdpMid(), request.sdpMLineIndex());
+        callService.iceCandidate(chatId, authentication.getName(), request.peerId(), request.candidate(), request.sdpMid(), request.sdpMLineIndex());
+    }
+
+    @PostMapping("/{chatId}/peer-offer")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void peerOffer(@PathVariable String chatId, @RequestBody PeerOfferRequest request, Authentication authentication) {
+        callService.peerOffer(chatId, authentication.getName(), request.peerId(), request.sdpOffer());
+    }
+
+    @PostMapping("/{chatId}/peer-answer")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void peerAnswer(@PathVariable String chatId, @RequestBody PeerAnswerRequest request, Authentication authentication) {
+        callService.peerAnswer(chatId, authentication.getName(), request.peerId(), request.sdpAnswer());
     }
 
     @PostMapping("/{chatId}/end")
@@ -46,13 +62,19 @@ public class CallController {
         callService.end(chatId, authentication.getName(), request.reason());
     }
 
-    public record InviteRequest(String peerId, String callType, String sdpOffer) {
+    public record InviteRequest(List<InviteeOffer> invitees, String callType) {
     }
 
     public record AnswerRequest(String sdpAnswer) {
     }
 
-    public record IceCandidateRequest(String candidate, String sdpMid, Integer sdpMLineIndex) {
+    public record IceCandidateRequest(String peerId, String candidate, String sdpMid, Integer sdpMLineIndex) {
+    }
+
+    public record PeerOfferRequest(String peerId, String sdpOffer) {
+    }
+
+    public record PeerAnswerRequest(String peerId, String sdpAnswer) {
     }
 
     public record EndRequest(String reason) {

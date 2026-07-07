@@ -18,7 +18,9 @@ import {CallSignal} from './models/call-signal';
 import {ChatService} from '../../services/services/chat.service';
 import {CallApiService} from '../../utils/call/call-api.service';
 import {LocalIceCandidate, WebRtcCallService} from '../../utils/webrtc/webrtc-call.service';
-import {CallComponent} from '../../components/call/call.component';
+import {CallComponent, CallParticipantView} from '../../components/call/call.component';
+import {CallInviteePickerComponent} from '../../components/call-invitee-picker/call-invitee-picker.component';
+import {GroupMemberResponse} from '../../services/models/group-member-response';
 import {PickerComponent} from '@ctrl/ngx-emoji-mart';
 import {EmojiData} from '@ctrl/ngx-emoji-mart/ngx-emoji';
 import {UsernameSetupComponent} from '../../components/username-setup/username-setup.component';
@@ -37,6 +39,8 @@ import {ReplyPreviewBarComponent} from '../../components/reply-preview-bar/reply
 import {ForwardPickerComponent} from '../../components/forward-picker/forward-picker.component';
 import {ErrorLogMenuComponent} from '../../components/error-log-menu/error-log-menu.component';
 import {AudioPlayerComponent} from '../../components/audio-player/audio-player.component';
+import {GroupCreateComponent} from '../../components/group-create/group-create.component';
+import {GroupMembersComponent} from '../../components/group-members/group-members.component';
 
 const HEARTBEAT_INTERVAL_MS = 60000;
 const ARNO_USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -61,12 +65,15 @@ const MAX_PENDING_MESSAGES = 3;
     SessionBlockedComponent,
     SettingsComponent,
     CallComponent,
+    CallInviteePickerComponent,
     MediaLightboxComponent,
     MessageActionsMenuComponent,
     ReplyPreviewBarComponent,
     ForwardPickerComponent,
     ErrorLogMenuComponent,
-    AudioPlayerComponent
+    AudioPlayerComponent,
+    GroupCreateComponent,
+    GroupMembersComponent
   ],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
@@ -87,6 +94,8 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   selectedCardUserId: string | null = null;
   showAvatarUpload = false;
   showSettings = false;
+  showGroupCreate = false;
+  showGroupMembers = false;
   @ViewChild('scrollableDiv') scrollableDiv!: ElementRef<HTMLDivElement>;
   private notificationSubscription: StompSubscription | null = null;
   private heartbeatHandle: ReturnType<typeof setInterval> | null = null;
@@ -124,13 +133,17 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   callState: 'idle' | 'incoming' | 'outgoing' | 'in-call' = 'idle';
   activeCallChatId: string | null = null;
-  activeCallPeerId: string | null = null;
-  activeCallPeerName: string | null = null;
-  activeCallPeerAvatarUrl: string | null = null;
   activeCallType: 'AUDIO' | 'VIDEO' = 'AUDIO';
+  // Excludes self — mesh topology, so a 1:1 call is simply the size-1 case. On an
+  // incoming call this starts as just the caller; other participants (group calls) are
+  // only discovered later via PARTICIPANT_JOINED/PEER_OFFER bootstrap signals, since the
+  // initial INVITE we receive only ever comes directly from the caller.
+  callParticipants: CallParticipantView[] = [];
+  showCallInviteePicker = false;
+  pendingGroupCallType: 'AUDIO' | 'VIDEO' = 'AUDIO';
   private pendingOfferSdp: string | null = null;
   private callSignalSubscription: StompSubscription | null = null;
-  // The caller starts local ICE gathering (setLocalDescription, inside startAsCaller())
+  // The caller starts local ICE gathering (setLocalDescription, inside createOfferFor())
   // before invite() has confirmed the session exists in call-service's CallSessionStore —
   // candidates generated in that window get queued here and flushed once invite() (or,
   // for the callee, the incoming INVITE signal itself) confirms the session is live.
@@ -244,6 +257,41 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   openUserCard(userId: string): void {
     this.selectedCardUserId = userId;
+  }
+
+  onChatHeaderAvatarClick(): void {
+    if (this.selectedChat.type === 'GROUP') {
+      this.showGroupMembers = true;
+      return;
+    }
+    const otherId = this.getReceiverId();
+    if (otherId) {
+      this.openUserCard(otherId);
+    }
+  }
+
+  openGroupCreate(): void {
+    this.showGroupCreate = true;
+  }
+
+  closeGroupCreate(): void {
+    this.showGroupCreate = false;
+  }
+
+  onGroupCreated(chat: ChatResponse): void {
+    this.showGroupCreate = false;
+    this.chatSelected(chat);
+  }
+
+  closeGroupMembers(): void {
+    this.showGroupMembers = false;
+  }
+
+  onLeftGroup(): void {
+    this.showGroupMembers = false;
+    const leftChatId = this.selectedChat.id;
+    this.chats = this.chats.filter(c => c.id !== leftChatId);
+    this.selectedChat = {};
   }
 
   onChatAccepted(chat: ChatResponse): void {
@@ -1172,17 +1220,24 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private getSenderId(chat: ChatResponse = this.selectedChat): string {
+    if (chat.type === 'GROUP') {
+      return this.keycloakService.userId as string;
+    }
     if (chat.senderId === this.keycloakService.userId) {
       return chat.senderId as string;
     }
     return chat.receiverId as string;
   }
 
-  getReceiverId(chat: ChatResponse = this.selectedChat): string {
-    if (chat.senderId === this.keycloakService.userId) {
-      return chat.receiverId as string;
+  /** A GROUP chat has no single "other participant" — returns undefined for those. */
+  getReceiverId(chat: ChatResponse = this.selectedChat): string | undefined {
+    if (chat.type === 'GROUP') {
+      return undefined;
     }
-    return chat.senderId as string;
+    if (chat.senderId === this.keycloakService.userId) {
+      return chat.receiverId;
+    }
+    return chat.senderId;
   }
 
   private scrollToBottom() {
@@ -1321,20 +1376,51 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.showEmojis = false;
   }
 
-  async startCall(callType: 'AUDIO' | 'VIDEO'): Promise<void> {
+  startCall(callType: 'AUDIO' | 'VIDEO'): void {
     if (!this.canCall() || !this.selectedChat.id) return;
+    if (this.selectedChat.type === 'GROUP') {
+      this.pendingGroupCallType = callType;
+      this.showCallInviteePicker = true;
+      return;
+    }
+    const peerId = this.getReceiverId() as string;
+    void this.beginOutgoingCall(callType, [{
+      userId: peerId,
+      name: this.selectedChat.name ?? null,
+      avatarUrl: this.selectedChat.avatarUrl ?? null
+    }]);
+  }
+
+  closeCallInviteePicker(): void {
+    this.showCallInviteePicker = false;
+  }
+
+  onGroupCallInviteesSelected(members: GroupMemberResponse[]): void {
+    this.showCallInviteePicker = false;
+    if (members.length === 0) return;
+    void this.beginOutgoingCall(this.pendingGroupCallType, members.map(m => ({
+      userId: m.userId as string,
+      name: m.name ?? null,
+      avatarUrl: m.avatarUrl ?? null
+    })));
+  }
+
+  private async beginOutgoingCall(
+    callType: 'AUDIO' | 'VIDEO',
+    invitees: { userId: string; name: string | null; avatarUrl: string | null }[]
+  ): Promise<void> {
     this.closeMessageOverlays();
-    const chatId = this.selectedChat.id;
-    const peerId = this.getReceiverId();
+    const chatId = this.selectedChat.id as string;
     this.activeCallChatId = chatId;
-    this.activeCallPeerId = peerId;
-    this.activeCallPeerName = this.selectedChat.name ?? null;
-    this.activeCallPeerAvatarUrl = this.selectedChat.avatarUrl ?? null;
     this.activeCallType = callType;
+    this.callParticipants = invitees.map(p => ({ ...p, status: 'ringing' }));
     this.callState = 'outgoing';
     try {
-      const sdpOffer = await this.webRtcCallService.startAsCaller(callType);
-      this.callApiService.invite(chatId, peerId, callType, sdpOffer).subscribe({
+      const offers = await Promise.all(invitees.map(async p => ({
+        peerId: p.userId,
+        sdpOffer: await this.webRtcCallService.createOfferFor(p.userId, callType)
+      })));
+      this.callApiService.invite(chatId, offers, callType).subscribe({
         next: () => this.ngZone.run(() => this.confirmCallSession()),
         error: (err) => {
           console.error('[call] invite request failed', err);
@@ -1343,25 +1429,29 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       });
     } catch (err) {
       // getUserMedia denied or unavailable: stay out of the call, no crash
-      console.error('[call] getUserMedia/startAsCaller failed', err);
+      console.error('[call] getUserMedia/createOfferFor failed', err);
       this.endCallLocally();
     }
   }
 
   acceptCall(): void {
-    if (this.callState !== 'incoming' || !this.activeCallChatId || !this.pendingOfferSdp) return;
+    if (this.callState !== 'incoming' || !this.activeCallChatId || !this.pendingOfferSdp || this.callParticipants.length !== 1) return;
     const chatId = this.activeCallChatId;
     const offerSdp = this.pendingOfferSdp;
-    this.webRtcCallService.startAsCallee(this.activeCallType, offerSdp).then(sdpAnswer => {
+    const callerId = this.callParticipants[0].userId;
+    this.webRtcCallService.createAnswerFor(callerId, this.activeCallType, offerSdp).then(sdpAnswer => {
       this.callApiService.answer(chatId, sdpAnswer).subscribe({
-        next: () => this.ngZone.run(() => this.callState = 'in-call'),
+        next: () => this.ngZone.run(() => {
+          this.markParticipantJoined(callerId);
+          this.callState = 'in-call';
+        }),
         error: (err) => this.ngZone.run(() => {
           console.error('[call] answer request failed', err);
           this.endCallLocally();
         })
       });
     }).catch(err => this.ngZone.run(() => {
-      console.error('[call] getUserMedia/startAsCallee failed', err);
+      console.error('[call] getUserMedia/createAnswerFor failed', err);
       this.endCallLocally();
     }));
   }
@@ -1378,39 +1468,51 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.endCallLocally();
   }
 
+  private markParticipantJoined(peerId: string): void {
+    this.callParticipants = this.callParticipants.map(p => p.userId === peerId ? { ...p, status: 'joined' } : p);
+  }
+
+  private addOrJoinParticipant(peerId: string): void {
+    if (this.callParticipants.some(p => p.userId === peerId)) {
+      this.markParticipantJoined(peerId);
+      return;
+    }
+    const { name, avatarUrl } = this.resolveCallParticipantIdentity(peerId);
+    this.callParticipants = [...this.callParticipants, { userId: peerId, name, avatarUrl, status: 'joined' }];
+  }
+
+  // Best-effort: a group call's other participants are only ever learned about via
+  // PARTICIPANT_JOINED/PEER_OFFER bootstrap signals (the initial INVITE only names the
+  // caller), and this frontend has no per-member directory beyond existing direct chats —
+  // falls back to no name/avatar (rendered as a bare '?' avatar) if there's no 1:1 chat
+  // with that user already.
+  private resolveCallParticipantIdentity(userId: string): { name: string | null; avatarUrl: string | null } {
+    const directChat = this.chats.find(c => c.type !== 'GROUP' && (c.senderId === userId || c.receiverId === userId));
+    return { name: directChat?.name ?? null, avatarUrl: directChat?.avatarUrl ?? null };
+  }
+
   private handleCallSignal(signal: CallSignal): void {
     if (!signal?.chatId) return;
     switch (signal.type) {
       case 'INVITE':
-        if (this.callState !== 'idle') {
-          // Already on a call: decline immediately rather than leaving the caller ringing forever.
-          this.callApiService.end(signal.chatId, 'REJECT').subscribe();
-          return;
-        }
-        this.closeMessageOverlays();
-        this.activeCallChatId = signal.chatId;
-        this.activeCallPeerId = signal.fromUserId ?? null;
-        this.activeCallType = signal.callType ?? 'AUDIO';
-        this.pendingOfferSdp = signal.sdp ?? null;
-        const peerChat = this.chats.find(c => c.senderId === signal.fromUserId || c.receiverId === signal.fromUserId);
-        this.activeCallPeerName = peerChat?.name ?? null;
-        this.activeCallPeerAvatarUrl = peerChat?.avatarUrl ?? null;
-        this.callState = 'incoming';
-        // The session already exists in call-service's CallSessionStore by the time this
-        // signal arrives (invite() created it before publishing) — no queueing needed here.
-        this.confirmCallSession();
+        this.handleIncomingInvite(signal);
         break;
       case 'ANSWER':
-        if (this.callState === 'outgoing' && this.activeCallChatId === signal.chatId && signal.sdp) {
-          this.webRtcCallService.completeAsCaller(signal.sdp).then(() => {
-            this.ngZone.run(() => this.callState = 'in-call');
-          });
-        }
+        this.handleAnswerSignal(signal);
+        break;
+      case 'PARTICIPANT_JOINED':
+        this.handleParticipantJoinedSignal(signal);
+        break;
+      case 'PEER_OFFER':
+        this.handlePeerOfferSignal(signal);
+        break;
+      case 'PEER_ANSWER':
+        this.handlePeerAnswerSignal(signal);
         break;
       case 'ICE_CANDIDATE':
-        if (this.activeCallChatId === signal.chatId && signal.candidate) {
+        if (this.activeCallChatId === signal.chatId && signal.candidate && signal.fromUserId) {
           this.webRtcCallService.addRemoteIceCandidate(
-            signal.candidate, signal.candidateSdpMid ?? null, signal.candidateSdpMLineIndex ?? null
+            signal.fromUserId, signal.candidate, signal.candidateSdpMid ?? null, signal.candidateSdpMLineIndex ?? null
           );
         }
         break;
@@ -1418,10 +1520,79 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       case 'REJECT':
       case 'BUSY':
       case 'MISSED':
-        if (this.activeCallChatId === signal.chatId) {
-          this.endCallLocally();
-        }
+        this.handleParticipantLeftSignal(signal);
         break;
+    }
+  }
+
+  private handleIncomingInvite(signal: CallSignal): void {
+    if (this.callState !== 'idle') {
+      // Already on a call: decline immediately rather than leaving the caller ringing forever.
+      this.callApiService.end(signal.chatId as string, 'REJECT').subscribe();
+      return;
+    }
+    this.closeMessageOverlays();
+    this.activeCallChatId = signal.chatId as string;
+    this.activeCallType = signal.callType ?? 'AUDIO';
+    this.pendingOfferSdp = signal.sdp ?? null;
+    const callerId = signal.fromUserId ?? '';
+    const { name, avatarUrl } = this.resolveCallParticipantIdentity(callerId);
+    this.callParticipants = [{ userId: callerId, name, avatarUrl, status: 'ringing' }];
+    this.callState = 'incoming';
+    // The session already exists in call-service's CallSessionStore by the time this
+    // signal arrives (invite() created it before publishing) — no queueing needed here.
+    this.confirmCallSession();
+  }
+
+  private handleAnswerSignal(signal: CallSignal): void {
+    if (this.callState !== 'outgoing' || this.activeCallChatId !== signal.chatId || !signal.sdp || !signal.fromUserId) return;
+    const peerId = signal.fromUserId;
+    this.webRtcCallService.setRemoteAnswer(peerId, signal.sdp).then(() => {
+      this.ngZone.run(() => {
+        this.markParticipantJoined(peerId);
+        this.callState = 'in-call';
+      });
+    });
+  }
+
+  // Sent to every already-joined participant when someone new (fromUserId) just joined —
+  // mesh bootstrap: we proactively open a fresh peer connection straight to them.
+  private handleParticipantJoinedSignal(signal: CallSignal): void {
+    if (this.activeCallChatId !== signal.chatId || !signal.fromUserId) return;
+    const newPeerId = signal.fromUserId;
+    const chatId = this.activeCallChatId;
+    this.addOrJoinParticipant(newPeerId);
+    this.webRtcCallService.createOfferFor(newPeerId, this.activeCallType).then(sdpOffer => {
+      this.callApiService.peerOffer(chatId, newPeerId, sdpOffer).subscribe();
+    }).catch(err => console.error('[call] mesh peer-offer failed', err));
+  }
+
+  // The other side of the bootstrap above: someone else's client is offering us a direct
+  // mesh link, so we answer it.
+  private handlePeerOfferSignal(signal: CallSignal): void {
+    if (this.activeCallChatId !== signal.chatId || !signal.fromUserId || !signal.sdp) return;
+    const fromPeerId = signal.fromUserId;
+    const chatId = this.activeCallChatId;
+    this.addOrJoinParticipant(fromPeerId);
+    this.webRtcCallService.createAnswerFor(fromPeerId, this.activeCallType, signal.sdp).then(sdpAnswer => {
+      this.callApiService.peerAnswer(chatId, fromPeerId, sdpAnswer).subscribe();
+    }).catch(err => console.error('[call] mesh peer-answer failed', err));
+  }
+
+  private handlePeerAnswerSignal(signal: CallSignal): void {
+    if (this.activeCallChatId !== signal.chatId || !signal.fromUserId || !signal.sdp) return;
+    this.webRtcCallService.setRemoteAnswer(signal.fromUserId, signal.sdp);
+  }
+
+  // END/REJECT/BUSY/MISSED are per-participant, not necessarily the whole call — a group
+  // call continues locally as long as at least one other participant remains active.
+  private handleParticipantLeftSignal(signal: CallSignal): void {
+    if (this.activeCallChatId !== signal.chatId || !signal.fromUserId) return;
+    const leftPeerId = signal.fromUserId;
+    this.webRtcCallService.closePeer(leftPeerId);
+    this.callParticipants = this.callParticipants.filter(p => p.userId !== leftPeerId);
+    if (this.callParticipants.length === 0) {
+      this.endCallLocally();
     }
   }
 
@@ -1429,9 +1600,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.webRtcCallService.close();
     this.callState = 'idle';
     this.activeCallChatId = null;
-    this.activeCallPeerId = null;
-    this.activeCallPeerName = null;
-    this.activeCallPeerAvatarUrl = null;
+    this.callParticipants = [];
     this.pendingOfferSdp = null;
     this.callSessionConfirmed = false;
     this.pendingLocalIceCandidates = [];
@@ -1447,7 +1616,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   private sendIceCandidate(candidate: LocalIceCandidate): void {
     if (!this.activeCallChatId) return;
     this.callApiService.iceCandidate(
-      this.activeCallChatId, candidate.candidate, candidate.sdpMid, candidate.sdpMLineIndex
+      this.activeCallChatId, candidate.peerId, candidate.candidate, candidate.sdpMid, candidate.sdpMLineIndex
     ).subscribe();
   }
 }

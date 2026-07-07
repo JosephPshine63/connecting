@@ -29,6 +29,7 @@ export class ChatListComponent {
   avatarClicked = output<string>();
   chatAccepted = output<ChatResponse>();
   chatRejected = output<ChatResponse>();
+  createGroupRequested = output<void>();
 
   searchQuery = '';
   blockedUsers: Array<BlockedUserResponse> = [];
@@ -184,7 +185,15 @@ export class ChatListComponent {
   }
 
   otherUserId(chat: ChatResponse): string | undefined {
+    if (chat.type === 'GROUP') {
+      return undefined;
+    }
     return chat.senderId === this.keycloakService.userId ? chat.receiverId : chat.senderId;
+  }
+
+  requestCreateGroup(): void {
+    this.searchNewContact = false;
+    this.createGroupRequested.emit();
   }
 
   onAvatarClick(event: Event, userId: string | undefined): void {

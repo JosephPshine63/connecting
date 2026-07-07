@@ -51,6 +51,10 @@ Both `deploy-local.sh` and `deploy-prod.sh` share an `ensure_keycloak_db()` boot
 
 To clean up project-local Docker images/containers (not the shared host), run `./cleanup-images.sh` — it prompts for confirmation, removes only this project's app + observability images/containers, then does a `git pull --ff-only` at the end.
 
+`deploy-prod.sh` accepts `--only=<service>` (backend/frontend/file-service/api-gateway/notification-service/call-service) to rebuild and restart a single app container without tearing down or rebuilding the rest of the stack (skips the infra restart and build-cache prune it otherwise does); omit it for a full deploy. Both `deploy-local.sh` and `deploy-prod.sh` also run `ensure_admin_user()`: if `ADMIN_EMAIL` is set and `ADMIN_USER_ID` is not, it idempotently creates/finds that account via the Keycloak Admin API and writes `ADMIN_USER_ID` back to `.env` — this is what activates the admin support chat (see `support` domain below); no manual bootstrap step is needed beyond setting `ADMIN_EMAIL`.
+
+CI (`.github/workflows/ci.yml`) runs on every push/PR to `main`: `./mvnw test` for each Java module (backend excludes `WacchatApiApplicationTests`, which boots the full Spring context against Postgres/Keycloak/RabbitMQ that CI doesn't provision) plus `ng test --browsers=ChromeHeadless` and a production build for the frontend. There's no deploy step — it's a build/test gate only.
+
 Once the infra above is up, `./start-local-services.sh` starts backend, file-service, notification-service, call-service, and frontend in the background via `direnv exec` (so each loads `.env` through `.envrc`), logging to `logs/<name>.log`. Note: the script's own `SERVICES` array still lists an extra entry, `api-gateway` via `./mvnw spring-boot:run` on :8081 — this is stale since `deploy-local.sh` already runs api-gateway as a Docker container on the same port (added in `a2f0f82`); running it will attempt a redundant/conflicting bind on :8081.
 
 ```bash
@@ -188,7 +192,9 @@ Package root: `dev.pioruocco.wacchat`. Each domain follows:
   <Entity>Request.java / <Entity>Response.java
 ```
 
-Domains: `chat`, `message`, `user`, `notification`, `file`, `bot`, `security`, `interceptor`, `common`. (The `ws` domain — WebSocket/STOMP config and `AuthChannelInterceptor` — moved out to `wac/notification-service`; see Architecture.)
+Domains: `chat`, `message`, `user`, `notification`, `file`, `bot`, `support`, `security`, `interceptor`, `common`. (The `ws` domain — WebSocket/STOMP config and `AuthChannelInterceptor` — moved out to `wac/notification-service`; see Architecture.)
+
+- **Admin support chat** (`support` domain) — `AdminChatService` auto-creates a direct chat between every new user and a real Keycloak-issued admin account (`application.admin.user-id` / `ADMIN_USER_ID`, distinct from the fixed-UUID `Arno` bot: no AI reply logic, the admin answers manually) at the same username-setup trigger point as `BotService`. `SupportController`'s `POST /api/v1/support/report-bug-chat` (backs the frontend's "Segnala un bug" button) is a lazy find-or-create fallback for accounts that onboarded before this feature existed — idempotent, returns 404 if `ADMIN_USER_ID` is unset or the caller is the admin account itself.
 
 All JPA entities extend `common/BaseAuditingEntity`, which auto-populates `createdDate` and `lastModifiedDate` via Spring Data JPA auditing. `chat` IDs are UUID strings; `messages` uses `msg_seq` (a PostgreSQL sequence starting at 1).
 
@@ -242,7 +248,8 @@ Three tables: `users`, `chat` (one row per user pair), `messages` (`state`: SENT
 | `KEYCLOAK_ADMIN_URL` | `http://keycloak-wacchat:8080` (`.envrc` overrides to `http://localhost:8180` for local dev) |
 | `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `admin` |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | (empty — mail disabled) |
-| `ADMIN_EMAIL` | (empty — cleanup protects no account) |
+| `ADMIN_EMAIL` | (empty — cleanup protects no account; also the account `ensure_admin_user()` seeds in Keycloak on deploy) |
+| `ADMIN_USER_ID` | (empty — admin support chat disabled) | auto-written to `.env` by `deploy-local.sh`/`deploy-prod.sh` once the admin account exists |
 | `FILE_SERVICE_BASE_URL` | `http://localhost:8083` |
 | `FILE_SERVICE_INTERNAL_API_KEY` | (empty) |
 | `RABBITMQ_HOST` / `RABBITMQ_PORT` | `localhost` / `5672` |

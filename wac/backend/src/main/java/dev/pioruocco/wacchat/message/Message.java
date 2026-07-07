@@ -49,7 +49,9 @@ public class Message extends BaseAuditingEntity {
     private Chat chat;
     @Column(name = "sender_id", nullable = false)
     private String senderId;
-    @Column(name = "receiver_id", nullable = false)
+    // Null for GROUP messages — there's no single receiver once a chat has 3+ members;
+    // fan-out to all other chat_members happens at notification-dispatch time instead.
+    @Column(name = "receiver_id")
     private String receiverId;
     private String mediaFilePath;
     @Column(name = "reply_to_id")

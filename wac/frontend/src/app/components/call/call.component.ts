@@ -1,54 +1,46 @@
-import {
-  AfterViewChecked,
-  Component,
-  ElementRef,
-  EventEmitter,
-  Input,
-  OnChanges,
-  OnDestroy,
-  Output,
-  SimpleChanges,
-  ViewChild
-} from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { WebRtcCallService } from '../../utils/webrtc/webrtc-call.service';
+import { CallTileComponent } from '../call-tile/call-tile.component';
+
+export interface CallParticipantView {
+  userId: string;
+  name: string | null;
+  avatarUrl: string | null;
+  status: 'ringing' | 'joined';
+}
 
 @Component({
   selector: 'app-call',
   templateUrl: './call.component.html',
-  styleUrl: './call.component.scss'
+  styleUrl: './call.component.scss',
+  imports: [CallTileComponent]
 })
-export class CallComponent implements OnChanges, AfterViewChecked, OnDestroy {
+export class CallComponent implements OnChanges, OnDestroy {
 
   // Includes 'idle' purely so the type matches MainComponent's broader field as-is —
   // the parent only renders <app-call> at all once callState !== 'idle' (see
   // main.component.html), so none of this component's template branches ever match it.
   @Input() callState!: 'idle' | 'incoming' | 'outgoing' | 'in-call';
-  @Input() peerName: string | null = null;
-  @Input() peerAvatarUrl: string | null = null;
   @Input() callType: 'AUDIO' | 'VIDEO' = 'AUDIO';
+  // Excludes self. For an incoming 1:1 call this has exactly one entry (the caller); for
+  // an outgoing/in-call it's every other invitee/participant (mesh topology — a 1:1 call
+  // is simply the size-1 case).
+  @Input() participants: CallParticipantView[] = [];
   @Output() accepted = new EventEmitter<void>();
   @Output() rejected = new EventEmitter<void>();
   @Output() hungUp = new EventEmitter<void>();
 
-  @ViewChild('localVideo') localVideoRef?: ElementRef<HTMLVideoElement>;
-  @ViewChild('remoteVideo') remoteVideoRef?: ElementRef<HTMLVideoElement>;
-  @ViewChild('remoteAudio') remoteAudioRef?: ElementRef<HTMLAudioElement>;
-
   muted = false;
   elapsedLabel = '00:00';
+  remoteStreams = new Map<string, MediaStream>();
   private elapsedSeconds = 0;
   private timerHandle: ReturnType<typeof setInterval> | null = null;
-  private readonly remoteStreamSub: Subscription;
+  private readonly remoteStreamsSub: Subscription;
 
   constructor(private webRtcCallService: WebRtcCallService) {
-    this.remoteStreamSub = this.webRtcCallService.remoteStream$.subscribe(stream => {
-      if (this.remoteVideoRef) {
-        this.remoteVideoRef.nativeElement.srcObject = stream;
-      }
-      if (this.remoteAudioRef) {
-        this.remoteAudioRef.nativeElement.srcObject = stream;
-      }
+    this.remoteStreamsSub = this.webRtcCallService.remoteStreams$.subscribe(streams => {
+      this.remoteStreams = streams;
     });
   }
 
@@ -62,32 +54,24 @@ export class CallComponent implements OnChanges, AfterViewChecked, OnDestroy {
     }
   }
 
-  // Local/remote <video>/<audio> elements only exist in the DOM for whichever branch of
-  // the template is currently active (incoming vs. outgoing/in-call, audio vs. video) —
-  // same "re-check every view check" approach MainComponent already uses for
-  // scrollToBottom(), since a plain ViewChild lookup right after a state flip can race
-  // the template's own re-render.
-  ngAfterViewChecked(): void {
-    if (this.localVideoRef && this.localVideoRef.nativeElement.srcObject !== this.webRtcCallService.localStream) {
-      this.localVideoRef.nativeElement.srcObject = this.webRtcCallService.localStream;
-    }
-    // Same race as local video, but for the remote stream: the constructor-time
-    // subscribe() below only fires on new emissions, and ontrack can fire before the
-    // 'in-call' branch (with #remoteVideo/#remoteAudio) has even rendered — e.g. on the
-    // callee side, whose video/audio elements don't exist yet during 'incoming'. Without
-    // this recheck, a missed emission means the remote stream never gets attached.
-    const remoteStream = this.webRtcCallService.remoteStream$.value;
-    if (this.remoteVideoRef && this.remoteVideoRef.nativeElement.srcObject !== remoteStream) {
-      this.remoteVideoRef.nativeElement.srcObject = remoteStream;
-    }
-    if (this.remoteAudioRef && this.remoteAudioRef.nativeElement.srcObject !== remoteStream) {
-      this.remoteAudioRef.nativeElement.srcObject = remoteStream;
-    }
-  }
-
   ngOnDestroy(): void {
     this.stopTimer();
-    this.remoteStreamSub.unsubscribe();
+    this.remoteStreamsSub.unsubscribe();
+  }
+
+  get localStream(): MediaStream | null {
+    return this.webRtcCallService.localStream;
+  }
+
+  get incomingCaller(): CallParticipantView | null {
+    return this.participants[0] ?? null;
+  }
+
+  statusLabelFor(participant: CallParticipantView): string | null {
+    if (this.callState === 'outgoing' && participant.status === 'ringing') {
+      return 'Squilla…';
+    }
+    return null;
   }
 
   toggleMute(): void {

@@ -96,29 +96,86 @@
   color: #fff;
 }
 
-// In-call video layout — remote fills the box, local is a small picture-in-picture tile.
+// In-call video layout — remote tile(s) fill the box in a grid, local is a small
+// picture-in-picture tile. A 1:1 call is simply the 1-tile grid case.
 .in-call-box {
   max-width: 480px;
   padding-top: 1.5rem;
+
+  &.multi {
+    max-width: 640px;
+  }
 }
 
-.remote-video {
-  width: 100%;
-  max-height: 320px;
-  border-radius: 12px;
-  background: #000;
-  object-fit: cover;
+.call-tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  height: 320px;
   margin-bottom: 1rem;
+
+  &.single {
+    grid-template-columns: 1fr;
+  }
 }
 
-.local-video {
+.local-tile {
   position: absolute;
   top: 1.5rem;
   right: 1.5rem;
   width: 90px;
   height: 68px;
   border-radius: 8px;
-  background: #000;
-  object-fit: cover;
   border: 2px solid var(--border);
+  overflow: hidden;
+}
+
+// Audio-only group calls: a wrapping row of avatar+name tiles instead of the 1:1 large
+// single-avatar layout.
+.call-audio-participants {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+
+  &.single {
+    margin-bottom: 1.5rem;
+  }
+}
+
+.call-avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 84px;
+
+  .call-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 1.4rem;
+    margin: 0;
+
+    &.large {
+      width: 140px;
+      height: 140px;
+      font-size: 3rem;
+    }
+  }
+}
+
+.call-avatar-item-name {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.call-avatar-item-status {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
 }

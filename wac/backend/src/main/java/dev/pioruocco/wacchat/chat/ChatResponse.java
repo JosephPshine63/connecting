@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 public class ChatResponse {
 
     private String id;
+    private ChatType type;
     private String name;
     private long unreadCount;
     private String lastMessage;
@@ -31,4 +33,6 @@ public class ChatResponse {
     private boolean favorite;
     private boolean archived;
     private boolean isAdminChat;
+    /** GROUP-only, empty for DIRECT chats. */
+    private List<GroupMemberResponse> members;
 }

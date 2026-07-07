@@ -1,0 +1,22 @@
+<div class="call-tile" [class.local]="isLocal">
+  @if (callType === 'VIDEO') {
+    <video #videoEl class="call-tile-video" autoplay playsinline [muted]="muted"></video>
+  } @else {
+    <audio #audioEl autoplay [muted]="muted"></audio>
+    <div class="call-tile-avatar">
+      @if (avatarUrl) {
+        <img [src]="avatarUrl" alt="">
+      } @else {
+        <span>{{ initial }}</span>
+      }
+    </div>
+  }
+  @if (!isLocal) {
+    <div class="call-tile-label">
+      <span class="call-tile-name">{{ name }}</span>
+      @if (statusLabel) {
+        <span class="call-tile-status">{{ statusLabel }}</span>
+      }
+    </div>
+  }
+</div>

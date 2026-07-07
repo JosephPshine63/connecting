@@ -2,78 +2,111 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 
 export interface LocalIceCandidate {
+  peerId: string;
   candidate: string;
   sdpMid: string | null;
   sdpMLineIndex: number | null;
 }
 
+interface PendingCandidate {
+  candidate: string;
+  sdpMid: string | null;
+  sdpMLineIndex: number | null;
+}
+
+interface PeerLink {
+  pc: RTCPeerConnection;
+  // The remote pc's answer/offer isn't set yet the moment ICE candidates start trickling
+  // in (candidate generation begins right after createOffer/createAnswer, independent of
+  // when the remote description actually gets applied) — candidates that arrive before
+  // then must be queued and replayed once one exists, or they're silently dropped and
+  // that specific peer connection never completes ICE negotiation.
+  remoteDescriptionSet: boolean;
+  pendingRemoteCandidates: PendingCandidate[];
+}
+
 /**
- * Thin wrapper around RTCPeerConnection/getUserMedia for 1:1 calls. Public STUN only
- * (no TURN in v1 — see the roadmap plan) via Google's public STUN server, which covers
- * most NAT setups; symmetric-NAT/corporate-firewall cases are an explicitly deferred
- * fast-follow (coturn).
+ * Thin wrapper around RTCPeerConnection/getUserMedia for mesh calls: one direct
+ * RTCPeerConnection per other participant (Map<peerId, PeerLink>), all sharing the same
+ * local getUserMedia stream. A 1:1 call is simply the case where this map has one entry.
+ * Public STUN only (no TURN in v1 — see the roadmap plan) via Google's public STUN
+ * server, which covers most NAT setups; symmetric-NAT/corporate-firewall cases are an
+ * explicitly deferred fast-follow (coturn).
  */
 @Injectable({ providedIn: 'root' })
 export class WebRtcCallService {
 
-  private pc: RTCPeerConnection | null = null;
+  private peers = new Map<string, PeerLink>();
+  // ICE candidates (or even a peer-offer/peer-answer signal) can arrive for a peerId
+  // before its PeerLink has been created at all — e.g. a PARTICIPANT_JOINED bootstrap
+  // racing a slightly-delayed ICE_CANDIDATE for the same new peer. Buffered here until
+  // createPeerLink(peerId) claims them.
+  private preLinkCandidates = new Map<string, PendingCandidate[]>();
   private localMediaStream: MediaStream | null = null;
-  // The callee's pc doesn't exist yet while the call is ringing (only created in
-  // startAsCallee, on accept), but the caller trickles ICE candidates the moment it
-  // creates its offer — well before a human reacts to a ringing call. Likewise the
-  // caller's pc exists from the start but its remote description (the answer) isn't
-  // set until the ANSWER signal arrives, which can lose a race against the callee's
-  // own trickled candidates sent right after createAnswer. Either way, candidates
-  // that arrive before there's a pc with a remote description set must be queued and
-  // replayed once one exists, or they're silently dropped and the connection never
-  // completes ICE negotiation (remote track never arrives).
-  private remoteDescriptionSet = false;
-  private pendingRemoteCandidates: LocalIceCandidate[] = [];
 
-  readonly remoteStream$ = new BehaviorSubject<MediaStream | null>(null);
+  readonly remoteStreams$ = new BehaviorSubject<Map<string, MediaStream>>(new Map());
   readonly localIceCandidate$ = new Subject<LocalIceCandidate>();
 
   get localStream(): MediaStream | null {
     return this.localMediaStream;
   }
 
-  async startAsCaller(callType: 'AUDIO' | 'VIDEO'): Promise<string> {
-    await this.setUpLocalMediaAndPeerConnection(callType);
-    const offer = await this.pc!.createOffer();
-    await this.pc!.setLocalDescription(offer);
+  async createOfferFor(peerId: string, callType: 'AUDIO' | 'VIDEO'): Promise<string> {
+    await this.ensureLocalMedia(callType);
+    const link = this.getOrCreateLink(peerId);
+    const offer = await link.pc.createOffer();
+    await link.pc.setLocalDescription(offer);
     return offer.sdp ?? '';
   }
 
-  async startAsCallee(callType: 'AUDIO' | 'VIDEO', offerSdp: string): Promise<string> {
-    await this.setUpLocalMediaAndPeerConnection(callType);
-    await this.pc!.setRemoteDescription({ type: 'offer', sdp: offerSdp });
-    await this.onRemoteDescriptionSet();
-    const answer = await this.pc!.createAnswer();
-    await this.pc!.setLocalDescription(answer);
+  async createAnswerFor(peerId: string, callType: 'AUDIO' | 'VIDEO', offerSdp: string): Promise<string> {
+    await this.ensureLocalMedia(callType);
+    const link = this.getOrCreateLink(peerId);
+    await link.pc.setRemoteDescription({ type: 'offer', sdp: offerSdp });
+    await this.onRemoteDescriptionSet(peerId);
+    const answer = await link.pc.createAnswer();
+    await link.pc.setLocalDescription(answer);
     return answer.sdp ?? '';
   }
 
-  async completeAsCaller(answerSdp: string): Promise<void> {
-    if (!this.pc) return;
-    await this.pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-    await this.onRemoteDescriptionSet();
+  async setRemoteAnswer(peerId: string, answerSdp: string): Promise<void> {
+    const link = this.peers.get(peerId);
+    if (!link) return;
+    await link.pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+    await this.onRemoteDescriptionSet(peerId);
   }
 
-  async addRemoteIceCandidate(candidate: string, sdpMid: string | null, sdpMLineIndex: number | null): Promise<void> {
+  async addRemoteIceCandidate(peerId: string, candidate: string, sdpMid: string | null, sdpMLineIndex: number | null): Promise<void> {
     if (!candidate) return;
-    if (!this.pc || !this.remoteDescriptionSet) {
-      this.pendingRemoteCandidates.push({ candidate, sdpMid, sdpMLineIndex });
+    const pending: PendingCandidate = { candidate, sdpMid, sdpMLineIndex };
+    const link = this.peers.get(peerId);
+    if (!link) {
+      const queue = this.preLinkCandidates.get(peerId) ?? [];
+      queue.push(pending);
+      this.preLinkCandidates.set(peerId, queue);
       return;
     }
-    await this.pc.addIceCandidate({ candidate, sdpMid: sdpMid ?? undefined, sdpMLineIndex: sdpMLineIndex ?? undefined });
+    if (!link.remoteDescriptionSet) {
+      link.pendingRemoteCandidates.push(pending);
+      return;
+    }
+    await link.pc.addIceCandidate({ candidate, sdpMid: sdpMid ?? undefined, sdpMLineIndex: sdpMLineIndex ?? undefined });
   }
 
-  private async onRemoteDescriptionSet(): Promise<void> {
-    this.remoteDescriptionSet = true;
-    const queued = this.pendingRemoteCandidates;
-    this.pendingRemoteCandidates = [];
-    for (const c of queued) {
-      await this.pc!.addIceCandidate({ candidate: c.candidate, sdpMid: c.sdpMid ?? undefined, sdpMLineIndex: c.sdpMLineIndex ?? undefined });
+  isConnectedTo(peerId: string): boolean {
+    return this.peers.has(peerId);
+  }
+
+  closePeer(peerId: string): void {
+    const link = this.peers.get(peerId);
+    if (link) {
+      link.pc.close();
+      this.peers.delete(peerId);
+    }
+    this.preLinkCandidates.delete(peerId);
+    const streams = new Map(this.remoteStreams$.value);
+    if (streams.delete(peerId)) {
+      this.remoteStreams$.next(streams);
     }
   }
 
@@ -84,28 +117,36 @@ export class WebRtcCallService {
   close(): void {
     this.localMediaStream?.getTracks().forEach(track => track.stop());
     this.localMediaStream = null;
-    this.pc?.close();
-    this.pc = null;
-    this.remoteDescriptionSet = false;
-    this.pendingRemoteCandidates = [];
-    this.remoteStream$.next(null);
+    this.peers.forEach(link => link.pc.close());
+    this.peers.clear();
+    this.preLinkCandidates.clear();
+    this.remoteStreams$.next(new Map());
   }
 
-  private async setUpLocalMediaAndPeerConnection(callType: 'AUDIO' | 'VIDEO'): Promise<void> {
-    this.localMediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: callType === 'VIDEO'
-    });
+  private async onRemoteDescriptionSet(peerId: string): Promise<void> {
+    const link = this.peers.get(peerId);
+    if (!link) return;
+    link.remoteDescriptionSet = true;
+    const queued = link.pendingRemoteCandidates;
+    link.pendingRemoteCandidates = [];
+    for (const c of queued) {
+      await link.pc.addIceCandidate({ candidate: c.candidate, sdpMid: c.sdpMid ?? undefined, sdpMLineIndex: c.sdpMLineIndex ?? undefined });
+    }
+  }
 
-    this.pc = new RTCPeerConnection({
+  private getOrCreateLink(peerId: string): PeerLink {
+    const existing = this.peers.get(peerId);
+    if (existing) return existing;
+
+    const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
+    this.localMediaStream!.getTracks().forEach(track => pc.addTrack(track, this.localMediaStream!));
 
-    this.localMediaStream.getTracks().forEach(track => this.pc!.addTrack(track, this.localMediaStream!));
-
-    this.pc.onicecandidate = (event) => {
+    pc.onicecandidate = (event) => {
       if (event.candidate) {
         this.localIceCandidate$.next({
+          peerId,
           candidate: event.candidate.candidate,
           sdpMid: event.candidate.sdpMid,
           sdpMLineIndex: event.candidate.sdpMLineIndex
@@ -113,8 +154,27 @@ export class WebRtcCallService {
       }
     };
 
-    this.pc.ontrack = (event) => {
-      this.remoteStream$.next(event.streams[0] ?? null);
+    pc.ontrack = (event) => {
+      const streams = new Map(this.remoteStreams$.value);
+      streams.set(peerId, event.streams[0] ?? new MediaStream());
+      this.remoteStreams$.next(streams);
     };
+
+    const link: PeerLink = {
+      pc,
+      remoteDescriptionSet: false,
+      pendingRemoteCandidates: this.preLinkCandidates.get(peerId) ?? []
+    };
+    this.preLinkCandidates.delete(peerId);
+    this.peers.set(peerId, link);
+    return link;
+  }
+
+  private async ensureLocalMedia(callType: 'AUDIO' | 'VIDEO'): Promise<void> {
+    if (this.localMediaStream) return;
+    this.localMediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: callType === 'VIDEO'
+    });
   }
 }

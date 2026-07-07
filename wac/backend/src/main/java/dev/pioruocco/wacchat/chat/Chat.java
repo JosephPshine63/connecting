@@ -66,6 +66,31 @@ public class Chat extends BaseAuditingEntity {
     private boolean senderArchived;
     @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     private boolean recipientArchived;
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(20) DEFAULT 'DIRECT'")
+    private ChatType type = ChatType.DIRECT;
+    // GROUP-only: sender/recipient are null for GROUP chats, name/avatarUrl/createdBy are
+    // null for DIRECT chats — the two shapes never overlap.
+    private String name;
+    private String avatarUrl;
+    private String createdBy;
+
+    @Transient
+    public boolean isGroup() {
+        return type == ChatType.GROUP;
+    }
+
+    /** Dispatch point so callers (ChatMapper, etc.) don't need their own type branch. */
+    @Transient
+    public String getDisplayName(String viewerId) {
+        return isGroup() ? name : getChatName(viewerId);
+    }
+
+    /** Dispatch point so callers (ChatMapper, etc.) don't need their own type branch. */
+    @Transient
+    public String getDisplayAvatarUrl(String viewerId) {
+        return isGroup() ? avatarUrl : getChatAvatarUrl(viewerId);
+    }
 
     @Transient
     public String getChatName(String senderId) {
@@ -96,6 +121,19 @@ public class Chat extends BaseAuditingEntity {
                 .stream()
                 .filter(m -> m.getReceiverId().equals(senderId))
                 .filter(m -> MessageState.SENT == m.getState())
+                .count();
+    }
+
+    /** GROUP equivalent of {@link #getUnreadMessages}: messages.receiverId is always null
+     *  for GROUP messages, so unread is derived from the viewer's persisted read cursor
+     *  (ChatMember.lastReadMessageId) instead — messages from the viewer themselves never
+     *  count as unread. */
+    @Transient
+    public long getUnreadMessagesForGroup(String viewerId, Long lastReadMessageId) {
+        return this.messages
+                .stream()
+                .filter(m -> !m.getSenderId().equals(viewerId))
+                .filter(m -> lastReadMessageId == null || m.getId() > lastReadMessageId)
                 .count();
     }
 

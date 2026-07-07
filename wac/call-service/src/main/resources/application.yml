@@ -47,6 +47,7 @@ application:
     routing-key: call
     queue: wacchat.calls.queue
     ring-timeout-seconds: ${CALL_RING_TIMEOUT_SECONDS:45}
+    max-participants: ${CALL_MAX_PARTICIPANTS:8}
   backend:
     base-url: ${BACKEND_BASE_URL:http://localhost:8082}
     internal-api-key: ${BACKEND_INTERNAL_API_KEY:}

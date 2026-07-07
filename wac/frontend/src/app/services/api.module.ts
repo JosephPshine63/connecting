@@ -14,6 +14,7 @@ import { SessionValidationControllerService } from './services/session-validatio
 import { InternalSystemMessageControllerService } from './services/internal-system-message-controller.service';
 import { ChatValidationControllerService } from './services/chat-validation-controller.service';
 import { ChatService } from './services/chat.service';
+import { GroupChatService } from './services/group-chat.service';
 
 /**
  * Module that provides all services and configuration.
@@ -31,6 +32,7 @@ import { ChatService } from './services/chat.service';
     InternalSystemMessageControllerService,
     ChatValidationControllerService,
     ChatService,
+    GroupChatService,
     ApiConfiguration
   ],
 })

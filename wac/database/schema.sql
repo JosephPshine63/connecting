@@ -13,6 +13,10 @@ CREATE TABLE chat
     recipient_favorite     BOOLEAN                     NOT NULL DEFAULT FALSE,
     sender_archived        BOOLEAN                     NOT NULL DEFAULT FALSE,
     recipient_archived     BOOLEAN                     NOT NULL DEFAULT FALSE,
+    type                   VARCHAR(20)                 NOT NULL DEFAULT 'DIRECT',
+    name                   VARCHAR(255),
+    avatar_url             VARCHAR(500),
+    created_by             VARCHAR(255),
     CONSTRAINT pk_chat PRIMARY KEY (id)
 );
 
@@ -26,7 +30,7 @@ CREATE TABLE messages
     type               VARCHAR(255),
     chat_id            VARCHAR(255),
     sender_id          VARCHAR(255)                NOT NULL,
-    receiver_id        VARCHAR(255)                NOT NULL,
+    receiver_id        VARCHAR(255),
     media_file_path    VARCHAR(255),
     reply_to_id        BIGINT,
     forwarded          BOOLEAN                     NOT NULL DEFAULT FALSE,
@@ -63,6 +67,11 @@ CREATE TABLE users
 -- ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded BOOLEAN NOT NULL DEFAULT FALSE;
 -- ALTER TABLE messages ADD CONSTRAINT FK_MESSAGES_ON_REPLY_TO FOREIGN KEY (reply_to_id) REFERENCES messages (id);
 -- ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE chat ADD COLUMN IF NOT EXISTS type VARCHAR(20) NOT NULL DEFAULT 'DIRECT';
+-- ALTER TABLE chat ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+-- ALTER TABLE chat ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500);
+-- ALTER TABLE chat ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
+-- ALTER TABLE messages ALTER COLUMN receiver_id DROP NOT NULL;
 
 ALTER TABLE chat
     ADD CONSTRAINT FK_CHAT_ON_RECIPIENT FOREIGN KEY (recipient_id) REFERENCES users (id);
@@ -154,3 +163,29 @@ CREATE TABLE IF NOT EXISTS message_stars
 
 ALTER TABLE message_stars
     ADD CONSTRAINT FK_MESSAGE_STARS_ON_MESSAGE FOREIGN KEY (message_id) REFERENCES messages (id);
+
+-- chat_members: per-member state for GROUP chats (favorite/archived/read-cursor cannot use
+-- the sender/recipient two-column pattern above once a chat has more than two parties).
+-- DIRECT chats never get rows here; they keep using chat.sender_favorite/recipient_favorite/etc.
+
+CREATE SEQUENCE IF NOT EXISTS chat_members_seq START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE IF NOT EXISTS chat_members
+(
+    id                   BIGINT                      NOT NULL,
+    created_date         TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    last_modified_date   TIMESTAMP WITHOUT TIME ZONE,
+    chat_id              VARCHAR(255)                NOT NULL,
+    user_id              VARCHAR(255)                NOT NULL,
+    role                 VARCHAR(20)                 NOT NULL DEFAULT 'MEMBER',
+    favorite             BOOLEAN                     NOT NULL DEFAULT FALSE,
+    archived             BOOLEAN                     NOT NULL DEFAULT FALSE,
+    last_read_message_id BIGINT,
+    CONSTRAINT pk_chat_members PRIMARY KEY (id),
+    CONSTRAINT uk_chat_members_pair UNIQUE (chat_id, user_id)
+);
+
+ALTER TABLE chat_members
+    ADD CONSTRAINT FK_CHAT_MEMBERS_ON_CHAT FOREIGN KEY (chat_id) REFERENCES chat (id);
+ALTER TABLE chat_members
+    ADD CONSTRAINT FK_CHAT_MEMBERS_ON_USER FOREIGN KEY (user_id) REFERENCES users (id);

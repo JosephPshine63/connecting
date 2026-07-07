@@ -14,8 +14,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -26,12 +28,15 @@ public class ChatService {
     private final ChatMapper mapper;
     private final NotificationService notificationService;
     private final ModerationService moderationService;
+    private final ChatMemberRepository chatMemberRepository;
 
     @Transactional(readOnly = true)
     public List<ChatResponse> getChatsByReceiverId(Authentication currentUser) {
         final String userId = currentUser.getName();
-        return chatRepository.findChatsBySenderId(userId)
-                .stream()
+        List<Chat> directChats = chatRepository.findChatsBySenderId(userId);
+        List<Chat> groupChats = chatRepository.findGroupChatsByMemberId(userId);
+        return Stream.concat(directChats.stream(), groupChats.stream())
+                .sorted(Comparator.comparing(Chat::getCreatedDate).reversed())
                 .map(c -> mapper.toChatResponse(c, userId))
                 .toList();
     }
@@ -143,6 +148,13 @@ public class ChatService {
     public boolean toggleFavorite(String chatId, String currentUserId) {
         Chat chat = findChatOrThrow(chatId);
         assertParticipant(chat, currentUserId);
+        if (chat.isGroup()) {
+            ChatMember member = findMemberOrThrow(chatId, currentUserId);
+            boolean newValue = !member.isFavorite();
+            member.setFavorite(newValue);
+            chatMemberRepository.save(member);
+            return newValue;
+        }
         boolean isSender = chat.getSender().getId().equals(currentUserId);
         boolean newValue = isSender ? !chat.isSenderFavorite() : !chat.isRecipientFavorite();
         if (isSender) {
@@ -157,6 +169,13 @@ public class ChatService {
     public boolean toggleArchive(String chatId, String currentUserId) {
         Chat chat = findChatOrThrow(chatId);
         assertParticipant(chat, currentUserId);
+        if (chat.isGroup()) {
+            ChatMember member = findMemberOrThrow(chatId, currentUserId);
+            boolean newValue = !member.isArchived();
+            member.setArchived(newValue);
+            chatMemberRepository.save(member);
+            return newValue;
+        }
         boolean isSender = chat.getSender().getId().equals(currentUserId);
         boolean newValue = isSender ? !chat.isSenderArchived() : !chat.isRecipientArchived();
         if (isSender) {
@@ -169,9 +188,20 @@ public class ChatService {
     }
 
     private void assertParticipant(Chat chat, String userId) {
+        if (chat.isGroup()) {
+            if (!chatMemberRepository.existsByChatIdAndUserId(chat.getId(), userId)) {
+                throw new AccessDeniedException("You are not a participant in this chat");
+            }
+            return;
+        }
         if (!chat.getSender().getId().equals(userId) && !chat.getRecipient().getId().equals(userId)) {
             throw new AccessDeniedException("You are not a participant in this chat");
         }
+    }
+
+    private ChatMember findMemberOrThrow(String chatId, String userId) {
+        return chatMemberRepository.findByChatIdAndUserId(chatId, userId)
+                .orElseThrow(() -> new AccessDeniedException("You are not a participant in this chat"));
     }
 
     private Chat findChatOrThrow(String chatId) {

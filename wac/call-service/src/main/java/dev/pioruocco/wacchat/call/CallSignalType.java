@@ -9,4 +9,7 @@ public enum CallSignalType {
     REJECT,
     BUSY,
     MISSED,
+    PARTICIPANT_JOINED,
+    PEER_OFFER,
+    PEER_ANSWER,
 }

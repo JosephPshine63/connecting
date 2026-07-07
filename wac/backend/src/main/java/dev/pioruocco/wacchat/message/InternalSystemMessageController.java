@@ -25,6 +25,14 @@ public class InternalSystemMessageController {
                 request.receiverId(), request.content(), MessageType.TEXT);
     }
 
+    @PostMapping("/system-group")
+    public void postGroupSystemMessage(@RequestBody GroupSystemMessageRequest request) {
+        systemMessageSender.saveGroupSystemMessage(request.chatId(), request.senderId(), request.content());
+    }
+
     public record SystemMessageRequest(String chatId, String senderId, String receiverId, String content) {
+    }
+
+    public record GroupSystemMessageRequest(String chatId, String senderId, String content) {
     }
 }

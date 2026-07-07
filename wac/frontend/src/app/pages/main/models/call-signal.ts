@@ -4,7 +4,8 @@
 export interface CallSignal {
   chatId?: string;
   fromUserId?: string;
-  type?: 'INVITE' | 'ANSWER' | 'ICE_CANDIDATE' | 'END' | 'REJECT' | 'BUSY' | 'MISSED';
+  type?: 'INVITE' | 'ANSWER' | 'ICE_CANDIDATE' | 'END' | 'REJECT' | 'BUSY' | 'MISSED'
+    | 'PARTICIPANT_JOINED' | 'PEER_OFFER' | 'PEER_ANSWER';
   callType?: 'AUDIO' | 'VIDEO';
   sdp?: string;
   candidate?: string;

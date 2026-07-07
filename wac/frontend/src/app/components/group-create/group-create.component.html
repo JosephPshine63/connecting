@@ -1,0 +1,44 @@
+<div class="group-create-overlay" (click)="close()">
+  <div class="group-create-box" (click)="$event.stopPropagation()">
+    <button class="group-create-close" (click)="close()" aria-label="Chiudi">✕</button>
+    <h3 class="group-create-title">Nuovo gruppo</h3>
+
+    <input
+      type="text"
+      class="group-create-name-input"
+      placeholder="Nome del gruppo"
+      maxlength="255"
+      [(ngModel)]="groupName"
+    >
+
+    <div class="group-create-contacts">
+      @for (contact of contacts; track contact.id) {
+        <div class="group-create-contact" [class.selected]="isSelected(contact)" (click)="toggleSelected(contact)">
+          <div class="group-create-contact-avatar">
+            @if (contact.avatarUrl) {
+              <img [src]="contact.avatarUrl" alt="">
+            } @else {
+              {{ (contact.username || contact.firstName || '?').charAt(0).toUpperCase() }}
+            }
+          </div>
+          <span class="group-create-contact-name">
+            {{ contact.username ? '@' + contact.username : contact.firstName + ' ' + contact.lastName }}
+          </span>
+          @if (isSelected(contact)) {
+            <i class="fa-solid fa-circle-check group-create-contact-check"></i>
+          }
+        </div>
+      } @empty {
+        <p class="group-create-empty">Nessun contatto disponibile.</p>
+      }
+    </div>
+
+    @if (error) {
+      <p class="group-create-error">{{ error }}</p>
+    }
+
+    <button class="group-create-submit" [disabled]="!canCreate()" (click)="create()">
+      {{ creating ? 'Creazione…' : 'Crea gruppo (' + selectedIds.size + ')' }}
+    </button>
+  </div>
+</div>

@@ -1,0 +1,37 @@
+<div class="call-invitee-picker-overlay" (click)="close()">
+  <div class="call-invitee-picker-box" (click)="$event.stopPropagation()">
+    <button class="call-invitee-picker-close" (click)="close()" aria-label="Chiudi">✕</button>
+    <h3 class="call-invitee-picker-title">
+      Chi vuoi invitare alla chiamata {{ callType === 'VIDEO' ? 'video' : 'vocale' }}?
+    </h3>
+    <p class="call-invitee-picker-hint">Fino a {{ maxInvitees }} partecipanti.</p>
+
+    @if (loading) {
+      <p class="call-invitee-picker-loading">Caricamento…</p>
+    } @else {
+      <div class="call-invitee-picker-list">
+        @for (member of members; track member.userId) {
+          <div class="call-invitee-picker-item" [class.selected]="isSelected(member)" (click)="toggleSelected(member)">
+            <div class="call-invitee-picker-avatar">
+              @if (member.avatarUrl) {
+                <img [src]="member.avatarUrl" alt="">
+              } @else {
+                {{ (member.name || '?').charAt(0).toUpperCase() }}
+              }
+            </div>
+            <span class="call-invitee-picker-name">{{ member.name }}</span>
+            @if (isSelected(member)) {
+              <i class="fa-solid fa-circle-check call-invitee-picker-check"></i>
+            }
+          </div>
+        } @empty {
+          <p class="call-invitee-picker-empty">Nessun altro membro nel gruppo.</p>
+        }
+      </div>
+    }
+
+    <button class="call-invitee-picker-submit" [disabled]="!canConfirm()" (click)="confirm()">
+      Chiama ({{ selectedIds.size }})
+    </button>
+  </div>
+</div>

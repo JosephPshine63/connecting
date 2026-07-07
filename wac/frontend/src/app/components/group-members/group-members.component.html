@@ -1,0 +1,64 @@
+<div class="group-members-overlay" (click)="close()">
+  <div class="group-members-box" (click)="$event.stopPropagation()">
+    <button class="group-members-close" (click)="close()" aria-label="Chiudi">✕</button>
+    <h3 class="group-members-title">Membri del gruppo</h3>
+
+    @if (loading) {
+      <p class="group-members-loading">Caricamento…</p>
+    } @else {
+      <div class="group-members-list">
+        @for (member of members; track member.userId) {
+          <div class="group-members-item">
+            <div class="group-members-avatar">
+              @if (member.avatarUrl) {
+                <img [src]="member.avatarUrl" alt="">
+              } @else {
+                {{ (member.name || '?').charAt(0).toUpperCase() }}
+              }
+            </div>
+            <div class="group-members-info">
+              <span class="group-members-name">{{ member.name }}{{ isSelf(member) ? ' (tu)' : '' }}</span>
+              @if (member.role === 'OWNER') {
+                <span class="group-members-role-badge">Admin</span>
+              }
+            </div>
+            @if (isSelf(member) || isOwner) {
+              <button class="group-members-remove-btn" (click)="removeMember(member)"
+                      [title]="isSelf(member) ? 'Esci dal gruppo' : 'Rimuovi dal gruppo'">
+                <i class="fa-solid" [class.fa-right-from-bracket]="isSelf(member)" [class.fa-user-minus]="!isSelf(member)"></i>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      @if (isOwner) {
+        @if (!addingMember) {
+          <button class="group-members-add-btn" (click)="openAddMember()">
+            <i class="fa-solid fa-user-plus"></i> Aggiungi membro
+          </button>
+        } @else {
+          <div class="group-members-add-list">
+            @for (contact of addableContacts; track contact.id) {
+              <div class="group-members-item group-members-addable" (click)="addMember(contact)">
+                <div class="group-members-avatar">
+                  @if (contact.avatarUrl) {
+                    <img [src]="contact.avatarUrl" alt="">
+                  } @else {
+                    {{ (contact.username || contact.firstName || '?').charAt(0).toUpperCase() }}
+                  }
+                </div>
+                <span class="group-members-name">
+                  {{ contact.username ? '@' + contact.username : contact.firstName + ' ' + contact.lastName }}
+                </span>
+              </div>
+            } @empty {
+              <p class="group-members-empty">Nessun altro contatto da aggiungere.</p>
+            }
+            <button class="group-members-cancel-add-btn" (click)="closeAddMember()">Annulla</button>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>

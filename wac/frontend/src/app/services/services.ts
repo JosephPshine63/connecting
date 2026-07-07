@@ -10,3 +10,4 @@ export { SessionValidationControllerService } from './services/session-validatio
 export { InternalSystemMessageControllerService } from './services/internal-system-message-controller.service';
 export { ChatValidationControllerService } from './services/chat-validation-controller.service';
 export { ChatService } from './services/chat.service';
+export { GroupChatService } from './services/group-chat.service';

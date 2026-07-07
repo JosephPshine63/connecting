@@ -41,12 +41,15 @@ class ChatServiceTest {
     private NotificationService notificationService;
     @Mock
     private ModerationService moderationService;
+    @Mock
+    private ChatMemberRepository chatMemberRepository;
 
     private ChatService chatService;
 
     @BeforeEach
     void setUp() {
-        chatService = new ChatService(chatRepository, userRepository, new ChatMapper(), notificationService, moderationService);
+        ChatMapper mapper = new ChatMapper(chatMemberRepository, userRepository);
+        chatService = new ChatService(chatRepository, userRepository, mapper, notificationService, moderationService, chatMemberRepository);
     }
 
     @Test

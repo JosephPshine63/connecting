@@ -14,4 +14,8 @@ public interface ChatRepository extends JpaRepository<Chat, String> {
 
     @Query(name = ChatConstants.FIND_CHAT_BY_SENDER_ID_AND_RECEIVER)
     Optional<Chat> findChatByReceiverAndSender(@Param("senderId") String id, @Param("recipientId") String recipientId);
+
+    @Query("SELECT DISTINCT c FROM Chat c WHERE c.type = dev.pioruocco.wacchat.chat.ChatType.GROUP "
+            + "AND c.id IN (SELECT m.chatId FROM ChatMember m WHERE m.userId = :userId) ORDER BY c.createdDate DESC")
+    List<Chat> findGroupChatsByMemberId(@Param("userId") String userId);
 }
