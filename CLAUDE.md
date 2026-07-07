@@ -34,7 +34,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Initial setup
 
 ```bash
-cp .env.example .env            # fill in passwords, Google OAuth, mail credentials
+cp .env.example .env            # fill in passwords, mail credentials
 cd wac/shared-security && ./mvnw install -DskipTests && cd ../..   # one-time: installs the shared-security jar to ~/.m2 so backend/file-service/notification-service/call-service resolve it
 ```
 
