@@ -539,7 +539,7 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   mediaSrc(media: string): string {
-    return media.startsWith('http') ? media : 'data:image/jpg;base64,' + media;
+    return media.startsWith('http') || media.startsWith('blob:') ? media : 'data:image/jpg;base64,' + media;
   }
 
   openLightbox(message: MessageResponse): void {
@@ -733,40 +733,37 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   uploadMedia(target: EventTarget | null) {
     const file = this.extractFileFromTarget(target);
-    if (file !== null) {
-      const mediaType = this.mediaTypeFromFileName(file.name);
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result) {
-
-          const mediaLines = reader.result.toString().split(',')[1];
-
-          this.messageService.uploadMedia({
-            'chat-id': this.selectedChat.id as string,
-            body: {
-              file: file
-            }
-          }).subscribe({
-            next: (response) => {
-              const message: MessageResponse = {
-                id: response.id,
-                senderId: this.getSenderId(),
-                receiverId: this.getReceiverId(),
-                content: this.mediaLabelForType(mediaType),
-                type: mediaType,
-                state: 'SENT',
-                media: [mediaLines],
-                createdAt: new Date().toString()
-              };
-              this.chatMessages.push(message);
-              this.isScrolledUp = false;
-              this.forceScrollOnNextCheck = true;
-            }
-          });
-        }
+    if (file === null) return;
+    const mediaType = this.mediaTypeFromFileName(file.name);
+    // A blob: URL just references the existing File in memory — unlike FileReader.readAsDataURL,
+    // it doesn't duplicate a multi-MB video/image into a base64 string, which on mobile Safari's
+    // tighter per-tab memory limits could silently crash the tab with no catchable JS error.
+    const previewUrl = URL.createObjectURL(file);
+    this.messageService.uploadMedia({
+      'chat-id': this.selectedChat.id as string,
+      body: {
+        file: file
       }
-      reader.readAsDataURL(file);
-    }
+    }).subscribe({
+      next: (response) => {
+        const message: MessageResponse = {
+          id: response.id,
+          senderId: this.getSenderId(),
+          receiverId: this.getReceiverId(),
+          content: this.mediaLabelForType(mediaType),
+          type: mediaType,
+          state: 'SENT',
+          media: [previewUrl],
+          createdAt: new Date().toString()
+        };
+        this.chatMessages.push(message);
+        this.isScrolledUp = false;
+        this.forceScrollOnNextCheck = true;
+      },
+      error: () => {
+        URL.revokeObjectURL(previewUrl);
+      }
+    });
   }
 
   async startRecording(): Promise<void> {
@@ -858,27 +855,20 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
       body: {file}
     }).subscribe({
       next: (response) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (reader.result) {
-            const mediaLines = reader.result.toString().split(',')[1];
-            const message: MessageResponse = {
-              id: response.id,
-              senderId: this.getSenderId(),
-              receiverId: this.getReceiverId(),
-              content: this.mediaLabelForType('AUDIO'),
-              type: 'AUDIO',
-              state: 'SENT',
-              media: [mediaLines],
-              createdAt: new Date().toString()
-            };
-            this.chatMessages.push(message);
-            this.isScrolledUp = false;
-            this.forceScrollOnNextCheck = true;
-          }
-          this.discardRecording();
+        const message: MessageResponse = {
+          id: response.id,
+          senderId: this.getSenderId(),
+          receiverId: this.getReceiverId(),
+          content: this.mediaLabelForType('AUDIO'),
+          type: 'AUDIO',
+          state: 'SENT',
+          media: [URL.createObjectURL(file)],
+          createdAt: new Date().toString()
         };
-        reader.readAsDataURL(file);
+        this.chatMessages.push(message);
+        this.isScrolledUp = false;
+        this.forceScrollOnNextCheck = true;
+        this.discardRecording();
       },
       error: () => {
         this.recordingState = 'preview';
