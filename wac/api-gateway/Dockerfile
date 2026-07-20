@@ -7,7 +7,9 @@ COPY src ./src
 RUN ./mvnw clean package -DskipTests -q
 
 FROM eclipse-temurin:17-jre-alpine
+RUN adduser -D -u 1000 appuser
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+USER appuser
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

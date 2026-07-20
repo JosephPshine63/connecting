@@ -1,5 +1,7 @@
 package dev.pioruocco.wacchat.push;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +37,7 @@ public class PushSubscriptionController {
     // Upsert-by-endpoint: a shared device re-subscribing under a different logged-in user
     // reassigns the existing row rather than duplicating it (unique constraint on endpoint alone).
     @PostMapping("/api/v1/users/me/push-subscriptions")
-    public ResponseEntity<Void> subscribe(@RequestBody PushSubscriptionRequest request, Authentication authentication) {
+    public ResponseEntity<Void> subscribe(@Valid @RequestBody PushSubscriptionRequest request, Authentication authentication) {
         PushSubscription subscription = pushSubscriptionRepository.findByEndpoint(request.endpoint())
                 .orElseGet(PushSubscription::new);
         subscription.setUserId(authentication.getName());
@@ -47,16 +49,16 @@ public class PushSubscriptionController {
     }
 
     @DeleteMapping("/api/v1/users/me/push-subscriptions")
-    public ResponseEntity<Void> unsubscribe(@RequestBody PushUnsubscribeRequest request, Authentication authentication) {
+    public ResponseEntity<Void> unsubscribe(@Valid @RequestBody PushUnsubscribeRequest request, Authentication authentication) {
         pushSubscriptionRepository.findByEndpoint(request.endpoint())
                 .filter(sub -> sub.getUserId().equals(authentication.getName()))
                 .ifPresent(pushSubscriptionRepository::delete);
         return ResponseEntity.noContent().build();
     }
 
-    public record PushSubscriptionRequest(String endpoint, String p256dh, String auth) {
+    public record PushSubscriptionRequest(@NotBlank String endpoint, @NotBlank String p256dh, @NotBlank String auth) {
     }
 
-    public record PushUnsubscribeRequest(String endpoint) {
+    public record PushUnsubscribeRequest(@NotBlank String endpoint) {
     }
 }
