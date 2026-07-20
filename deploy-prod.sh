@@ -114,7 +114,7 @@ for arg in "$@"; do
       echo "Usage: ./deploy-prod.sh [--push] [--env=development|staging|production] [--only=<service>]"
       echo "  --only=<service>  Rebuild and restart a single app container instead of the whole stack."
       echo "                    <service> is one of: ${VALID_ONLY_VALUES[*]}"
-      echo "                    Skips infra (Postgres/Keycloak/RabbitMQ/observability) restart and build-cache pruning;"
+      echo "                    Skips infra (Postgres/Keycloak/RabbitMQ/observability) restart;"
       echo "                    assumes the rest of the stack is already running."
       exit 0
       ;;
@@ -301,7 +301,7 @@ else
   FULL_CALL_SERVICE="$IMAGE_CALL_SERVICE:$TAG"
 fi
 
-BUILD_FLAGS="--no-cache"
+BUILD_FLAGS=""
 
 if [[ -z "$ONLY" ]]; then
 # ─── 1. Infrastructure (Postgres + Keycloak) ─────────────────────────────────
@@ -360,13 +360,8 @@ ensure_admin_user
 log "Starting observability stack (Prometheus, Grafana, Loki, Tempo)..."
 (cd "$SCRIPT_DIR/$COMPOSE_DIR" && $COMPOSE_CMD -f docker-compose.observability.yml up -d)
 ok "Observability stack is up"
-
-# ─── 4. Docker cleanup ───────────────────────────────────────────────────────
-log "Cleaning Docker build cache..."
-docker builder prune -af
-ok "Docker build cache cleared"
 else
-  log "--only=$ONLY: skipping infra restart and build-cache prune (stack assumed already running)"
+  log "--only=$ONLY: skipping infra restart (stack assumed already running)"
 fi
 
 # ─── 5. Build backend image ──────────────────────────────────────────────────
