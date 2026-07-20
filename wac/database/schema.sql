@@ -72,6 +72,9 @@ CREATE TABLE users
 -- ALTER TABLE chat ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500);
 -- ALTER TABLE chat ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
 -- ALTER TABLE messages ALTER COLUMN receiver_id DROP NOT NULL;
+-- chat.type was originally added without NOT NULL (drifted from the NOT NULL above); backfill + enforce it:
+-- UPDATE chat SET type = 'DIRECT' WHERE type IS NULL;
+-- ALTER TABLE chat ALTER COLUMN type SET NOT NULL;
 
 ALTER TABLE chat
     ADD CONSTRAINT FK_CHAT_ON_RECIPIENT FOREIGN KEY (recipient_id) REFERENCES users (id);

@@ -67,7 +67,7 @@ public class Chat extends BaseAuditingEntity {
     @Column(columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     private boolean recipientArchived;
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'DIRECT'")
+    @Column(length = 20, nullable = false)
     private ChatType type = ChatType.DIRECT;
     // GROUP-only: sender/recipient are null for GROUP chats, name/avatarUrl/createdBy are
     // null for DIRECT chats — the two shapes never overlap.
