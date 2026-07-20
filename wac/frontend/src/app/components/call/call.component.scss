@@ -179,3 +179,9 @@
   font-size: 0.7rem;
   color: var(--text-secondary);
 }
+
+// Hidden per-participant audio playback sink for audio-only calls (see call.component.html)
+// — the element stays in the DOM so the browser keeps playing it, just out of layout/paint.
+.call-audio-sink {
+  display: none;
+}

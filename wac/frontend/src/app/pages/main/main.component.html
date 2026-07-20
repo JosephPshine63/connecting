@@ -247,11 +247,11 @@
                 } @else if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
                 } @else if (message.type === 'VIDEO') {
-                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0])" (dblclick)="openLightbox(message)"></video>
+                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0], message.type)" (dblclick)="openLightbox(message)"></video>
                 } @else if (message.type === 'AUDIO') {
-                  <app-audio-player class="bubble-audio" [src]="mediaSrc(message.media![0])"></app-audio-player>
+                  <app-audio-player class="bubble-audio" [src]="mediaSrc(message.media![0], message.type)"></app-audio-player>
                 } @else if (message.media) {
-                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="" (click)="openLightbox(message)">
+                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0], message.type)" alt="" (click)="openLightbox(message)">
                 }
                 <span class="bubble-meta">
                   {{ message.createdAt | date:'HH:mm' }}&nbsp;
@@ -315,11 +315,11 @@
                 } @else if (message.type === 'TEXT') {
                   <span class="bubble-text">{{ message.content }}</span>
                 } @else if (message.type === 'VIDEO') {
-                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0])" (dblclick)="openLightbox(message)"></video>
+                  <video controls class="bubble-video" [src]="mediaSrc(message.media![0], message.type)" (dblclick)="openLightbox(message)"></video>
                 } @else if (message.type === 'AUDIO') {
-                  <app-audio-player class="bubble-audio" [src]="mediaSrc(message.media![0])"></app-audio-player>
+                  <app-audio-player class="bubble-audio" [src]="mediaSrc(message.media![0], message.type)"></app-audio-player>
                 } @else if (message.media) {
-                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0])" alt="" (click)="openLightbox(message)">
+                  <img class="bubble-image cursor-pointer" [src]="mediaSrc(message.media![0], message.type)" alt="" (click)="openLightbox(message)">
                 }
                 <span class="bubble-meta">
                   {{ message.createdAt | date:'HH:mm' }}

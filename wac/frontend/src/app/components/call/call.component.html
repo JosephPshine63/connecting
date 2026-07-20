@@ -55,6 +55,12 @@
                 <span class="call-avatar-item-status">{{ label }}</span>
               }
             </div>
+            <app-call-tile
+              class="call-audio-sink"
+              callType="AUDIO"
+              [audioOnly]="true"
+              [stream]="remoteStreams.get(participant.userId) ?? null">
+            </app-call-tile>
           }
         </div>
       }

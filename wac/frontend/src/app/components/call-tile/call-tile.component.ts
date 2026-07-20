@@ -15,6 +15,10 @@ export class CallTileComponent implements AfterViewChecked {
   @Input() muted = false;
   @Input() statusLabel: string | null = null;
   @Input() isLocal = false;
+  // Renders just the <audio> element (no avatar/label chrome) — used as a hidden
+  // per-participant playback sink for audio-only calls, where the visual avatar UI is
+  // already drawn separately by the parent template.
+  @Input() audioOnly = false;
 
   @ViewChild('videoEl') videoRef?: ElementRef<HTMLVideoElement>;
   @ViewChild('audioEl') audioRef?: ElementRef<HTMLAudioElement>;

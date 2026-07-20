@@ -552,13 +552,24 @@ export class MainComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.setMessagesToSeen();
   }
 
-  mediaSrc(media: string): string {
-    return media.startsWith('http') || media.startsWith('blob:') ? media : 'data:image/jpg;base64,' + media;
+  // Legacy pre-R2-migration messages store the media as raw base64 with no mime info
+  // (backend FileUtils.resolveMedia); mp3 was the only audio extension ever accepted back
+  // then, so audio/mpeg is a well-grounded default rather than a guess.
+  private static readonly LEGACY_BASE64_MIME_BY_TYPE: Record<string, string> = {
+    IMAGE: 'image/jpeg',
+    VIDEO: 'video/mp4',
+    AUDIO: 'audio/mpeg',
+  };
+
+  mediaSrc(media: string, type?: MessageResponse['type']): string {
+    if (media.startsWith('http') || media.startsWith('blob:')) return media;
+    const mime = (type && MainComponent.LEGACY_BASE64_MIME_BY_TYPE[type]) || 'image/jpeg';
+    return `data:${mime};base64,${media}`;
   }
 
   openLightbox(message: MessageResponse): void {
     if (!message.media?.[0] || (message.type !== 'IMAGE' && message.type !== 'VIDEO')) return;
-    this.lightboxMedia = { url: this.mediaSrc(message.media[0]), type: message.type };
+    this.lightboxMedia = { url: this.mediaSrc(message.media[0], message.type), type: message.type };
   }
 
   closeLightbox(): void {
